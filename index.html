@@ -253,10 +253,44 @@
                 </div>
               </div>
 
+              <!-- Grease Trap Configuration -->
+              <div class="grease-trap-box">
+                <div class="grease-trap-header">
+                  <div class="grease-trap-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+                      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                    </svg>
+                    <span>隔油池清洁配置 (Grease Trap)</span>
+                  </div>
+                  <label class="trap-toggle-label">
+                    <input type="checkbox" id="chkGreaseTrap" class="custom-checkbox" checked />
+                    <span>清洗隔油池</span>
+                  </label>
+                </div>
+
+                <div class="grease-trap-controls" id="greaseTrapControls">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0.3rem;">隔油池数量</label>
+                    <select id="trapCountSelect" class="form-input" style="font-size: 0.88rem; padding: 0.45rem 0.6rem;">
+                      <option value="1" selected>1 个隔油池</option>
+                      <option value="2">2 个隔油池</option>
+                      <option value="3">3 个隔油池</option>
+                      <option value="4">4 个隔油池</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0.3rem;">容量规格 (主单位公制)</label>
+                    <select id="trapSizeSelect" class="form-input" style="font-size: 0.88rem; padding: 0.45rem 0.6rem;">
+                      <!-- 动态填充 -->
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <!-- Buttons -->
               <div style="display: flex; gap: 0.75rem;">
                 <button class="btn btn-primary btn-lg" id="btnCalculateOil" style="flex: 2;">
-                  <span>计算月用油量</span>
+                  <span>计算用油与清洁费用</span>
                 </button>
                 <button class="btn btn-secondary btn-lg" id="btnResetCalc" style="flex: 1;">
                   <span>重置</span>
@@ -302,9 +336,42 @@
                 </div>
               </div>
 
+              <!-- Grease Trap Price Card -->
+              <div class="trap-price-card" id="trapPriceCard">
+                <div class="trap-price-header">
+                  <div class="trap-price-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
+                    <span>隔油池清洁收费</span>
+                  </div>
+                  <span class="trap-tax-badge">安省 HST 13%</span>
+                </div>
+
+                <div class="trap-price-grid">
+                  <div class="trap-price-item">
+                    <div class="trap-price-label">税前服务费</div>
+                    <div class="trap-price-val" id="resTrapPrice">$100.00</div>
+                  </div>
+                  <div class="trap-price-item">
+                    <div class="trap-price-label">税金 (HST 13%)</div>
+                    <div class="trap-price-val" id="resTrapTax">$13.00</div>
+                  </div>
+                  <div class="trap-price-item trap-price-total-item">
+                    <div class="trap-price-label" style="color: #6ee7b7; font-weight: 700;">税后合计</div>
+                    <div class="trap-price-val trap-price-total-val" id="resTrapTotal">$113.00</div>
+                  </div>
+                </div>
+
+                <div class="trap-spec-pill" id="resTrapSpecPill">
+                  规格：1 个隔油池 · 95 升 (25 加仑)
+                </div>
+              </div>
+
               <!-- Business Advice Box -->
               <div class="business-advice-box">
-                <h4>回收方案：</h4>
+                <h4>回收与维保方案：</h4>
                 <p id="resPickupAdvice">正在计算...</p>
               </div>
 

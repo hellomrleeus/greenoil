@@ -940,6 +940,144 @@ body {
   color: #e2e8f0;
 }
 
+/* Grease Trap Controls (Left Panel) */
+.grease-trap-box {
+  background: #f8fafc;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  transition: var(--transition);
+}
+
+.grease-trap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.grease-trap-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.trap-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+}
+
+.grease-trap-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  transition: opacity 0.2s ease;
+}
+
+.grease-trap-controls.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Grease Trap Price Card (Right Panel) */
+.trap-price-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius);
+  padding: 1.15rem;
+  margin-bottom: 1.25rem;
+  transition: var(--transition);
+}
+
+.trap-price-card.disabled {
+  opacity: 0.45;
+}
+
+.trap-price-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.85rem;
+}
+
+.trap-price-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #a7f3d0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.trap-tax-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(52, 211, 153, 0.2);
+  color: #6ee7b7;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.03em;
+}
+
+.trap-price-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 0.6rem;
+}
+
+.trap-price-item {
+  background: rgba(0, 0, 0, 0.18);
+  padding: 0.65rem 0.5rem;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.trap-price-total-item {
+  background: rgba(6, 78, 59, 0.6);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.trap-price-label {
+  font-size: 0.72rem;
+  color: #a7f3d0;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.trap-price-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.trap-price-total-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #34d399;
+}
+
+.trap-spec-pill {
+  margin-top: 0.75rem;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: #d1fae5;
+  text-align: center;
+  font-weight: 600;
+}
+
 /* Modal and Detail Drawer */
 .modal-overlay {
   position: fixed;
@@ -1145,6 +1283,10 @@ body {
   }
 
   .calculator-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grease-trap-controls {
     grid-template-columns: 1fr;
   }
 
