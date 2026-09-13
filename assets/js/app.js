@@ -186,14 +186,14 @@ async function checkApiStatus() {
       settingsWorkerStatus.style.borderColor = "rgba(5, 150, 105, 0.3)";
     }
   } else {
-    badge.innerHTML = `<span class="dot" style="background:#f59e0b;"></span><span>离线模式</span>`;
+    badge.innerHTML = `<span class="dot" style="background:#f59e0b;"></span><span>未连接</span>`;
     badge.style.color = "#d97706";
     badge.style.borderColor = "rgba(245, 158, 11, 0.3)";
     if (syncStatusText) {
-      syncStatusText.textContent = "离线模式 (608 条餐馆记录)";
+      syncStatusText.textContent = "后端服务未连接";
     }
     if (settingsWorkerStatus) {
-      settingsWorkerStatus.textContent = "离线本地模式";
+      settingsWorkerStatus.textContent = "未连接后端服务";
       settingsWorkerStatus.style.background = "#fffbeb";
       settingsWorkerStatus.style.color = "#d97706";
       settingsWorkerStatus.style.borderColor = "rgba(245, 158, 11, 0.3)";

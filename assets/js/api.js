@@ -6,8 +6,6 @@
 const DEFAULT_WORKER_URL = "https://greenoil-api.ydxhjw4j5w.workers.dev";
 
 export const Api = {
-  localCacheData: null,
-
   getWorkerUrl() {
     return DEFAULT_WORKER_URL;
   },
@@ -17,24 +15,7 @@ export const Api = {
   },
 
   /**
-   * Load local preloaded dataset (608 records from Excel)
-   */
-  async loadLocalRestaurants() {
-    if (this.localCacheData) return this.localCacheData;
-    try {
-      const resp = await fetch("assets/data/restaurants.json");
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      this.localCacheData = await resp.json();
-      return this.localCacheData;
-    } catch (err) {
-      console.warn("Local data load failed:", err);
-      return [];
-    }
-  },
-
-  /**
-   * Main Restaurant Query: Calls backend cached API with pagination, search, and filtering.
-   * Falls back gracefully to local client-side pagination if worker is unconfigured or unreachable.
+   * Main Restaurant Query: Calls backend Cloudflare Worker API with pagination, search, and filtering.
    */
   async queryRestaurants({
     page = 1,
@@ -73,54 +54,23 @@ export const Api = {
           };
         }
       }
-    } catch (err) {
-      console.warn("Worker query failed, falling back to local cached engine:", err);
-    }
 
-    // Fallback: Perform exact same filtering, sorting, and pagination locally
-    const all = await this.loadLocalRestaurants();
-    let filtered = all;
-
-    if (region && region !== "全部 (All GTA)") {
-      filtered = filtered.filter(r => r.region.includes(region) || region.includes(r.region));
-    }
-
-    if (category && category !== "全部") {
-      filtered = filtered.filter(r => r.categories && r.categories.some(c => c.includes(category)));
-    }
-
-    if (keyword) {
-      const kw = keyword.toLowerCase();
-      filtered = filtered.filter(r => {
-        const text = [r.name, r.address, r.phone, r.keywordsRaw, r.primaryType, r.categoriesRaw].join(" ").toLowerCase();
-        return text.includes(kw);
-      });
-    }
-
-    filtered.sort((a, b) => {
-      if (sort === "rating") {
-        if (b.rating !== a.rating) return b.rating - a.rating;
-        return b.reviews - a.reviews;
+      if (resp.status === 401) {
+        console.warn("API 401: Unauthorized");
       }
-      if (sort === "reviews") return b.reviews - a.reviews;
-      if (sort === "name") return a.name.localeCompare(b.name, "zh-CN");
-      return 0;
-    });
-
-    const total = filtered.length;
-    const totalPages = Math.ceil(total / pageSize) || 1;
-    const startIndex = (page - 1) * pageSize;
-    const paginated = filtered.slice(startIndex, startIndex + pageSize);
+    } catch (err) {
+      console.warn("Worker query failed:", err);
+    }
 
     return {
-      source: "local_cache",
-      success: true,
+      source: "worker_cache",
+      success: false,
       page,
       pageSize,
-      total,
-      totalPages,
-      lastUpdated: "Local Seed (608 Records)",
-      data: paginated
+      total: 0,
+      totalPages: 1,
+      lastUpdated: "-",
+      data: []
     };
   },
 

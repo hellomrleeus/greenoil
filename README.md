@@ -15,9 +15,8 @@
 
 ### 2. 多伦多油炸餐饮商家查询系统
 - **区域筛选**：支持万锦 (Markham)、士嘉堡 (Scarborough)、北约克 (North York)、列治文山 (Richmond Hill)、多伦多市中心 (Downtown Toronto)、密西沙加 (Mississauga)、旺市 (Vaughan) 及全部 GTA 区域选择。
-- **离线数据库 + 实时 API**：
-  - 预置已抓取的 `fried_food_restaurants_markham_scarborough.xlsx` 中全部 **608 家真实油炸餐馆**。万锦与士嘉堡区域查询秒级加载、零 API 配额消耗。
-  - 支持调用 Cloudflare Worker 代理 Google Maps Places API (New) 实时检索大多伦多其他区域。
+- **实时 API 与云端 KV 缓存**：
+  - 调用 Cloudflare Worker 代理 Google Maps Places API (New) 全面检索大多伦多油炸餐饮商家，云端 KV 持久化缓存并支持定时更新。
 - **Excel 17 项全维度对齐**：
   - 餐馆名称 (Name)、所属区域 (Region)、油炸分类 (Categories)、评分 (Rating)、评价总数 (Reviews)、当前营业状态 (Status)、营业时间 (Opening Hours)、消费档次 (Price)、详细地址 (Address)、联系电话 (Phone)、官方网站 (Website)、Google 地图链接 (Maps URL)、主营类型 (Primary Type)、匹配关键词 (Keywords)、纬度 (Latitude)、经度 (Longitude)、Place ID。
 - **多模式交互**：支持卡片视图、Excel 表格视图、电话直拨、地图导航、一键复制、一键导入用油计算器、以及导出为 CSV/Excel。
@@ -45,14 +44,12 @@ greenoil/
 ├── assets/
 │   ├── css/
 │   │   └── app.css              # 现代科技环保绿主题样式，响应式 PC/移动端适配
-│   ├── js/
-│   │   ├── app.js               # 应用主控制器与初始化
-│   │   ├── auth.js              # 登录认证与 Cookie 管理
-│   │   ├── api.js               # Cloudflare Worker API 通信与离线数据兜底
-│   │   ├── restaurants.js       # 餐馆查询、筛选、详情弹窗与 CSV 导出
-│   │   └── calculator.js        # 纯前端用油与废油回收计算器
-│   └── data/
-│       └── restaurants.json     # 608 家餐馆离线数据库 (由 xlsx 转换)
+│   └── js/
+│       ├── app.js               # 应用主控制器与初始化
+│       ├── auth.js              # 登录认证与 Cookie 管理
+│       ├── api.js               # Cloudflare Worker API 客户端
+│       ├── restaurants.js       # 餐馆查询、筛选、详情弹窗与 CSV 导出
+│       └── calculator.js        # 纯前端用油与废油回收计算器
 ├── worker/                      # Cloudflare Worker 后端代码
 │   ├── index.js                 # Worker 核心路由 (Login, Check, Google Maps API)
 │   ├── wrangler.toml            # Wrangler 配置文件
