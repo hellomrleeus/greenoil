@@ -1111,23 +1111,8 @@ export const MapExplorer = {
       console.warn("Google Places proxy query error:", err);
     }
 
-    // Merge with known KV restaurants in this area
-    let localMatches = this.allRestaurants;
-    if (selectedNbs.length === 0 && !isAll && selectedCities.length > 0) {
-      const keywords = [];
-      selectedCities.forEach(c => {
-        const cn = c.name.split(" (")[0];
-        const en = c.nameEn || "";
-        if (cn) keywords.push(cn.toLowerCase());
-        if (en) keywords.push(en.toLowerCase());
-      });
-
-      localMatches = localMatches.filter(r => {
-        const reg = (r.region || "").toLowerCase();
-        const addr = (r.address || "").toLowerCase();
-        return keywords.some(kw => reg.includes(kw) || addr.includes(kw));
-      });
-    }
+    // Geographic filtering is applied after merging both sources.
+    const localMatches = this.allRestaurants;
 
     // Merge Google places with local KV items, prioritizing Google places for discovery
     const combinedMap = new Map();
@@ -1212,7 +1197,9 @@ export const MapExplorer = {
   filterAndRenderPlaces() {
     // Apply the same exact boundary to both Google discovery and saved places.
     // Selected subareas take precedence over their parent city tags.
-    const selectedAreas = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    const selectedSubareas = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    const selectedAreas = selectedSubareas.length > 0 ? selectedSubareas :
+      this.activeCityIds.has("all") ? [] : GTA_COMMUNITIES.filter(city => this.activeCityIds.has(city.id));
     let result = this.displayedPlaces.filter(place => selectedAreas.length === 0 ||
       selectedAreas.some(area => this.isPlaceInGeometry(place, area.geometry)));
 

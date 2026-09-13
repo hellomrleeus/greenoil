@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { MapExplorer as map } from '../assets/js/map-explorer.js';
+import { MapExplorer as map, GTA_COMMUNITIES } from '../assets/js/map-explorer.js';
 import { Api } from '../assets/js/api.js';
 
 const polygon = { type: 'Polygon', coordinates: [
@@ -57,3 +57,28 @@ for (let x = 1; x < 20; x++) for (let y = 1; y < 20; y++) {
 }
 assert(inside > 0 && outside > 0, 'Ward 7 excludes points inside its bounding rectangle');
 console.log('PASS: exact polygons, holes, multipolygons, coordinates, Google/KV merge, multi-selection, shared map/list filtering, Ward 7 regression');
+
+// City selection uses municipal geometry for both data sources, never address text.
+const municipalities = JSON.parse(fs.readFileSync('assets/data/official_municipalities.json'));
+for (const feature of municipalities.features) {
+  Object.assign(GTA_COMMUNITIES.find(city => city.id === feature.id), {geometry: feature.geometry});
+}
+map.activeNeighborhoodIds.clear();
+map.activeCityIds = new Set(['markham']);
+const markham = place('markham', -79.31, 43.86);
+markham.address = 'No city label';
+const aurora = place('aurora', -79.466, 44.006);
+const scarborough = place('scarborough', -79.25, 43.77);
+const richmondHill = place('richmond-hill', -79.438, 43.884);
+map.allRestaurants = [markham, aurora];
+Api.searchGooglePlaces = async () => ({success:true,places:[scarborough,richmondHill]});
+await map.loadPlacesForCurrentArea();
+assert.deepEqual(markerIds, ['markham'], 'Keep city-inside point without text; reject outside points with matching text');
+assert.deepEqual(cardIds, markerIds);
+map.activeCityIds.add('richmond_hill');
+map.filterAndRenderPlaces();
+assert.deepEqual(markerIds, ['richmond-hill','markham'], 'Multiple cities form a union');
+map.activeNeighborhoodIds.add('one');
+map.filterAndRenderPlaces();
+assert.deepEqual(markerIds, [], 'Subarea still takes precedence over cities');
+console.log('PASS: municipal boundaries, misleading addresses, city union and subarea precedence');
