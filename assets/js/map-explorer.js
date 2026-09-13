@@ -696,8 +696,8 @@ export const MapExplorer = {
   kvPlaceIdsSet: new Set(),
   kvNormalizedNamesSet: new Set(),
   
-  // Filter States (Locality / Cities only)
-  activeCityId: "north_york",
+  // Filter States (Locality / Cities Multi-Select)
+  activeCityIds: new Set(["all"]),
   activeCategory: "全部",
   activeVisited: "all", // "all", "visited", "unvisited"
   activeOutcome: "all",
@@ -804,12 +804,23 @@ export const MapExplorer = {
     const summaryEl = document.getElementById("areaActiveTagsSummary");
     if (!summaryEl) return;
 
-    const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
-    const cityName = city ? city.name.split(" (")[0] : "全部大区";
+    const isAll = this.activeCityIds.has("all");
+    const selected = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+
+    let label = "全部大区 (All GTA)";
+    if (!isAll && selected.length > 0) {
+      if (selected.length === 1) {
+        label = selected[0].name.split(" (")[0];
+      } else if (selected.length === 2) {
+        label = `${selected[0].name.split(" (")[0]}、${selected[1].name.split(" (")[0]}`;
+      } else {
+        label = `${selected[0].name.split(" (")[0]}、${selected[1].name.split(" (")[0]} (+${selected.length - 2})`;
+      }
+    }
 
     summaryEl.innerHTML = `
       <span class="area-tag-pill active">
-        ${this.escapeHtml(cityName)}
+        ${this.escapeHtml(label)}
       </span>
     `;
   },
@@ -818,19 +829,19 @@ export const MapExplorer = {
     // 1. Render Active Tags Row
     const tagsRow = document.getElementById("popoverActiveTagsRow");
     if (tagsRow) {
-      const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
-      const isCityAll = !city || city.id === "all";
+      const isAll = this.activeCityIds.has("all");
+      const selected = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
 
       let html = "";
-      if (isCityAll) {
-        html += `<span class="area-tag-pill">全部大区 (All GTA)</span>`;
+      if (isAll || selected.length === 0) {
+        html = `<span class="area-tag-pill active">全部大区 (All GTA)</span>`;
       } else {
-        html += `
-          <span class="area-tag-pill" data-city-id="${city.id}">
-            ${this.escapeHtml(city.name.split(" (")[0])}
-            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerResetToAllGta();">✕</span>
+        html = selected.map(c => `
+          <span class="area-tag-pill active" data-city-id="${c.id}">
+            ${this.escapeHtml(c.name.split(" (")[0])}
+            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveCity('${c.id}');" title="移除此区划">✕</span>
           </span>
-        `;
+        `).join("");
       }
       tagsRow.innerHTML = html;
     }
@@ -842,8 +853,8 @@ export const MapExplorer = {
       let html = "";
       GTA_COMMUNITIES.forEach(c => {
         const title = c.name;
-        if (q && !title.toLowerCase().includes(q)) return;
-        const isActive = this.activeCityId === c.id;
+        if (q && !title.toLowerCase().includes(q) && !(c.nameEn && c.nameEn.toLowerCase().includes(q))) return;
+        const isActive = this.activeCityIds.has(c.id);
         const shortName = c.name.split(" (")[0];
         html += `
           <button type="button" class="popover-pill-btn ${isActive ? 'active' : ''}" data-city="${c.id}">
@@ -855,18 +866,91 @@ export const MapExplorer = {
     }
   },
 
+  toggleCity(cityId) {
+    if (cityId === "all") {
+      this.activeCityIds = new Set(["all"]);
+    } else {
+      if (this.activeCityIds.has("all")) {
+        this.activeCityIds.clear();
+        this.activeCityIds.add(cityId);
+      } else {
+        if (this.activeCityIds.has(cityId)) {
+          this.activeCityIds.delete(cityId);
+          if (this.activeCityIds.size === 0) {
+            this.activeCityIds.add("all");
+          }
+        } else {
+          this.activeCityIds.add(cityId);
+        }
+      }
+    }
+    this.renderPopover();
+    this.updateAreaSummaryBtn();
+    this.panToSelectedArea();
+    this.loadPlacesForCurrentArea();
+  },
+
+  removeCity(cityId) {
+    if (this.activeCityIds.has(cityId)) {
+      this.activeCityIds.delete(cityId);
+      if (this.activeCityIds.size === 0) {
+        this.activeCityIds.add("all");
+      }
+      this.renderPopover();
+      this.updateAreaSummaryBtn();
+      this.panToSelectedArea();
+      this.loadPlacesForCurrentArea();
+    }
+  },
+
   // -------------------------------------------------------------
   // Pan and Focus on Selected Locality / City (Administrative Level)
   // -------------------------------------------------------------
   panToSelectedArea() {
-    const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId) || GTA_COMMUNITIES[0];
-    if (!city || !city.center) return;
+    const isAll = this.activeCityIds.has("all");
+    const selected = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
 
-    if (this.googleMap && !this.isFallbackMode) {
-      this.googleMap.panTo(city.center);
-      this.googleMap.setZoom(city.zoom || 12);
-    } else if (this.fallbackMap) {
-      this.fallbackMap.setView([city.center.lat, city.center.lng], city.zoom || 12);
+    if (isAll || selected.length === 0) {
+      const allItem = GTA_COMMUNITIES.find(c => c.id === "all") || GTA_COMMUNITIES[0];
+      if (this.googleMap && !this.isFallbackMode) {
+        this.googleMap.panTo(allItem.center);
+        this.googleMap.setZoom(allItem.zoom || 11);
+      } else if (this.fallbackMap) {
+        this.fallbackMap.setView([allItem.center.lat, allItem.center.lng], allItem.zoom || 11);
+      }
+      return;
+    }
+
+    if (selected.length === 1) {
+      const c = selected[0];
+      if (this.googleMap && !this.isFallbackMode) {
+        this.googleMap.panTo(c.center);
+        this.googleMap.setZoom(c.zoom || 13);
+      } else if (this.fallbackMap) {
+        this.fallbackMap.setView([c.center.lat, c.center.lng], c.zoom || 13);
+      }
+      return;
+    }
+
+    // Multiple cities selected: fit bounds to encompass all selected cities
+    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+      const bounds = new google.maps.LatLngBounds();
+      selected.forEach(c => {
+        if (c.center) bounds.extend(c.center);
+        if (Array.isArray(c.polygonPaths)) {
+          c.polygonPaths.forEach(pt => bounds.extend(pt));
+        }
+      });
+      this.googleMap.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+    } else if (this.fallbackMap && window.L) {
+      const latLngs = [];
+      selected.forEach(c => {
+        if (c.center) latLngs.push([c.center.lat, c.center.lng]);
+        if (Array.isArray(c.polygonPaths)) {
+          c.polygonPaths.forEach(pt => latLngs.push([pt.lat, pt.lng]));
+        }
+      });
+      this.fallbackMap.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
     }
   },
 
@@ -1052,19 +1136,20 @@ export const MapExplorer = {
       `;
     }
 
-    const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
-    let areaQuery = "";
+    const isAll = this.activeCityIds.has("all");
+    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
 
+    let areaQuery = "";
     if (this.searchKeyword) {
       areaQuery = this.searchKeyword;
-    } else if (city && city.id !== "all") {
-      areaQuery = `restaurants in ${city.name.split(" (")[0]} Ontario`;
+    } else if (!isAll && selectedCities.length > 0) {
+      const cityNames = selectedCities.map(c => c.name.split(" (")[0]).join(" ");
+      areaQuery = `restaurants in ${cityNames} Ontario`;
     } else {
       areaQuery = "restaurants in Toronto Ontario";
     }
 
     let rawPlaces = [];
-
     try {
       const res = await Api.searchGooglePlaces(areaQuery);
       if (res && res.success && Array.isArray(res.places) && res.places.length > 0) {
@@ -1075,36 +1160,53 @@ export const MapExplorer = {
     }
 
     // Merge with known KV restaurants in this area
-    const regionKeyword = city && city.id !== "all" ? city.name.split(" (")[0] : "";
     let localMatches = this.allRestaurants;
-    if (regionKeyword) {
-      localMatches = localMatches.filter(r => r.region && r.region.includes(regionKeyword));
+    if (!isAll && selectedCities.length > 0) {
+      const keywords = [];
+      selectedCities.forEach(c => {
+        const cn = c.name.split(" (")[0];
+        const en = c.nameEn || "";
+        if (cn) keywords.push(cn.toLowerCase());
+        if (en) keywords.push(en.toLowerCase());
+      });
+
+      localMatches = localMatches.filter(r => {
+        const reg = (r.region || "").toLowerCase();
+        const addr = (r.address || "").toLowerCase();
+        return keywords.some(kw => reg.includes(kw) || addr.includes(kw));
+      });
     }
 
-    // Merge Google places with local KV items, prioritizing Google places
+    // Merge Google places with local KV items, prioritizing Google places for discovery
     const combinedMap = new Map();
     rawPlaces.forEach(p => {
       const key = p.placeId || p.name;
       combinedMap.set(key, p);
     });
 
-    localMatches.slice(0, 40).forEach(r => {
+    // Merge ALL matching local KV restaurants WITHOUT slicing
+    localMatches.forEach(r => {
       const key = r.placeId || r.name;
       if (!combinedMap.has(key)) {
         combinedMap.set(key, r);
       }
     });
 
-    // Check KV status and visit records for each place
+    // Check KV status and visit records for each place with fast O(1) hash maps
+    const kvByPlaceId = new Map();
+    const kvByName = new Map();
+    this.allRestaurants.forEach(r => {
+      if (r.placeId) kvByPlaceId.set(r.placeId, r);
+      if (r.name) kvByName.set(r.name.trim().toLowerCase(), r);
+    });
+
     this.displayedPlaces = Array.from(combinedMap.values()).map(place => {
       const inKV = this.checkIsInKv(place);
       place.inKV = inKV;
 
-      // Match visit record from KV if exists
-      const matchedKv = this.allRestaurants.find(r => 
-        (r.placeId && r.placeId === place.placeId) || 
-        (r.name && r.name.toLowerCase() === place.name.toLowerCase())
-      );
+      const normName = (place.name || "").trim().toLowerCase();
+      const matchedKv = (place.placeId && kvByPlaceId.get(place.placeId)) || 
+                        (normName && kvByName.get(normName));
 
       if (matchedKv) {
         place.isVisited = matchedKv.isVisited || false;
@@ -1119,6 +1221,7 @@ export const MapExplorer = {
       return place;
     });
 
+    this.currentPage = 1;
     this.filterAndRenderPlaces();
   },
 
@@ -1194,11 +1297,22 @@ export const MapExplorer = {
     if (countEl) countEl.textContent = total.toLocaleString();
     if (unsavedCountEl) unsavedCountEl.textContent = unsaved.toLocaleString();
 
-    const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
-    const cityName = city ? city.name.split(" (")[0] : "全大区";
+    const isAll = this.activeCityIds.has("all");
+    const selected = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+
+    let titleText = "全部大区 (All GTA)";
+    if (!isAll && selected.length > 0) {
+      if (selected.length === 1) {
+        titleText = selected[0].name.split(" (")[0];
+      } else if (selected.length === 2) {
+        titleText = `${selected[0].name.split(" (")[0]}、${selected[1].name.split(" (")[0]}`;
+      } else {
+        titleText = `${selected[0].name.split(" (")[0]}、${selected[1].name.split(" (")[0]} (+${selected.length - 2})`;
+      }
+    }
 
     if (regionTitleEl) {
-      regionTitleEl.textContent = `${cityName}餐馆列表 (${total} 家)`;
+      regionTitleEl.textContent = `${titleText}餐馆列表 (${total} 家)`;
     }
   },
 
@@ -1219,8 +1333,47 @@ export const MapExplorer = {
   renderMarkers() {
     this.clearMarkers();
 
-    // Plot only the places in the current list (typically 20-50)
-    this.filteredPlaces.forEach((r, idx) => {
+    // Determine markers to render:
+    // 1. Current page items (guarantees card-marker sync)
+    // 2. Google Places (unsaved) items
+    // 3. Remaining places up to max limit (default 600) to keep 60fps
+    const markerPlaces = [];
+    const seenKeys = new Set();
+
+    // A. Current page items
+    const startIdx = (this.currentPage - 1) * this.pageSize;
+    const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
+    pageItems.forEach(r => {
+      const key = r.placeId || r.name;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        markerPlaces.push(r);
+      }
+    });
+
+    // B. Google Places (unsaved)
+    this.filteredPlaces.forEach(r => {
+      if (!r.inKV) {
+        const key = r.placeId || r.name;
+        if (!seenKeys.has(key)) {
+          seenKeys.add(key);
+          markerPlaces.push(r);
+        }
+      }
+    });
+
+    // C. Remaining places up to max 600
+    const maxMarkers = 600;
+    for (let i = 0; i < this.filteredPlaces.length && markerPlaces.length < maxMarkers; i++) {
+      const r = this.filteredPlaces[i];
+      const key = r.placeId || r.name;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        markerPlaces.push(r);
+      }
+    }
+
+    markerPlaces.forEach(r => {
       const lat = parseFloat(r.latitude);
       const lng = parseFloat(r.longitude);
       if (isNaN(lat) || isNaN(lng)) return;
@@ -1282,11 +1435,32 @@ export const MapExplorer = {
   },
 
   highlightMarker(key, highlight) {
-    const marker = this.markersMap.get(key);
-    if (!marker) return;
-
+    let marker = this.markersMap.get(key);
     const r = this.filteredPlaces.find(item => (item.placeId || item.name) === key);
     if (!r) return;
+
+    if (!marker && highlight) {
+      const lat = parseFloat(r.latitude);
+      const lng = parseFloat(r.longitude);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+          marker = new google.maps.Marker({
+            position: { lat, lng },
+            map: this.googleMap,
+            title: r.name,
+            icon: this.getPinIcon(r, true),
+            zIndex: 999
+          });
+          marker.addListener("click", () => {
+            this.showInfoWindow(r, marker);
+            this.scrollCardIntoView(key);
+          });
+          this.markersMap.set(key, marker);
+        }
+      }
+    }
+
+    if (!marker) return;
 
     if (this.googleMap && !this.isFallbackMode && marker.setIcon) {
       marker.setIcon(this.getPinIcon(r, highlight));
@@ -1429,11 +1603,16 @@ export const MapExplorer = {
       <button class="btn btn-secondary btn-sm" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.mapExplorerGoToPage(${this.currentPage - 1})">&lt;</button>
     `;
 
+    let lastRendered = 0;
     for (let p = 1; p <= totalPages; p++) {
       if (p === 1 || p === totalPages || (p >= this.currentPage - 1 && p <= this.currentPage + 1)) {
+        if (lastRendered > 0 && p - lastRendered > 1) {
+          html += `<span style="display:inline-flex; align-items:center; padding:0 4px; color:var(--text-muted); font-size:0.8rem; user-select:none;">...</span>`;
+        }
         html += `
           <button class="btn ${p === this.currentPage ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.mapExplorerGoToPage(${p})">${p}</button>
         `;
+        lastRendered = p;
       }
     }
 
@@ -1581,7 +1760,7 @@ export const MapExplorer = {
     const clearAllBtn = document.getElementById("popoverClearAllBtn");
     if (clearAllBtn) {
       clearAllBtn.addEventListener("click", () => {
-        this.activeCityId = "all";
+        this.activeCityIds = new Set(["all"]);
         this.renderPopover();
         this.updateAreaSummaryBtn();
         this.panToSelectedArea();
@@ -1607,11 +1786,7 @@ export const MapExplorer = {
         const cityId = btn.dataset.city;
         if (!cityId) return;
 
-        this.activeCityId = cityId;
-        this.renderPopover();
-        this.updateAreaSummaryBtn();
-        this.panToSelectedArea();
-        this.loadPlacesForCurrentArea();
+        this.toggleCity(cityId);
       });
     }
 
@@ -1619,7 +1794,7 @@ export const MapExplorer = {
     const resetCenterBtn = document.getElementById("popoverCurrentLocationBtn");
     if (resetCenterBtn) {
       resetCenterBtn.addEventListener("click", () => {
-        this.activeCityId = "all";
+        this.activeCityIds = new Set(["all"]);
         this.renderPopover();
         this.updateAreaSummaryBtn();
         this.panToSelectedArea();
@@ -1783,7 +1958,21 @@ if (typeof window !== "undefined") {
     if (!isNaN(lat) && !isNaN(lng)) {
       if (MapExplorer.googleMap && !MapExplorer.isFallbackMode) {
         MapExplorer.googleMap.panTo({ lat, lng });
-        const marker = MapExplorer.markersMap.get(key);
+        let marker = MapExplorer.markersMap.get(key);
+        if (!marker && window.google && window.google.maps) {
+          marker = new google.maps.Marker({
+            position: { lat, lng },
+            map: MapExplorer.googleMap,
+            title: r.name,
+            icon: MapExplorer.getPinIcon(r, true),
+            zIndex: 999
+          });
+          marker.addListener("click", () => {
+            MapExplorer.showInfoWindow(r, marker);
+            MapExplorer.scrollCardIntoView(key);
+          });
+          MapExplorer.markersMap.set(key, marker);
+        }
         if (marker) MapExplorer.showInfoWindow(r, marker);
       } else if (MapExplorer.fallbackMap) {
         MapExplorer.fallbackMap.setView([lat, lng], 16);
@@ -1819,13 +2008,18 @@ if (typeof window !== "undefined") {
   window.mapExplorerGoToPage = function(p) {
     MapExplorer.currentPage = p;
     MapExplorer.renderPlacesCards();
+    MapExplorer.renderMarkers();
   };
 
   window.mapExplorerResetToAllGta = function() {
-    MapExplorer.activeCityId = "all";
+    MapExplorer.activeCityIds = new Set(["all"]);
     MapExplorer.renderPopover();
     MapExplorer.updateAreaSummaryBtn();
     MapExplorer.panToSelectedArea();
     MapExplorer.loadPlacesForCurrentArea();
+  };
+
+  window.mapExplorerRemoveCity = function(cityId) {
+    MapExplorer.removeCity(cityId);
   };
 }
