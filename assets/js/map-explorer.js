@@ -1548,10 +1548,19 @@ export const MapExplorer = {
     const container = document.getElementById("mapPlacesCardsContainer");
     if (!container) return;
 
+    const index = this.filteredPlaces.findIndex(place => (place.placeId || place.name) === key);
+    if (index < 0) return;
+    const page = Math.floor(index / this.pageSize) + 1;
+    if (this.currentPage !== page) {
+      this.currentPage = page;
+      this.renderPlacesCards();
+      this.updateSelectionUI();
+    }
     const card = container.querySelector(`.map-place-card[data-key="${CSS.escape(key)}"]`);
     if (card) {
       container.querySelectorAll(".map-place-card").forEach(el => el.classList.remove("is-active"));
       card.classList.add("is-active");
+      card.focus({ preventScroll: true });
       card.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   },
@@ -1741,7 +1750,7 @@ export const MapExplorer = {
       ` : "";
 
       return `
-        <div class="map-place-card ${isSelected ? 'is-selected' : ''}" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
+        <div tabindex="-1" class="map-place-card ${isSelected ? 'is-selected' : ''}" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
           <div class="card-thumb" style="${photoInfo.url ? '' : 'display:none'}">
             <img ${photoInfo.url ? `src="${this.escapeHtml(photoInfo.url)}"` : ''} alt="${this.escapeHtml(r.name)}" loading="lazy" class="card-img" onload="this.parentElement.style.display=''" onerror="this.parentElement.style.display='none'" />
           </div>
