@@ -459,6 +459,46 @@ export const MapExplorer = {
     return null;
   },
 
+  findNeighborhoodAtCoordinate(lat, lng) {
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+    const neighborhoods = this.getAllNeighborhoods().filter(area => area.boundaryType !== "ward");
+    if (neighborhoods.length === 0) return null;
+    const byId = new Map(neighborhoods.map(area => [area.id, area]));
+    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    const nearbyIds = [];
+    selectedNbs.forEach(area => (area.neighbors || []).forEach(id => {
+      if (byId.has(id) && !nearbyIds.includes(id)) nearbyIds.push(id);
+    }));
+    const selectedCityIds = this.activeCityIds.has("all") ? [] : Array.from(this.activeCityIds);
+    selectedCityIds.forEach(cityId => neighborhoods.filter(area => area.parentCityId === cityId).forEach(area => {
+      if (!nearbyIds.includes(area.id)) nearbyIds.push(area.id);
+    }));
+
+    const contains = area => this.isPointInBbox({ lat: latitude, lng: longitude }, area.bbox) &&
+      this.isPlaceInGeometry({ lat: latitude, lng: longitude }, area.geometry);
+    for (const id of nearbyIds) {
+      const area = byId.get(id);
+      if (area && contains(area)) return { area, source: "nearby", kind: "neighborhood" };
+    }
+    for (const area of neighborhoods) {
+      if (nearbyIds.includes(area.id)) continue;
+      if (contains(area)) return { area, source: "global", kind: "neighborhood" };
+    }
+    return null;
+  },
+
+  findAdministrativeAreaAtCoordinate(lat, lng) {
+    const wardMatch = this.findWardAtCoordinate(lat, lng);
+    if (wardMatch?.ward) return { area: wardMatch.ward, source: wardMatch.source, kind: "ward" };
+    // Toronto's current official dataset contains neighbourhood polygons but
+    // no ward polygons. Fall back to those boundaries so a valid click still
+    // produces a useful filter instead of reporting "no area".
+    return this.findNeighborhoodAtCoordinate(lat, lng);
+  },
+
   isCoordinateInsideSelectedArea(lat, lng) {
     const point = { lat: Number(lat), lng: Number(lng) };
     if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return false;
@@ -485,34 +525,45 @@ export const MapExplorer = {
       point.lng >= west && point.lng <= east && point.lat >= south && point.lat <= north;
   },
 
+  getMapEventCoordinate(latLng) {
+    if (!latLng) return null;
+    const lat = typeof latLng.lat === "function" ? latLng.lat() : latLng.lat;
+    const lng = typeof latLng.lng === "function" ? latLng.lng() : latLng.lng;
+    const coordinate = { lat: Number(lat), lng: Number(lng) };
+    return Number.isFinite(coordinate.lat) && Number.isFinite(coordinate.lng) ? coordinate : null;
+  },
+
   getMapContextMenuCopy() {
     const lang = this.getCurrentLanguage();
     if (lang === "en") {
       return {
-        title: "Add official ward",
-        add: ward => `Add ${ward.nameEn || ward.name}`,
+        title: "Add area",
+        add: (area, kind) => kind === "ward" ? `Add ${area.nameEn || area.name}` : `Add ${area.nameEn || area.name} neighborhood`,
         matchedNearby: "Matched in nearby recommended wards",
         matchedGlobal: "Matched in all official wards",
-        noWard: "No official ward covers this point",
+        matchedNeighborhood: "No ward polygon here; matched the local neighbourhood boundary",
+        noWard: "No official ward or neighbourhood covers this point",
         close: "Close"
       };
     }
     if (lang === "ko") {
       return {
-        title: "공식 선거구 추가",
-        add: ward => `${ward.nameKo || ward.name} 추가`,
+        title: "행정 구역 추가",
+        add: (area, kind) => kind === "ward" ? `${area.nameKo || area.name} 추가` : `${area.nameKo || area.name} 지역 추가`,
         matchedNearby: "주변 추천 선거구에서 찾음",
         matchedGlobal: "전체 공식 선거구에서 찾음",
-        noWard: "이 지점에 해당하는 공식 선거구가 없습니다",
+        matchedNeighborhood: "선거구 경계가 없어 인근 지역 경계로 찾음",
+        noWard: "해당 지점의 공식 선거구 또는 지역을 찾지 못했습니다",
         close: "닫기"
       };
     }
     return {
-      title: "添加官方行政选区",
-      add: ward => `添加 ${ward.nameZh || ward.name}`,
+      title: "添加区划",
+      add: (area, kind) => kind === "ward" ? `添加 ${area.nameZh || area.name}` : `添加 ${area.nameZh || area.name}（社区）`,
       matchedNearby: "已在周边推荐选区中匹配",
       matchedGlobal: "已在全部官方选区中匹配",
-      noWard: "此位置没有覆盖的官方行政选区",
+      matchedNeighborhood: "此处没有 WARD 边界，已匹配到社区边界",
+      noWard: "此位置没有覆盖的官方选区或社区",
       close: "关闭"
     };
   },
@@ -545,7 +596,7 @@ export const MapExplorer = {
     this.hideMapContextMenu();
     if (this.isCoordinateInsideSelectedArea(lat, lng)) return;
 
-    const match = this.findWardAtCoordinate(lat, lng);
+    const match = this.findAdministrativeAreaAtCoordinate(lat, lng);
     const copy = this.getMapContextMenuCopy();
     const menu = document.createElement("div");
     menu.className = "map-context-menu";
@@ -558,21 +609,23 @@ export const MapExplorer = {
     title.textContent = copy.title;
     menu.appendChild(title);
 
-    if (match?.ward) {
-      const ward = match.ward;
+    if (match?.area) {
+      const area = match.area;
       const note = document.createElement("div");
       note.className = "map-context-menu-note";
-      note.textContent = match.source === "nearby" ? copy.matchedNearby : copy.matchedGlobal;
+      note.textContent = match.kind === "neighborhood"
+        ? copy.matchedNeighborhood
+        : (match.source === "nearby" ? copy.matchedNearby : copy.matchedGlobal);
       menu.appendChild(note);
 
       const addButton = document.createElement("button");
       addButton.type = "button";
       addButton.className = "map-context-menu-action";
       addButton.setAttribute("role", "menuitem");
-      addButton.textContent = copy.add(ward);
+      addButton.textContent = copy.add(area, match.kind);
       addButton.addEventListener("click", event => {
         event.stopPropagation();
-        this.addNeighborhoodFromMapContext(ward.id);
+        this.addNeighborhoodFromMapContext(area.id);
       });
       menu.appendChild(addButton);
     } else {
@@ -1233,11 +1286,12 @@ export const MapExplorer = {
       this.googleMap.addListener("rightclick", event => {
         event.domEvent?.preventDefault?.();
         event.stop?.();
-        if (!event.latLng) return;
+        const coordinate = this.getMapEventCoordinate(event.latLng);
+        if (!coordinate) return;
         const domEvent = event.domEvent;
         this.showMapContextMenu(
-          event.latLng.lat(),
-          event.latLng.lng(),
+          coordinate.lat,
+          coordinate.lng,
           domEvent?.clientX ?? 0,
           domEvent?.clientY ?? 0
         );
@@ -1298,7 +1352,8 @@ export const MapExplorer = {
     this.fallbackMap.on("click", () => this.hideMapContextMenu());
     this.fallbackMap.on("contextmenu", event => {
       event.originalEvent?.preventDefault?.();
-      const point = event.latlng;
+      const point = this.getMapEventCoordinate(event.latlng);
+      if (!point) return;
       const original = event.originalEvent;
       this.showMapContextMenu(point.lat, point.lng, original?.clientX ?? 0, original?.clientY ?? 0);
     });
