@@ -9,8 +9,6 @@
  * 5. Manual Sync Trigger (POST /api/sync)
  */
 
-import { SEED_RESTAURANTS } from "./seed.js";
-
 const COOKIE_NAME = "greenoil_session";
 const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days
 const KV_CACHE_KEY = "gta_fried_food_restaurants";
@@ -277,9 +275,9 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
   const category = (url.searchParams.get("category") || "全部").trim();
   const sortBy = (url.searchParams.get("sort") || "rating").trim();
 
-  // 1. Retrieve dataset from KV or fallback to SEED_RESTAURANTS
-  let allRestaurants = SEED_RESTAURANTS;
-  let lastUpdated = "2026-09-13T03:00:00Z";
+  // 1. Retrieve dataset from KV
+  let allRestaurants = [];
+  let lastUpdated = "未同步";
 
   if (env.RESTAURANTS_KV) {
     try {
@@ -365,8 +363,8 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
  * Check cache status
  */
 async function handleCacheStatus(env, corsHeaders) {
-  let count = SEED_RESTAURANTS.length;
-  let lastUpdated = "Initial Seed (2026-09-13)";
+  let count = 0;
+  let lastUpdated = "未同步";
 
   if (env.RESTAURANTS_KV) {
     try {
@@ -399,23 +397,8 @@ async function syncDailyRestaurants(env) {
     return { success: false, message: "GOOGLE_MAPS_API_KEY is not configured" };
   }
 
-  // Start with existing cached data or seed data
+  // Fresh query purely from Google Maps Places API (New) without offline seed data
   let existingMap = new Map();
-  for (const r of SEED_RESTAURANTS) {
-    existingMap.set(r.placeId || r.name, r);
-  }
-
-  if (env.RESTAURANTS_KV) {
-    try {
-      const cached = await env.RESTAURANTS_KV.get(KV_CACHE_KEY, { type: "json" });
-      if (cached && Array.isArray(cached)) {
-        for (const r of cached) {
-          existingMap.set(r.placeId || r.name, r);
-        }
-      }
-    } catch {}
-  }
-
   let newlyFetchedCount = 0;
 
   // Iterate over each GTA region to fetch fresh restaurants
@@ -423,7 +406,9 @@ async function syncDailyRestaurants(env) {
     try {
       const queryList = [
         `fried chicken wings in ${regionInfo.name}, Ontario, Canada`,
-        `fried food fish and chips katsu in ${regionInfo.name}, Ontario, Canada`
+        `fish and chips in ${regionInfo.name}, Ontario, Canada`,
+        `fried food katsu tempura in ${regionInfo.name}, Ontario, Canada`,
+        `fried donuts churros corn dog in ${regionInfo.name}, Ontario, Canada`
       ];
 
       for (const textQuery of queryList) {
