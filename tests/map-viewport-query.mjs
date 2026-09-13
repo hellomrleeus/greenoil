@@ -26,3 +26,18 @@ await map.loadPlacesForCurrentArea(false);
 release();await old;
 assert.deepEqual(map.filteredPlaces.map(r=>r.placeId),['new'],'Old area response cannot overwrite current results');
 console.log('PASS: complete selected-area query, no viewport reload, stale area response guard');
+
+let cardsRendered = 0;
+let markersRendered = 0;
+const oldCards = map.renderPlacesCards;
+const oldMarkers = map.renderMarkers;
+map.renderPlacesCards = () => { cardsRendered++; };
+map.renderMarkers = () => { markersRendered++; };
+map.filteredPlaces = [{placeId:'one'},{placeId:'two'}];
+map.pageSize = 1;
+map.goToPage(2);
+assert.equal(cardsRendered, 1);
+assert.equal(markersRendered, 0, 'Right-list pagination must not rebuild map pins');
+map.renderPlacesCards = oldCards;
+map.renderMarkers = oldMarkers;
+console.log('PASS: right-list pagination updates cards without redrawing pins');

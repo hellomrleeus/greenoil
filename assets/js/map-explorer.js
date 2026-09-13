@@ -2001,6 +2001,12 @@ export const MapExplorer = {
     controlsEl.innerHTML = html;
   },
 
+  goToPage(page) {
+    const totalPages = Math.ceil(this.filteredPlaces.length / this.pageSize) || 1;
+    this.currentPage = Math.max(1, Math.min(Number(page) || 1, totalPages));
+    this.renderPlacesCards();
+  },
+
   // -------------------------------------------------------------
   // Info Window / Popup Content
   // -------------------------------------------------------------
@@ -2600,9 +2606,7 @@ if (typeof window !== "undefined") {
   };
 
   window.mapExplorerGoToPage = function(p) {
-    MapExplorer.currentPage = p;
-    MapExplorer.renderPlacesCards();
-    MapExplorer.renderMarkers();
+    MapExplorer.goToPage(p);
   };
 
   window.mapExplorerResetToAllGta = function() {
