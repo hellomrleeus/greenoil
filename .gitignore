@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 .dev.vars
+.env*
+*.env
 
 # Operating System
 .DS_Store

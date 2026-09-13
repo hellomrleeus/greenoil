@@ -107,7 +107,7 @@ export default {
       // 9. Google Maps Client Config (Frontend Key restricted to Website domain)
       if (url.pathname === "/api/maps/config" && request.method === "GET") {
         return new Response(JSON.stringify({
-          apiKey: env.GOOGLE_MAPS_FRONTEND_KEY || env.GOOGLE_MAPS_API_KEY || "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc"
+          apiKey: env.GOOGLE_MAPS_FRONTEND_KEY || env.GOOGLE_MAPS_API_KEY || ""
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -159,8 +159,8 @@ async function handleLogin(request, env, corsHeaders) {
   }
 
   const { username, password } = body || {};
-  const validUsername = env.WORKER_USERNAME ? env.WORKER_USERNAME.trim() : "greenoil";
-  const validPassword = env.WORKER_PASSWORD ? env.WORKER_PASSWORD.trim() : "greenoil2025";
+  const validUsername = env.WORKER_USERNAME ? env.WORKER_USERNAME.trim() : "";
+  const validPassword = env.WORKER_PASSWORD ? env.WORKER_PASSWORD.trim() : "";
   const inputUser = (username || "").trim();
   const inputPass = (password || "").trim();
 
@@ -855,7 +855,7 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
     });
   }
 
-  const apiKey = env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_MAPS_API_KEY || "AIzaSyCxkEVTsCSf3BbAgKvHi0x0SWG4L09C0Tw";
+  const apiKey = env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_MAPS_API_KEY || "";
   if (!apiKey) {
     return new Response(JSON.stringify({
       success: false,
@@ -984,7 +984,7 @@ async function handlePlanRoute(request, env, corsHeaders) {
     googleMapsUrl += `&waypoints=${wpStr}`;
   }
 
-  const apiKey = env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_MAPS_API_KEY || "AIzaSyCxkEVTsCSf3BbAgKvHi0x0SWG4L09C0Tw";
+  const apiKey = env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_MAPS_API_KEY || "";
   if (apiKey) {
     try {
       // Call Google Routes API
