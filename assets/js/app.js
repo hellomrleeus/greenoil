@@ -7,8 +7,13 @@ import { Api } from "./api.js";
 import { Restaurants } from "./restaurants.js";
 import { Calculator } from "./calculator.js";
 import { GreaseTrap } from "./grease-trap.js";
+import { i18n } from "./i18n.js";
+
+let lastApiStatus = null;
 
 export function initApp() {
+  i18n.init();
+  setupLanguageSwitcher();
   setupNavigation();
   setupAuth();
   setupMobileMenu();
@@ -19,6 +24,20 @@ export function initApp() {
   GreaseTrap.init();
 
   checkApiStatus();
+
+  i18n.onLanguageChange(() => {
+    updateApiStatusDisplay(lastApiStatus);
+  });
+}
+
+function setupLanguageSwitcher() {
+  const langSelect = document.getElementById("langSelect");
+  if (langSelect) {
+    langSelect.value = i18n.getLanguage();
+    langSelect.addEventListener("change", (e) => {
+      i18n.setLanguage(e.target.value);
+    });
+  }
 }
 
 function setupNavigation() {
@@ -45,7 +64,8 @@ function setupNavigation() {
     const activeItem = document.querySelector(`.nav-item[data-tab="${targetTabId}"]`);
     const pageTitleEl = document.getElementById("currentPageTitle");
     if (activeItem && pageTitleEl) {
-      pageTitleEl.textContent = activeItem.dataset.title || "Green Oil";
+      const titleKey = activeItem.getAttribute("data-title-key");
+      pageTitleEl.textContent = titleKey ? i18n.t(titleKey) : (activeItem.dataset.title || "Green Oil");
     }
 
     closeMobileSidebar();
@@ -91,7 +111,7 @@ function setupAuth() {
         Restaurants.fetchData();
       } else {
         if (loginAlert) {
-          loginAlert.textContent = res.error || "账号或密码错误";
+          loginAlert.textContent = res.error || i18n.t("login_error");
           loginAlert.style.display = "block";
         }
       }
@@ -100,7 +120,7 @@ function setupAuth() {
 
   if (btnLogout) {
     btnLogout.addEventListener("click", () => {
-      if (confirm("确定退出登录？")) {
+      if (confirm(i18n.t("confirm_logout"))) {
         Auth.logout();
         checkAndRenderAuth();
       }
@@ -138,64 +158,69 @@ function setupSettings() {
 
   if (btnTriggerSync) {
     btnTriggerSync.addEventListener("click", async () => {
-      if (!confirm("确定开始同步数据？")) {
+      if (!confirm(i18n.t("confirm_sync"))) {
         return;
       }
 
       btnTriggerSync.disabled = true;
-      btnTriggerSync.innerHTML = "<span>同步中...</span>";
-      if (syncStatusText) syncStatusText.textContent = "正在同步...";
+      btnTriggerSync.innerHTML = `<span>${i18n.t("sync_in_progress")}</span>`;
+      if (syncStatusText) syncStatusText.textContent = i18n.t("syncing");
 
       try {
         const res = await Api.triggerSync();
         if (res.success) {
-          alert("同步完成");
-          if (syncStatusText) syncStatusText.textContent = `已同步 ${res.totalRecords} 条记录`;
+          alert(i18n.t("sync_completed"));
+          if (syncStatusText) syncStatusText.textContent = i18n.t("sync_count", { count: res.totalRecords });
           Restaurants.fetchData();
         } else {
-          alert(`同步失败: ${res.message || ''}`);
-          if (syncStatusText) syncStatusText.textContent = `失败: ${res.message}`;
+          alert(`${i18n.t("sync_failed")}: ${res.message || ''}`);
+          if (syncStatusText) syncStatusText.textContent = `${i18n.t("sync_failed")}: ${res.message}`;
         }
       } catch (err) {
-        alert(`同步异常: ${err.message}`);
-        if (syncStatusText) syncStatusText.textContent = `失败: ${err.message}`;
+        alert(`${i18n.t("sync_exception")}: ${err.message}`);
+        if (syncStatusText) syncStatusText.textContent = `${i18n.t("sync_exception")}: ${err.message}`;
       } finally {
         btnTriggerSync.disabled = false;
-        btnTriggerSync.innerHTML = "<span>立即同步</span>";
+        btnTriggerSync.innerHTML = `<span>${i18n.t("btn_trigger_sync")}</span>`;
       }
     });
   }
 }
 
 async function checkApiStatus() {
+  const status = await Api.getCacheStatus();
+  lastApiStatus = status;
+  updateApiStatusDisplay(status);
+}
+
+function updateApiStatusDisplay(status) {
   const badge = document.getElementById("apiStatusBadge");
   const syncStatusText = document.getElementById("syncStatusText");
   const settingsWorkerStatus = document.getElementById("settingsWorkerStatus");
   if (!badge) return;
 
-  const status = await Api.getCacheStatus();
   if (status) {
-    badge.innerHTML = `<span class="dot"></span><span>已连接</span>`;
+    badge.innerHTML = `<span class="dot"></span><span>${i18n.t("status_connected")}</span>`;
     badge.style.color = "var(--primary)";
     badge.style.borderColor = "rgba(5, 150, 105, 0.3)";
     if (syncStatusText) {
-      syncStatusText.textContent = `已缓存 ${status.cachedCount} 条餐馆记录`;
+      syncStatusText.textContent = i18n.t("cached_count_msg", { count: status.cachedCount });
     }
     if (settingsWorkerStatus) {
-      settingsWorkerStatus.textContent = `Cloudflare Worker 在线 (${status.cachedCount} 条)`;
+      settingsWorkerStatus.textContent = i18n.t("worker_online_count", { count: status.cachedCount });
       settingsWorkerStatus.style.background = "#ecfdf5";
       settingsWorkerStatus.style.color = "#047857";
       settingsWorkerStatus.style.borderColor = "rgba(5, 150, 105, 0.3)";
     }
   } else {
-    badge.innerHTML = `<span class="dot" style="background:#f59e0b;"></span><span>未连接</span>`;
+    badge.innerHTML = `<span class="dot" style="background:#f59e0b;"></span><span>${i18n.t("status_disconnected")}</span>`;
     badge.style.color = "#d97706";
     badge.style.borderColor = "rgba(245, 158, 11, 0.3)";
     if (syncStatusText) {
-      syncStatusText.textContent = "后端服务未连接";
+      syncStatusText.textContent = i18n.t("backend_not_connected");
     }
     if (settingsWorkerStatus) {
-      settingsWorkerStatus.textContent = "未连接后端服务";
+      settingsWorkerStatus.textContent = i18n.t("worker_disconnected");
       settingsWorkerStatus.style.background = "#fffbeb";
       settingsWorkerStatus.style.color = "#d97706";
       settingsWorkerStatus.style.borderColor = "rgba(245, 158, 11, 0.3)";

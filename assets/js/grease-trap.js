@@ -2,15 +2,23 @@
  * Green Oil Grease Trap Cleaning Workbench Module
  */
 
+import { i18n } from "./i18n.js";
+
 const GALLON_TO_LITER = 3.78541;
 
 export function formatTrapSize(gal) {
   const liters = Math.round(gal * GALLON_TO_LITER);
+  const currentLang = i18n.getLanguage();
+  if (currentLang === "en") {
+    return `${liters} L (${gal} Gal)`;
+  } else if (currentLang === "ko") {
+    return `${liters} L (${gal} 갤런)`;
+  }
   return `${liters} 升 (${gal} 加仑)`;
 }
 
-// 隔油池清洁收费矩阵 (单位: 加仑 -> CAD税前价格)
-// 依据安省持牌标准：税前价 + 13% HST = 税后合计
+// Grease trap cleaning pricing matrix (Gallons -> CAD Pre-tax)
+// Conforming to Ontario standards: Pre-tax + 13% HST = Total
 export const GREASE_TRAP_PRICES = {
   1: {
     25: 100, 30: 110, 40: 120, 50: 130, 60: 140, 70: 150, 80: 160, 90: 170,
@@ -36,28 +44,40 @@ export const GREASE_TRAP_PRICES = {
 export const GreaseTrap = {
   count: 1,
   size: 25,
-  frequencyIntervalMonths: 1, // 每 1 个月、2 个月、3 个月
+  frequencyIntervalMonths: 1, // 1 month, 2 months, 3 months
   currentRestaurant: null,
   latestResult: null,
 
   init() {
     this.bindEvents();
+    this.renderCountPills();
     this.renderSizes();
     this.calculate();
+
+    i18n.onLanguageChange(() => {
+      this.renderCountPills();
+      this.renderSizes();
+      this.calculate();
+      if (this.currentRestaurant) {
+        this.setRestaurant(this.currentRestaurant);
+      }
+    });
   },
 
   bindEvents() {
     // Trap Count Buttons
-    const countBtns = document.querySelectorAll(".trap-count-btn");
-    countBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        countBtns.forEach(b => b.classList.remove("active"));
+    const countContainer = document.getElementById("trapCountPills");
+    if (countContainer) {
+      countContainer.addEventListener("click", (e) => {
+        const btn = e.target.closest(".trap-count-btn");
+        if (!btn) return;
+        document.querySelectorAll(".trap-count-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         this.count = parseInt(btn.dataset.count, 10) || 1;
         this.renderSizes();
         this.calculate();
       });
-    });
+    }
 
     // Trap Size Select
     const sizeSelect = document.getElementById("gtTrapSizeSelect");
@@ -94,6 +114,15 @@ export const GreaseTrap = {
     }
   },
 
+  renderCountPills() {
+    const btns = document.querySelectorAll(".trap-count-btn");
+    btns.forEach(btn => {
+      const c = btn.dataset.count;
+      btn.textContent = i18n.t("trap_count_n", { n: c });
+      btn.classList.toggle("active", parseInt(c, 10) === this.count);
+    });
+  },
+
   renderSizes(preferredSize = null) {
     const sizeSelect = document.getElementById("gtTrapSizeSelect");
     if (!sizeSelect) return;
@@ -125,7 +154,15 @@ export const GreaseTrap = {
     const annualTotal = +(total * cleansPerYear).toFixed(2);
 
     const sizeLiters = Math.round(this.size * GALLON_TO_LITER);
-    const specSummary = `${this.count} 个 · ${sizeLiters} 升 (${this.size} 加仑)`;
+    const currentLang = i18n.getLanguage();
+    let specSummary = "";
+    if (currentLang === "en") {
+      specSummary = `${this.count} unit(s) · ${sizeLiters} L (${this.size} Gal)`;
+    } else if (currentLang === "ko") {
+      specSummary = `${this.count}개 · ${sizeLiters} L (${this.size} 갤런)`;
+    } else {
+      specSummary = `${this.count} 个 · ${sizeLiters} 升 (${this.size} 加仑)`;
+    }
 
     const elTotal = document.getElementById("gtResTotal");
     const elPrice = document.getElementById("gtResPrice");
@@ -137,7 +174,7 @@ export const GreaseTrap = {
     if (elPrice) elPrice.textContent = `$${price.toFixed(2)}`;
     if (elTax) elTax.textContent = `$${tax.toFixed(2)}`;
     if (elSpec) elSpec.textContent = specSummary;
-    if (elAnnual) elAnnual.textContent = `$${annualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 年`;
+    if (elAnnual) elAnnual.textContent = `$${annualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${i18n.t("trap_per_year")}`;
 
     this.latestResult = {
       price,
@@ -149,7 +186,7 @@ export const GreaseTrap = {
       frequencyMonths: this.frequencyIntervalMonths,
       cleansPerYear,
       annualTotal,
-      restaurantName: this.currentRestaurant ? this.currentRestaurant.name : "普通餐馆"
+      restaurantName: this.currentRestaurant ? this.currentRestaurant.name : ""
     };
 
     if (animate) {
@@ -185,7 +222,8 @@ export const GreaseTrap = {
     this.currentRestaurant = restaurant;
     const badge = document.getElementById("trapTargetRestBadge");
     if (badge) {
-      badge.innerHTML = `餐馆：<b>${restaurant.name}</b> <button onclick="window.clearTrapRestaurant()" style="background:none; border:none; color:white; cursor:pointer; margin-left:6px;">✕</button>`;
+      const prefix = i18n.t("calc_linked_rest");
+      badge.innerHTML = `${prefix}：<b>${restaurant.name}</b> <button onclick="window.clearTrapRestaurant()" style="background:none; border:none; color:white; cursor:pointer; margin-left:6px;">✕</button>`;
       badge.style.display = "inline-flex";
     }
     this.calculate();
@@ -200,7 +238,7 @@ export const GreaseTrap = {
 
   copyQuoteText() {
     if (!this.latestResult) {
-      alert("请先计算");
+      alert(i18n.t("alert_calc_first"));
       return;
     }
 
@@ -212,55 +250,119 @@ export const GreaseTrap = {
       sizeGal,
       sizeLiters,
       frequencyMonths,
-      cleansPerYear,
       annualTotal,
       restaurantName
     } = this.latestResult;
 
-    const freqDesc = frequencyMonths === 1 
-      ? "每月清洗 1 次 (全年 12 次)" 
-      : (frequencyMonths === 2 ? "每 2 个月清洗 1 次 (全年 6 次)" : "每季度清洗 1 次 (全年 4 次)");
+    const currentLang = i18n.getLanguage();
+    let text = "";
 
-    const lines = [
-      `【Green Oil 隔油池清洁专业报价单】`,
-      `客户/餐馆：${restaurantName}`,
-      `----------------------------------------`,
-      `[隔油池规格配置]`,
-      `· 隔油池数量：${count} 个`,
-      `· 单池容量规格：${sizeLiters} 升 (${sizeGal} 加仑)`,
-      `· 建议维保频率：${freqDesc}`,
-      `----------------------------------------`,
-      `[收费标准 (CAD)]`,
-      `· 单次税前服务费：$${price.toFixed(2)}`,
-      `· 安省税金 (HST 13%)：$${tax.toFixed(2)}`,
-      `· 单次税后实付总额：$${total.toFixed(2)}`,
-      `· 预估年度维保预算：$${annualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 年`,
-      `----------------------------------------`,
-      `[服务保障与环保合规]`,
-      `1. 包含彻底抽吸沉淀浮油与高压冲洗池壁`,
-      `2. 出具大多伦多市政卫生与水务局认可的标准化排污维保记录单`,
-      `3. 100% 满足 Ontario Building Code 与 Municipal Sewer Use Bylaw 环保要求`,
-      `----------------------------------------`,
-      `* 报价仅供参考，具体以现场管线勘测与服务协议为准。`
-    ];
+    if (currentLang === "en") {
+      const restDisplay = restaurantName || "Standard Restaurant";
+      const freqDesc = frequencyMonths === 1 
+        ? "Once a month (12 services / year)" 
+        : (frequencyMonths === 2 ? "Every 2 months (6 services / year)" : "Every quarter (4 services / year)");
 
-    const text = lines.join("\n");
+      const lines = [
+        `[Green Oil Commercial Grease Trap Cleaning Quote]`,
+        `Client / Restaurant: ${restDisplay}`,
+        `----------------------------------------`,
+        `[Grease Trap Specifications]`,
+        `· Interceptor Count: ${count} unit(s)`,
+        `· Capacity per Trap: ${sizeLiters} L (${sizeGal} Gallons)`,
+        `· Recommended Frequency: ${freqDesc}`,
+        `----------------------------------------`,
+        `[Pricing Schedule (CAD)]`,
+        `· Service Fee (Pre-tax): $${price.toFixed(2)}`,
+        `· Ontario HST (13%): $${tax.toFixed(2)}`,
+        `· Total per Service (Tax incl.): $${total.toFixed(2)}`,
+        `· Est. Annual Maintenance Budget: $${annualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / yr`,
+        `----------------------------------------`,
+        `[Compliance & Service Standards]`,
+        `1. Full vacuum pump-out of grease cap and heavy bottom sludge, followed by high-pressure wall scraping`,
+        `2. Authorized official Service Manifest provided for City and Region Water Bylaw annual inspections`,
+        `3. 100% compliant with Ontario Building Code & Municipal Sewer Use Bylaws`,
+        `----------------------------------------`,
+        `* Quote is for reference. Final pricing subject to on-site pipeline inspection and service agreement.`
+      ];
+      text = lines.join("\n");
+    } else if (currentLang === "ko") {
+      const restDisplay = restaurantName || "일반 식당";
+      const freqDesc = frequencyMonths === 1 
+        ? "매월 1회 (연간 12회)" 
+        : (frequencyMonths === 2 ? "2개월마다 1회 (연간 6회)" : "분기별 1회 (연간 4회)");
+
+      const lines = [
+        `[Green Oil 그리스 트랩 전문 세척 견적서]`,
+        `고객 / 식당명: ${restDisplay}`,
+        `----------------------------------------`,
+        `[그리스 트랩 규격 사양]`,
+        `· 트랩 수량: ${count}개`,
+        `· 개별 트랩 용량: ${sizeLiters} L (${sizeGal} 갤런)`,
+        `· 권장 세척 주기: ${freqDesc}`,
+        `----------------------------------------`,
+        `[청소 요금 기준 (CAD)]`,
+        `· 세전 1회 서비스 요금: $${price.toFixed(2)}`,
+        `· 온타리오주 세금 (13% HST): $${tax.toFixed(2)}`,
+        `· 1회 최종 결제 금액 (세금 포함): $${total.toFixed(2)}`,
+        `· 연간 예상 유지보수 예산: $${annualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 년`,
+        `----------------------------------------`,
+        `[서비스 보증 및 환경 규정 준수]`,
+        `1. 상부 유지류 및 바닥 침전 오니 100% 완전 흡입 배출 및 내벽 고압 제트 세척`,
+        `2. GTA 각 시청 위생·상하수도국 점검 대비 공식 작업 확인증(Service Manifest) 즉시 발행`,
+        `3. Ontario Building Code 및 지자체 하수도 조례 완벽 준수`,
+        `----------------------------------------`,
+        `* 본 견적은 참고용이며, 현장 배관 상태 및 최종 서비스 계약에 따라 확정됩니다.`
+      ];
+      text = lines.join("\n");
+    } else {
+      const restDisplay = restaurantName || "普通餐馆";
+      const freqDesc = frequencyMonths === 1 
+        ? "每月清洗 1 次 (全年 12 次)" 
+        : (frequencyMonths === 2 ? "每 2 个月清洗 1 次 (全年 6 次)" : "每季度清洗 1 次 (全年 4 次)");
+
+      const lines = [
+        `【Green Oil 隔油池清洁专业报价单】`,
+        `客户/餐馆：${restDisplay}`,
+        `----------------------------------------`,
+        `[隔油池规格配置]`,
+        `· 隔油池数量：${count} 个`,
+        `· 单池容量规格：${sizeLiters} 升 (${sizeGal} 加仑)`,
+        `· 建议维保频率：${freqDesc}`,
+        `----------------------------------------`,
+        `[收费标准 (CAD)]`,
+        `· 单次税前服务费：$${price.toFixed(2)}`,
+        `· 安省税金 (HST 13%)：$${tax.toFixed(2)}`,
+        `· 单次税后实付总额：$${total.toFixed(2)}`,
+        `· 预估年度维保预算：$${annualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 年`,
+        `----------------------------------------`,
+        `[服务保障与环保合规]`,
+        `1. 包含彻底抽吸沉淀浮油与高压冲洗池壁`,
+        `2. 出具大多伦多市政卫生与水务局认可的标准化排污维保记录单`,
+        `3. 100% 满足 Ontario Building Code 与 Municipal Sewer Use Bylaw 环保要求`,
+        `----------------------------------------`,
+        `* 报价仅供参考，具体以现场管线勘测与服务协议为准。`
+      ];
+      text = lines.join("\n");
+    }
 
     navigator.clipboard.writeText(text).then(() => {
-      alert("已复制隔油池清洁报价单");
+      alert(i18n.t("toast_copied_trap_quote"));
     }).catch(() => {
-      prompt("复制内容：", text);
+      prompt("Copy:", text);
     });
   }
 };
 
-window.clearTrapRestaurant = function() {
-  GreaseTrap.clearRestaurant();
-};
+if (typeof window !== "undefined") {
+  window.clearTrapRestaurant = function() {
+    GreaseTrap.clearRestaurant();
+  };
 
-window.importRestaurantToGreaseTrap = function(restaurant) {
-  if (window.switchTab) {
-    window.switchTab("tab-greasetrap");
-  }
-  GreaseTrap.setRestaurant(restaurant);
-};
+  window.importRestaurantToGreaseTrap = function(restaurant) {
+    if (window.switchTab) {
+      window.switchTab("tab-greasetrap");
+    }
+    GreaseTrap.setRestaurant(restaurant);
+  };
+}

@@ -3,6 +3,7 @@
  */
 
 import { Api } from "./api.js";
+import { i18n } from "./i18n.js";
 
 export const Restaurants = {
   currentPageData: [],
@@ -20,6 +21,15 @@ export const Restaurants = {
 
   async init() {
     this.bindEvents();
+    i18n.onLanguageChange(() => {
+      this.render();
+      this.renderPagination();
+      this.updateSelectionUI();
+      this.updateResultsCount();
+      if (this.selectedRestaurant) {
+        this.openDetailModal(this.selectedRestaurant);
+      }
+    });
     await this.fetchData();
   },
 
@@ -122,27 +132,30 @@ export const Restaurants = {
     }
 
     const modalClose = document.getElementById("detailModalClose");
-    const modalOverlay = document.getElementById("detailModalOverlay");
-    if (modalClose && modalOverlay) {
+    if (modalClose) {
       modalClose.addEventListener("click", () => this.closeDetailModal());
+    }
+
+    const modalOverlay = document.getElementById("detailModalOverlay");
+    if (modalOverlay) {
       modalOverlay.addEventListener("click", (e) => {
         if (e.target === modalOverlay) this.closeDetailModal();
       });
     }
 
-    const btnImportCalc = document.getElementById("btnModalImportCalc");
-    if (btnImportCalc) {
-      btnImportCalc.addEventListener("click", () => {
-        if (this.selectedRestaurant) {
+    const btnModalImportCalc = document.getElementById("btnModalImportCalc");
+    if (btnModalImportCalc) {
+      btnModalImportCalc.addEventListener("click", () => {
+        if (this.selectedRestaurant && window.importRestaurantToCalculator) {
           window.importRestaurantToCalculator(this.selectedRestaurant);
           this.closeDetailModal();
         }
       });
     }
 
-    const btnImportTrap = document.getElementById("btnModalImportTrap");
-    if (btnImportTrap) {
-      btnImportTrap.addEventListener("click", () => {
+    const btnModalImportTrap = document.getElementById("btnModalImportTrap");
+    if (btnModalImportTrap) {
+      btnModalImportTrap.addEventListener("click", () => {
         if (this.selectedRestaurant && window.importRestaurantToGreaseTrap) {
           window.importRestaurantToGreaseTrap(this.selectedRestaurant);
           this.closeDetailModal();
@@ -170,18 +183,33 @@ export const Restaurants = {
       this.totalPages = res.totalPages || 1;
       this.currentPage = res.page || 1;
 
-      const countEl = document.getElementById("resultsCountNum");
-      if (countEl) countEl.textContent = this.total;
-
+      this.updateResultsCount();
       this.render();
       this.renderPagination();
       this.updateSelectionUI();
     } catch (err) {
       console.error("Fetch data error:", err);
-      this.showToast("查询失败");
+      this.showToast("Query error");
     } finally {
       if (loader) loader.style.display = "none";
     }
+  },
+
+  updateResultsCount() {
+    const countDisplay = document.getElementById("resultsCountDisplay");
+    if (countDisplay) {
+      countDisplay.innerHTML = `<span>${i18n.t("results_count", { total: this.total.toLocaleString() })}</span>`;
+    }
+  },
+
+  formatStatus(status) {
+    if (status === "营业中" || status === "Open") {
+      return { label: i18n.t("status_open"), cls: "status-open" };
+    }
+    if (status === "已打烊" || status === "Closed") {
+      return { label: i18n.t("status_closed"), cls: "status-closed" };
+    }
+    return { label: i18n.t("status_unknown"), cls: "status-unknown" };
   },
 
   toggleSelect(restaurant) {
@@ -223,10 +251,17 @@ export const Restaurants = {
     const count = this.selectedMap.size;
     const selectionBar = document.getElementById("selectionBar");
     const countSpan = document.getElementById("selectionCountBadge");
+    const suffixSpan = document.getElementById("selectionCountSuffix");
     const exportBtnText = document.getElementById("btnExportSelectedText");
 
     if (countSpan) countSpan.textContent = count;
-    if (exportBtnText) exportBtnText.textContent = `导出所选 (${count})`;
+    if (suffixSpan) {
+      const formatted = i18n.t("sel_count", { count: "" }).trim();
+      suffixSpan.textContent = formatted;
+    }
+    if (exportBtnText) {
+      exportBtnText.textContent = i18n.t("btn_export_selection", { count });
+    }
 
     if (selectionBar) {
       if (count > 0) {
@@ -284,7 +319,7 @@ export const Restaurants = {
     if (this.currentPageData.length === 0) {
       container.innerHTML = `
         <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-          <div style="font-weight: 600; font-size: 1rem;">无匹配餐馆</div>
+          <div style="font-weight: 600; font-size: 1rem;">${i18n.t("no_matching_restaurants")}</div>
         </div>
       `;
       return;
@@ -293,7 +328,7 @@ export const Restaurants = {
     container.innerHTML = this.currentPageData.map((r, idx) => {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
-      const statusClass = r.status === "营业中" ? "status-open" : (r.status === "已打烊" ? "status-closed" : "status-unknown");
+      const statusObj = this.formatStatus(r.status);
 
       return `
         <div class="restaurant-card ${isSelected ? 'is-selected' : ''}" data-idx="${idx}" data-key="${this.escapeHtml(key)}">
@@ -307,7 +342,7 @@ export const Restaurants = {
               />
               <h4 class="rest-name">${this.escapeHtml(r.name)}</h4>
             </div>
-            <span class="status-badge ${statusClass}">${r.status}</span>
+            <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
           </div>
 
           <div class="card-rating-row">
@@ -332,9 +367,9 @@ export const Restaurants = {
           ` : ''}
 
           <div class="card-footer-actions">
-            <span style="font-size: 0.75rem; color: var(--text-light);">详情 &gt;</span>
+            <span style="font-size: 0.75rem; color: var(--text-light);">${i18n.t("btn_details")} &gt;</span>
             <button class="btn-calc-oil" onclick="event.stopPropagation(); window.importRestaurantByIndex(${idx});">
-              计算用油
+              ${i18n.t("btn_calc_oil")}
             </button>
           </div>
         </div>
@@ -354,14 +389,14 @@ export const Restaurants = {
     if (!tbody) return;
 
     if (this.currentPageData.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 2rem;">无匹配餐馆</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 2rem;">${i18n.t("no_matching_restaurants")}</td></tr>`;
       return;
     }
 
     tbody.innerHTML = this.currentPageData.map((r, idx) => {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
-      const statusClass = r.status === "营业中" ? "status-open" : (r.status === "已打烊" ? "status-closed" : "status-unknown");
+      const statusObj = this.formatStatus(r.status);
 
       return `
         <tr class="${isSelected ? 'is-selected' : ''}" data-idx="${idx}" data-key="${this.escapeHtml(key)}" style="cursor: pointer;" onclick="window.openRestaurantDetailByIndex(${idx})">
@@ -377,13 +412,13 @@ export const Restaurants = {
           <td>${this.escapeHtml(r.region)}</td>
           <td class="col-category" title="${this.escapeHtml(r.categoriesRaw)}">${this.escapeHtml(r.categoriesRaw)}</td>
           <td><b>★ ${r.rating ? r.rating.toFixed(1) : '-'}</b> (${r.reviews})</td>
-          <td><span class="status-badge ${statusClass}">${r.status}</span></td>
+          <td><span class="status-badge ${statusObj.cls}">${statusObj.label}</span></td>
           <td>${this.escapeHtml(r.price)}</td>
           <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(r.address)}</td>
           <td>${this.escapeHtml(r.phone)}</td>
           <td>
             <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.importRestaurantByIndex(${idx});">
-              计算用油
+              ${i18n.t("btn_calc_oil")}
             </button>
           </td>
         </tr>
@@ -401,7 +436,7 @@ export const Restaurants = {
 
     if (infoContainer) {
       infoContainer.textContent = this.total > 0
-        ? `第 ${start}-${end} 条，共 ${this.total} 家`
+        ? i18n.t("pagination_range", { start, end, total: this.total.toLocaleString() })
         : "";
     }
 
@@ -418,8 +453,8 @@ export const Restaurants = {
     }
 
     let html = `
-      <button class="page-btn" ${this.currentPage <= 1 ? 'disabled' : ''} onclick="window.goToPage(1)" title="第一页">&laquo;</button>
-      <button class="page-btn" ${this.currentPage <= 1 ? 'disabled' : ''} onclick="window.goToPage(${this.currentPage - 1})" title="上一页">&lsaquo;</button>
+      <button class="page-btn" ${this.currentPage <= 1 ? 'disabled' : ''} onclick="window.goToPage(1)" title="${i18n.t("page_first")}">&laquo;</button>
+      <button class="page-btn" ${this.currentPage <= 1 ? 'disabled' : ''} onclick="window.goToPage(${this.currentPage - 1})" title="${i18n.t("page_prev")}">&lsaquo;</button>
     `;
 
     if (startPage > 1) {
@@ -437,8 +472,8 @@ export const Restaurants = {
     }
 
     html += `
-      <button class="page-btn" ${this.currentPage >= this.totalPages ? 'disabled' : ''} onclick="window.goToPage(${this.currentPage + 1})" title="下一页">&rsaquo;</button>
-      <button class="page-btn" ${this.currentPage >= this.totalPages ? 'disabled' : ''} onclick="window.goToPage(${this.totalPages})" title="最后一页">&raquo;</button>
+      <button class="page-btn" ${this.currentPage >= this.totalPages ? 'disabled' : ''} onclick="window.goToPage(${this.currentPage + 1})" title="${i18n.t("page_next")}">&rsaquo;</button>
+      <button class="page-btn" ${this.currentPage >= this.totalPages ? 'disabled' : ''} onclick="window.goToPage(${this.totalPages})" title="${i18n.t("page_last")}">&raquo;</button>
     `;
 
     container.innerHTML = html;
@@ -448,54 +483,52 @@ export const Restaurants = {
     if (page < 1 || page > this.totalPages || page === this.currentPage) return;
     this.currentPage = page;
     this.fetchData();
-    const resultsTop = document.querySelector(".results-header");
-    if (resultsTop) resultsTop.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   },
 
   exportSelectedExcel() {
-    let listToExport = Array.from(this.selectedMap.values());
-
-    if (listToExport.length === 0) {
-      alert("请先勾选餐馆");
+    if (this.selectedMap.size === 0) {
+      alert(i18n.t("sel_count", { count: 0 }));
       return;
     }
 
+    const selectedList = Array.from(this.selectedMap.values());
     const headers = [
       "餐馆名称 (Name)",
       "所属区域 (Region)",
-      "油炸分类 (Categories)",
+      "详细分类 (Categories)",
+      "主分类代码 (Primary Type)",
       "评分 (Rating)",
-      "评价总数 (Reviews)",
-      "当前营业状态 (Status)",
-      "营业时间 (Opening Hours)",
-      "消费档次 (Price)",
+      "评价数 (Reviews)",
+      "营业状态 (Status)",
+      "价格档次 (Price)",
       "详细地址 (Address)",
       "联系电话 (Phone)",
-      "官方网站 (Website)",
-      "Google 地图链接 (Maps URL)",
-      "主营类型 (Primary Type)",
-      "匹配关键词 (Keywords)",
+      "官网链接 (Website)",
+      "Google地图链接 (Maps URL)",
+      "营业时间 (Hours)",
+      "搜索关键词 (Keywords)",
       "纬度 (Latitude)",
       "经度 (Longitude)",
       "Place ID"
     ];
 
-    const rows = listToExport.map(r => {
+    const rows = selectedList.map(r => {
       return {
         "餐馆名称 (Name)": r.name || "",
         "所属区域 (Region)": r.region || "",
-        "油炸分类 (Categories)": r.categoriesRaw || (r.categories ? r.categories.join(" | ") : ""),
-        "评分 (Rating)": r.rating !== undefined ? r.rating : "",
-        "评价总数 (Reviews)": r.reviews !== undefined ? r.reviews : 0,
-        "当前营业状态 (Status)": r.status || "未知",
-        "营业时间 (Opening Hours)": r.openingHours || "未提供",
-        "消费档次 (Price)": r.price || "未知",
+        "详细分类 (Categories)": r.categoriesRaw || (r.categories ? r.categories.join(" | ") : ""),
+        "主分类代码 (Primary Type)": r.primaryType || "",
+        "评分 (Rating)": r.rating || "",
+        "评价数 (Reviews)": r.reviews || 0,
+        "营业状态 (Status)": r.status || "",
+        "价格档次 (Price)": r.price || "",
         "详细地址 (Address)": r.address || "",
-        "联系电话 (Phone)": r.phone || "无",
-        "官方网站 (Website)": r.website || "",
-        "Google 地图链接 (Maps URL)": r.mapsUrl || "",
-        "主营类型 (Primary Type)": r.primaryType || "",
-        "匹配关键词 (Keywords)": r.keywordsRaw || (r.keywords ? r.keywords.join(", ") : ""),
+        "联系电话 (Phone)": r.phone || "",
+        "官网链接 (Website)": r.website || "",
+        "Google地图链接 (Maps URL)": r.mapsUrl || "",
+        "营业时间 (Hours)": r.openingHours || "",
+        "搜索关键词 (Keywords)": r.keywordsRaw || (r.keywords ? r.keywords.join(", ") : ""),
         "纬度 (Latitude)": r.latitude || "",
         "经度 (Longitude)": r.longitude || "",
         "Place ID": r.placeId || ""
@@ -530,7 +563,7 @@ export const Restaurants = {
 
         const fileName = `greenoil_restaurants_${new Date().toISOString().slice(0, 10)}.xlsx`;
         window.XLSX.writeFile(workbook, fileName);
-        this.showToast("已导出 Excel");
+        this.showToast(i18n.t("toast_export_excel"));
         return;
       } catch (e) {
         console.warn("SheetJS error:", e);
@@ -552,25 +585,31 @@ export const Restaurants = {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    this.showToast("已导出 CSV");
+    this.showToast(i18n.t("toast_export_csv"));
   },
 
   openDetailModal(r) {
     if (!r) return;
     this.selectedRestaurant = r;
 
+    const statusObj = this.formatStatus(r.status);
+    const modalStatus = document.getElementById("modalRestStatus");
+    if (modalStatus) {
+      modalStatus.textContent = statusObj.label;
+      modalStatus.className = `status-badge ${statusObj.cls}`;
+    }
+
     document.getElementById("modalRestName").textContent = r.name;
     document.getElementById("modalRestRegion").textContent = r.region;
     document.getElementById("modalRestCategory").textContent = r.categoriesRaw || (r.categories ? r.categories.join(" | ") : "");
     document.getElementById("modalRestRating").innerHTML = `★ ${r.rating ? r.rating.toFixed(1) : '-'} <span style="color:var(--text-muted); font-weight:normal;">(${r.reviews})</span>`;
-    document.getElementById("modalRestStatus").textContent = r.status;
-    document.getElementById("modalRestPrice").textContent = r.price;
-    document.getElementById("modalRestAddress").textContent = r.address;
-    document.getElementById("modalRestPhone").textContent = r.phone;
+    document.getElementById("modalRestPrice").textContent = r.price || "-";
+    document.getElementById("modalRestAddress").textContent = r.address || "-";
+    document.getElementById("modalRestPhone").textContent = r.phone || "-";
 
     const phoneBtn = document.getElementById("modalBtnPhone");
     if (phoneBtn) {
-      if (r.phone && r.phone !== "无") {
+      if (r.phone && r.phone !== "无" && r.phone !== "-") {
         phoneBtn.href = `tel:${r.phone.replace(/[^0-9+]/g, '')}`;
         phoneBtn.style.display = "inline-flex";
       } else {
@@ -593,7 +632,7 @@ export const Restaurants = {
       mapsBtn.href = r.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.name + ' ' + r.address)}`;
     }
 
-    document.getElementById("modalRestHours").textContent = r.openingHours || "未提供";
+    document.getElementById("modalRestHours").textContent = r.openingHours || i18n.t("hours_not_provided");
     document.getElementById("modalRestType").textContent = r.primaryType || "-";
     document.getElementById("modalRestKeywords").textContent = r.keywordsRaw || (r.keywords ? r.keywords.join(", ") : "-");
     document.getElementById("modalRestPlaceId").textContent = r.placeId || "-";
@@ -640,24 +679,26 @@ export const Restaurants = {
   }
 };
 
-window.openRestaurantDetailByIndex = function(idx) {
-  Restaurants.openDetailModal(Restaurants.currentPageData[idx]);
-};
+if (typeof window !== "undefined") {
+  window.openRestaurantDetailByIndex = function(idx) {
+    Restaurants.openDetailModal(Restaurants.currentPageData[idx]);
+  };
 
-window.importRestaurantByIndex = function(idx) {
-  const rest = Restaurants.currentPageData[idx];
-  if (rest && window.importRestaurantToCalculator) {
-    window.importRestaurantToCalculator(rest);
-  }
-};
+  window.importRestaurantByIndex = function(idx) {
+    const rest = Restaurants.currentPageData[idx];
+    if (rest && window.importRestaurantToCalculator) {
+      window.importRestaurantToCalculator(rest);
+    }
+  };
 
-window.toggleRestaurantSelect = function(idx) {
-  const rest = Restaurants.currentPageData[idx];
-  if (rest) {
-    Restaurants.toggleSelect(rest);
-  }
-};
+  window.toggleRestaurantSelect = function(idx) {
+    const rest = Restaurants.currentPageData[idx];
+    if (rest) {
+      Restaurants.toggleSelect(rest);
+    }
+  };
 
-window.goToPage = function(page) {
-  Restaurants.goToPage(page);
-};
+  window.goToPage = function(page) {
+    Restaurants.goToPage(page);
+  };
+}
