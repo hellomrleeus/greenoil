@@ -200,7 +200,6 @@ export const Calculator = {
         spec: "200L Drum",
         capacity: 200,
         count: 1,
-        badgeHtml: `<span style="color: #0284c7; font-weight: 700;">🛢️ 200L Drum</span>`,
         advice: i18n.t("advice_drum_200")
       };
     } else if (ucoRecoveryLiters <= 400) {
@@ -209,7 +208,6 @@ export const Calculator = {
         spec: "400L Bin",
         capacity: 400,
         count: 1,
-        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 400L Bin</span>`,
         advice: i18n.t("advice_bin_400")
       };
     } else if (ucoRecoveryLiters <= 600) {
@@ -218,7 +216,6 @@ export const Calculator = {
         spec: "600L Bin",
         capacity: 600,
         count: 1,
-        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 600L Bin</span>`,
         advice: i18n.t("advice_bin_600")
       };
     } else if (ucoRecoveryLiters <= 800) {
@@ -227,7 +224,6 @@ export const Calculator = {
         spec: "800L Bin",
         capacity: 800,
         count: 1,
-        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 800L Bin</span>`,
         advice: i18n.t("advice_bin_800")
       };
     } else if (ucoRecoveryLiters <= 1000) {
@@ -236,7 +232,6 @@ export const Calculator = {
         spec: "1000L Bin",
         capacity: 1000,
         count: 1,
-        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 1000L Bin</span>`,
         advice: i18n.t("advice_bin_1000")
       };
     } else {
@@ -247,7 +242,6 @@ export const Calculator = {
         spec: spec,
         capacity: 1000,
         count: count,
-        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 ${spec}</span>`,
         advice: i18n.t("advice_bin_multi", { count })
       };
     }
@@ -285,7 +279,7 @@ export const Calculator = {
 
     const resContainer = document.getElementById("res200LDrums");
     if (resContainer) {
-      resContainer.innerHTML = containerConfig.badgeHtml;
+      resContainer.textContent = containerConfig.spec;
     }
 
     const resAdvice = document.getElementById("resPickupAdvice");
