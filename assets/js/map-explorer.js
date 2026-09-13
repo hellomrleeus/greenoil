@@ -99,6 +99,8 @@ export const MapExplorer = {
   poiRequestId: 0,
   googlePhotosCache: new Map(), // placeId -> Google Places photo URL
   googleApiKey: "",
+  mapContextMenuEl: null,
+  mapContextMenuPoint: null,
 
   // GeoJSON Municipal Boundaries Dataset & Hash Map Index
   neighbourhoodsGeoJson: null,
@@ -163,8 +165,11 @@ export const MapExplorer = {
     await this.initGoogleMap();
 
 
-    // 3. Pan to initial locality and load places
-    this.panToSelectedArea();
+    // 3. Load places. The map instance already starts at Vaughan; do not
+    // immediately fit the default All GTA selection back out to the whole
+    // region. Explicit city/ward changes still call panToSelectedArea().
+    const hasExplicitInitialArea = !(this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0);
+    if (hasExplicitInitialArea) this.panToSelectedArea();
     await this.loadPlacesForCurrentArea();
   },
 
@@ -406,6 +411,193 @@ export const MapExplorer = {
       }
     }
     return null;
+  },
+
+  /**
+   * Return the official ward that contains a coordinate. Neighbouring wards
+   * referenced by the currently selected subareas are checked first so a
+   * right-click near the current selection remains fast and predictable.
+   */
+  findWardAtCoordinate(lat, lng) {
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+    const wards = this.getAllNeighborhoods().filter(area => area.boundaryType === "ward");
+    if (wards.length === 0) return null;
+
+    const byId = new Map(wards.map(ward => [ward.id, ward]));
+    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    const nearbyIds = [];
+    selectedNbs.forEach(area => (area.neighbors || []).forEach(id => {
+      if (!nearbyIds.includes(id)) nearbyIds.push(id);
+    }));
+    // When only a city is selected, its own wards are the natural nearby set.
+    const selectedCityIds = this.activeCityIds.has("all")
+      ? []
+      : Array.from(this.activeCityIds);
+    selectedCityIds.forEach(cityId => wards.filter(ward => ward.parentCityId === cityId).forEach(ward => {
+      if (!nearbyIds.includes(ward.id)) nearbyIds.push(ward.id);
+    }));
+
+    const inBbox = ward => {
+      const box = ward.bbox;
+      return !Array.isArray(box) || box.length !== 4 ||
+        (longitude >= Number(box[0]) && longitude <= Number(box[2]) &&
+         latitude >= Number(box[1]) && latitude <= Number(box[3]));
+    };
+    const contains = ward => inBbox(ward) && this.isPlaceInGeometry({ lat: latitude, lng: longitude }, ward.geometry);
+
+    for (const id of nearbyIds) {
+      const ward = byId.get(id);
+      if (ward && contains(ward)) return { ward, source: "nearby" };
+    }
+    for (const ward of wards) {
+      if (nearbyIds.includes(ward.id)) continue;
+      if (contains(ward)) return { ward, source: "global" };
+    }
+    return null;
+  },
+
+  isCoordinateInsideSelectedArea(lat, lng) {
+    const point = { lat: Number(lat), lng: Number(lng) };
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return false;
+    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    if (selectedNbs.length > 0) return selectedNbs.some(area =>
+      this.isPlaceInGeometry(point, area.geometry) || this.isPointInBbox(point, area.bbox));
+
+    const selectedCities = GTA_COMMUNITIES.filter(city => city.id !== "all" && this.activeCityIds.has(city.id));
+    if (selectedCities.length > 0) return selectedCities.some(city =>
+      this.isPlaceInGeometry(point, city.geometry) || this.isPointInBbox(point, city.bbox));
+
+    // "All GTA" is represented by its broad GTA bounding box. This keeps
+    // context menus from appearing over other GTA municipalities that are not
+    // part of the smaller official boundary dataset.
+    const allGta = GTA_COMMUNITIES.find(city => city.id === "all");
+    return this.isPointInBbox(point, allGta?.bbox) ||
+      GTA_COMMUNITIES.filter(city => city.id !== "all").some(city => this.isPlaceInGeometry(point, city.geometry));
+  },
+
+  isPointInBbox(point, bbox) {
+    if (!point || !Array.isArray(bbox) || bbox.length !== 4) return false;
+    const [west, south, east, north] = bbox.map(Number);
+    return Number.isFinite(west) && Number.isFinite(south) && Number.isFinite(east) && Number.isFinite(north) &&
+      point.lng >= west && point.lng <= east && point.lat >= south && point.lat <= north;
+  },
+
+  getMapContextMenuCopy() {
+    const lang = this.getCurrentLanguage();
+    if (lang === "en") {
+      return {
+        title: "Add official ward",
+        add: ward => `Add ${ward.nameEn || ward.name}`,
+        matchedNearby: "Matched in nearby recommended wards",
+        matchedGlobal: "Matched in all official wards",
+        noWard: "No official ward covers this point",
+        close: "Close"
+      };
+    }
+    if (lang === "ko") {
+      return {
+        title: "공식 선거구 추가",
+        add: ward => `${ward.nameKo || ward.name} 추가`,
+        matchedNearby: "주변 추천 선거구에서 찾음",
+        matchedGlobal: "전체 공식 선거구에서 찾음",
+        noWard: "이 지점에 해당하는 공식 선거구가 없습니다",
+        close: "닫기"
+      };
+    }
+    return {
+      title: "添加官方行政选区",
+      add: ward => `添加 ${ward.nameZh || ward.name}`,
+      matchedNearby: "已在周边推荐选区中匹配",
+      matchedGlobal: "已在全部官方选区中匹配",
+      noWard: "此位置没有覆盖的官方行政选区",
+      close: "关闭"
+    };
+  },
+
+  hideMapContextMenu() {
+    if (this.mapContextMenuEl) {
+      this.mapContextMenuEl.remove();
+      this.mapContextMenuEl = null;
+    }
+    this.mapContextMenuPoint = null;
+  },
+
+  addNeighborhoodFromMapContext(nbId) {
+    const nb = this.getNeighborhoodById(nbId);
+    if (!nb) return;
+    this.popoverSearchQuery = "";
+    const searchInput = document.getElementById("popoverSearchInput");
+    if (searchInput) searchInput.value = "";
+    if (this.activeCityIds.has("all")) this.activeCityIds.clear();
+    if (nb.parentCityId && nb.parentCityId !== "all") this.activeCityIds.add(nb.parentCityId);
+    this.activeNeighborhoodIds.add(nb.id);
+    this.hideMapContextMenu();
+    this.renderPopover();
+    this.updateAreaSummaryBtn();
+    this.panToSelectedArea();
+    this.loadPlacesForCurrentArea();
+  },
+
+  showMapContextMenu(lat, lng, clientX, clientY) {
+    this.hideMapContextMenu();
+    if (this.isCoordinateInsideSelectedArea(lat, lng)) return;
+
+    const match = this.findWardAtCoordinate(lat, lng);
+    const copy = this.getMapContextMenuCopy();
+    const menu = document.createElement("div");
+    menu.className = "map-context-menu";
+    menu.setAttribute("role", "menu");
+    menu.style.left = `${Math.max(8, Number(clientX) || 8)}px`;
+    menu.style.top = `${Math.max(8, Number(clientY) || 8)}px`;
+
+    const title = document.createElement("div");
+    title.className = "map-context-menu-title";
+    title.textContent = copy.title;
+    menu.appendChild(title);
+
+    if (match?.ward) {
+      const ward = match.ward;
+      const note = document.createElement("div");
+      note.className = "map-context-menu-note";
+      note.textContent = match.source === "nearby" ? copy.matchedNearby : copy.matchedGlobal;
+      menu.appendChild(note);
+
+      const addButton = document.createElement("button");
+      addButton.type = "button";
+      addButton.className = "map-context-menu-action";
+      addButton.setAttribute("role", "menuitem");
+      addButton.textContent = copy.add(ward);
+      addButton.addEventListener("click", event => {
+        event.stopPropagation();
+        this.addNeighborhoodFromMapContext(ward.id);
+      });
+      menu.appendChild(addButton);
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "map-context-menu-note";
+      empty.textContent = copy.noWard;
+      menu.appendChild(empty);
+    }
+
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "map-context-menu-close";
+    closeButton.setAttribute("role", "menuitem");
+    closeButton.textContent = copy.close;
+    closeButton.addEventListener("click", () => this.hideMapContextMenu());
+    menu.appendChild(closeButton);
+
+    document.body.appendChild(menu);
+    this.mapContextMenuEl = menu;
+    this.mapContextMenuPoint = { lat: Number(lat), lng: Number(lng) };
+    const rect = menu.getBoundingClientRect?.();
+    if (rect) {
+      if (rect.right > window.innerWidth - 8) menu.style.left = `${Math.max(8, window.innerWidth - rect.width - 8)}px`;
+      if (rect.bottom > window.innerHeight - 8) menu.style.top = `${Math.max(8, window.innerHeight - rect.height - 8)}px`;
+    }
   },
 
   updateAreaSummaryBtn() {
@@ -1011,10 +1203,11 @@ export const MapExplorer = {
     }
 
     try {
-      const defaultCenter = { lat: 43.7615, lng: -79.4111 }; // North York default
+      const defaultCommunity = GTA_COMMUNITIES.find(city => city.id === "vaughan") || GTA_COMMUNITIES[0];
+      const defaultCenter = { ...defaultCommunity.center }; // Vaughan default
       this.googleMap = new google.maps.Map(canvas, {
         center: defaultCenter,
-        zoom: 13,
+        zoom: defaultCommunity.zoom || 13,
         mapId: "DEMO_MAP_ID",
         mapTypeControl: false,
         streetViewControl: true,
@@ -1032,9 +1225,22 @@ export const MapExplorer = {
       this.infoWindow = new google.maps.InfoWindow();
       this.infoWindow.addListener("closeclick", () => { this.activePopupKey = null; this.poiRequestId++; });
       this.googleMap.addListener("click", event => {
+        this.hideMapContextMenu();
         if (!event.placeId) return;
         event.stop();
         this.openGooglePoi(event.placeId, event.latLng);
+      });
+      this.googleMap.addListener("rightclick", event => {
+        event.domEvent?.preventDefault?.();
+        event.stop?.();
+        if (!event.latLng) return;
+        const domEvent = event.domEvent;
+        this.showMapContextMenu(
+          event.latLng.lat(),
+          event.latLng.lng(),
+          domEvent?.clientX ?? 0,
+          domEvent?.clientY ?? 0
+        );
       });
 
     } catch (err) {
@@ -1079,8 +1285,9 @@ export const MapExplorer = {
       this.fallbackMap = null;
     }
 
-    const defaultCenter = [43.7615, -79.4111];
-    this.fallbackMap = L.map(canvas, { preferCanvas: true }).setView(defaultCenter, 13);
+    const defaultCommunity = GTA_COMMUNITIES.find(city => city.id === "vaughan") || GTA_COMMUNITIES[0];
+    const defaultCenter = [defaultCommunity.center.lat, defaultCommunity.center.lng];
+    this.fallbackMap = L.map(canvas, { preferCanvas: true }).setView(defaultCenter, defaultCommunity.zoom || 13);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
@@ -1088,6 +1295,13 @@ export const MapExplorer = {
     }).addTo(this.fallbackMap);
 
     this.fallbackLayerGroup = L.layerGroup().addTo(this.fallbackMap);
+    this.fallbackMap.on("click", () => this.hideMapContextMenu());
+    this.fallbackMap.on("contextmenu", event => {
+      event.originalEvent?.preventDefault?.();
+      const point = event.latlng;
+      const original = event.originalEvent;
+      this.showMapContextMenu(point.lat, point.lng, original?.clientX ?? 0, original?.clientY ?? 0);
+    });
     this.drawSelectedBoundaries();
     this.renderMarkers();
   },
@@ -2317,6 +2531,12 @@ export const MapExplorer = {
       if (container && !container.contains(e.target)) {
         this.togglePopover(false);
       }
+      if (this.mapContextMenuEl && !this.mapContextMenuEl.contains(e.target)) {
+        this.hideMapContextMenu();
+      }
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") this.hideMapContextMenu();
     });
 
     // Popover Clear All
