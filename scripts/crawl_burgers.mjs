@@ -13,7 +13,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const API_KEY = process.env.GOOGLE_MAPS_API_KEY || "AIzaSyCxkEVTsCSf3BbAgKvHi0x0SWG4L09C0Tw";
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY || "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc";
 
 const GTA_REGIONS = {
   "万锦 (Markham)": { lat: 43.8561, lng: -79.3370, radius: 10000, name: "Markham" },

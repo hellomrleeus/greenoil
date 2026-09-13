@@ -319,7 +319,7 @@ export const Api = {
         if (data && data.apiKey) return data.apiKey;
       }
     } catch (e) {}
-    return "AIzaSyCxkEVTsCSf3BbAgKvHi0x0SWG4L09C0Tw";
+    return "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc";
   },
 
   /**
