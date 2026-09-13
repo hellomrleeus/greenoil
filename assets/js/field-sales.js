@@ -44,7 +44,6 @@ export const FieldSales = {
     this.loadCachedRestaurants();
     this.loadRouteWaypoints();
     this.renderRouteWaypoints();
-    this.requestUserLocation(false);
   },
 
   // -------------------------------------------------------------
@@ -429,13 +428,18 @@ export const FieldSales = {
       const isLast = index === this.routeWaypoints.length - 1;
       const stopNumber = index + 1;
       const phoneStr = w.phone && w.phone !== "无" ? `<a href="tel:${w.phone}" class="fs-link">📞 ${w.phone}</a>` : "";
+      const isVisited = !!w.visited;
+      const visitedBadge = isVisited 
+        ? `<span style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ 已拜访</span>` 
+        : `<span style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">待拜访</span>`;
 
       return `
-        <div class="fs-waypoint-card">
-          <div class="fs-wp-badge">${stopNumber}</div>
+        <div class="fs-waypoint-card ${isVisited ? 'is-visited' : ''}" style="${isVisited ? 'border-left: 4px solid #10b981;' : ''}">
+          <div class="fs-wp-badge" style="${isVisited ? 'background: #10b981;' : ''}">${stopNumber}</div>
           <div class="fs-wp-content">
             <div class="fs-wp-header">
               <span class="fs-wp-name">${w.name}</span>
+              ${visitedBadge}
               <span class="fs-wp-region">${w.region || "GTA"}</span>
             </div>
             <div class="fs-wp-address">📍 ${w.address || "无地址信息"}</div>
@@ -446,7 +450,7 @@ export const FieldSales = {
             <button class="fs-btn-icon" data-action="up" data-index="${index}" ${isFirst ? "disabled" : ""} title="上移">⬆️</button>
             <button class="fs-btn-icon" data-action="down" data-index="${index}" ${isLast ? "disabled" : ""} title="下移">⬇️</button>
             <button class="fs-btn-icon" data-action="del" data-index="${index}" title="删除">🗑️</button>
-            <button class="fs-btn-icon fs-btn-log" data-action="log" data-index="${index}" title="记录拜访">📝</button>
+            <button class="fs-btn-icon fs-btn-log" data-action="log" data-index="${index}" title="${isVisited ? '修改/查看拜访记录' : '记录拜访'}" style="${isVisited ? 'background: #d1fae5;' : ''}">📝</button>
           </div>
         </div>
       `;
@@ -586,6 +590,9 @@ export const FieldSales = {
         placeId: existingRecord.restaurantId,
         region: existingRecord.region
       };
+    } else if (!targetRest && this.routeWaypoints && this.routeWaypoints.length > 0) {
+      // Prioritize the first unvisited stop in the route planning list
+      targetRest = this.routeWaypoints.find(w => !w.visited) || this.routeWaypoints[0];
     }
 
     this.selectedRestaurantForSale = targetRest;
@@ -606,43 +613,49 @@ export const FieldSales = {
     const selectEl = document.getElementById("fsRecordRestSelect");
     if (!selectEl) return;
 
-    let optionsList = [...this.cachedRestaurants];
-
-    // If user GPS is available, calculate proximity distance and sort ascending
-    if (this.userGps) {
-      optionsList.forEach(r => {
-        const rLat = parseFloat(r.latitude) || 43.76;
-        const rLng = parseFloat(r.longitude) || -79.41;
-        r._distKm = this.getHaversineDistance(this.userGps.lat, this.userGps.lng, rLat, rLng);
-      });
-      optionsList.sort((a, b) => (a._distKm || 999) - (b._distKm || 999));
-    }
-
-    // Ensure selected rest is available
-    if (selectedRest && !optionsList.some(r => r.name === selectedRest.name)) {
-      optionsList.unshift(selectedRest);
-    }
-
     let html = `<option value="">-- 请选择关联餐馆 --</option>`;
 
-    optionsList.slice(0, 100).forEach((r, idx) => {
-      let label = r.name;
-      if (r._distKm !== undefined) {
-        const distStr = r._distKm < 1 ? `${Math.round(r._distKm * 1000)}m` : `${r._distKm.toFixed(1)}km`;
-        label = `📍 [${distStr}] ${r.name} (${r.region || "GTA"})`;
-      } else {
-        label = `${r.name} (${r.region || "GTA"})`;
-      }
-      const isSelected = selectedRest && (selectedRest.name === r.name || (selectedRest.placeId && selectedRest.placeId === r.placeId));
-      html += `<option value="${r.placeId || r.name}" ${isSelected ? "selected" : ""}>${label}</option>`;
-    });
+    // 1. Group: Route Planning Stops (Highest Priority)
+    if (this.routeWaypoints && this.routeWaypoints.length > 0) {
+      html += `<optgroup label="🗺️ 当前路线规划站点 (共 ${this.routeWaypoints.length} 站 · 优先选择)">`;
+      this.routeWaypoints.forEach((w, idx) => {
+        const isSelected = selectedRest && (
+          (selectedRest.placeId && w.placeId && selectedRest.placeId === w.placeId) ||
+          (selectedRest.name && w.name && selectedRest.name === w.name)
+        );
+        const statusStr = w.visited ? "✓ 已拜访" : "待拜访";
+        const val = w.placeId || w.name;
+        html += `<option value="${val}" ${isSelected ? "selected" : ""}>[第 ${idx + 1} 站 · ${statusStr}] ${w.name} (${w.address || w.region || "GTA"})</option>`;
+      });
+      html += `</optgroup>`;
+    }
+
+    // 2. Group: Other Restaurants from Database (Excluding already listed route stops)
+    const routeKeys = new Set(this.routeWaypoints.map(w => w.placeId || w.name));
+    const otherRestaurants = (this.cachedRestaurants || []).filter(r => !routeKeys.has(r.placeId || r.name));
+
+    if (otherRestaurants.length > 0) {
+      html += `<optgroup label="🏢 数据库其它餐馆 (可搜索选择)">`;
+      otherRestaurants.slice(0, 100).forEach(r => {
+        const isSelected = selectedRest && (
+          (selectedRest.placeId && r.placeId && selectedRest.placeId === r.placeId) ||
+          (selectedRest.name && r.name && selectedRest.name === r.name)
+        );
+        const val = r.placeId || r.name;
+        html += `<option value="${val}" ${isSelected ? "selected" : ""}>${r.name} (${r.region || "GTA"})</option>`;
+      });
+      html += `</optgroup>`;
+    }
 
     selectEl.innerHTML = html;
 
     // Listen for select changes
     selectEl.onchange = (e) => {
       const key = e.target.value;
-      const found = optionsList.find(r => (r.placeId && r.placeId === key) || r.name === key);
+      let found = this.routeWaypoints.find(w => (w.placeId && w.placeId === key) || w.name === key);
+      if (!found) {
+        found = this.cachedRestaurants.find(r => (r.placeId && r.placeId === key) || r.name === key);
+      }
       if (found) {
         this.selectedRestaurantForSale = found;
         this.updateRestaurantEditInputs(found);
@@ -769,6 +782,18 @@ export const FieldSales = {
     try {
       localStorage.setItem(STORAGE_SALES_CACHE_KEY, JSON.stringify(this.salesRecords));
     } catch (e) {}
+
+    // Update waypoint visited status if this restaurant is on current route
+    if (this.routeWaypoints) {
+      const wp = this.routeWaypoints.find(w => (w.placeId && w.placeId === rest.placeId) || (w.name && w.name === rest.name));
+      if (wp) {
+        wp.visited = true;
+        wp.lastVisitTime = visitTime;
+        wp.lastOutcome = outcome;
+        this.saveRouteWaypoints();
+        this.renderRouteWaypoints();
+      }
+    }
 
     this.closeSalesRecordModal();
     this.renderSalesRecords();

@@ -32,14 +32,14 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.6532, lng: -79.3832 },
     zoom: 14,
     neighborhoods: [
-      { id: "dt_chinatown", name: "唐人街 / 肯辛顿 (Chinatown & Kensington)", nameEn: "Chinatown & Kensington", keywords: ["spadina", "kensington", "dundas w", "college"], center: { lat: 43.6535, lng: -79.3985 }, zoom: 16 },
-      { id: "dt_bay_financial", name: "金融区 / 湾街 (Financial District & Bay St)", nameEn: "Financial District & Bay St", keywords: ["bay st", "king st w", "front st w", "financial", "university"], center: { lat: 43.6485, lng: -79.3817 }, zoom: 16 },
-      { id: "dt_yonge_dundas", name: "央街登打士 (Yonge-Dundas & Garden District)", nameEn: "Yonge-Dundas", keywords: ["dundas", "yonge", "gould", "church", "victoria"], center: { lat: 43.6560, lng: -79.3802 }, zoom: 16 },
-      { id: "dt_entertainment", name: "娱乐时尚区 (Entertainment District & King W)", nameEn: "Entertainment District", keywords: ["king w", "peter", "john st", "mercer", "wellington", "blue jays"], center: { lat: 43.6465, lng: -79.3905 }, zoom: 16 },
-      { id: "dt_queen_west", name: "西皇后街 / 艺术区 (Queen West & Trinity)", nameEn: "Queen West", keywords: ["queen w", "ossington", "augusta", "bellwoods"], center: { lat: 43.6480, lng: -79.4100 }, zoom: 16 },
-      { id: "dt_koreatown", name: "布鲁尔韩国城 (Koreatown Bloor)", nameEn: "Koreatown Bloor", keywords: ["bloor w", "christie", "manning", "bathurst", "markham st"], center: { lat: 43.6645, lng: -79.4180 }, zoom: 16 },
-      { id: "dt_yorkville", name: "约克维尔 (Bloor-Yorkville & Annex)", nameEn: "Yorkville & Annex", keywords: ["yorkville", "cumberland", "bloor e", "avenue rd", "hazelton"], center: { lat: 43.6702, lng: -79.3905 }, zoom: 16 },
-      { id: "dt_waterfront", name: "湖滨港口区 (Waterfront & CityPlace)", nameEn: "Waterfront & CityPlace", keywords: ["queens quay", "fort york", "harbour", "lake shore", "danforth"], center: { lat: 43.6390, lng: -79.3870 }, zoom: 15 }
+      { id: "dt_chinatown", name: "唐人街 / 肯辛顿 (Chinatown & Kensington)", nameEn: "Chinatown & Kensington", keywords: ["spadina", "kensington", "dundas w", "college"], center: { lat: 43.6535, lng: -79.3985 }, radius: 1300, zoom: 16 },
+      { id: "dt_bay_financial", name: "金融区 / 湾街 (Financial District & Bay St)", nameEn: "Financial District & Bay St", keywords: ["bay st", "king st w", "front st w", "financial", "university"], center: { lat: 43.6485, lng: -79.3817 }, radius: 1200, zoom: 16 },
+      { id: "dt_yonge_dundas", name: "央街登打士 (Yonge-Dundas & Garden District)", nameEn: "Yonge-Dundas", keywords: ["dundas", "yonge", "gould", "church", "victoria"], center: { lat: 43.6560, lng: -79.3802 }, radius: 1200, zoom: 16 },
+      { id: "dt_entertainment", name: "娱乐时尚区 (Entertainment District & King W)", nameEn: "Entertainment District", keywords: ["king w", "peter", "john st", "mercer", "wellington", "blue jays"], center: { lat: 43.6465, lng: -79.3905 }, radius: 1300, zoom: 16 },
+      { id: "dt_queen_west", name: "西皇后街 / 艺术区 (Queen West & Trinity)", nameEn: "Queen West", keywords: ["queen w", "ossington", "augusta", "bellwoods"], center: { lat: 43.6480, lng: -79.4100 }, radius: 1500, zoom: 16 },
+      { id: "dt_koreatown", name: "布鲁尔韩国城 (Koreatown Bloor)", nameEn: "Koreatown Bloor", keywords: ["bloor w", "christie", "manning", "bathurst", "markham st"], center: { lat: 43.6645, lng: -79.4180 }, radius: 1200, zoom: 16 },
+      { id: "dt_yorkville", name: "约克维尔 (Bloor-Yorkville & Annex)", nameEn: "Yorkville & Annex", keywords: ["yorkville", "cumberland", "bloor e", "avenue rd", "hazelton"], center: { lat: 43.6702, lng: -79.3905 }, radius: 1300, zoom: 16 },
+      { id: "dt_waterfront", name: "湖滨港口区 (Waterfront & CityPlace)", nameEn: "Waterfront & CityPlace", keywords: ["queens quay", "fort york", "harbour", "lake shore", "danforth"], center: { lat: 43.6390, lng: -79.3870 }, radius: 1800, zoom: 15 }
     ]
   },
   {
@@ -50,11 +50,11 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.8561, lng: -79.3370 },
     zoom: 13,
     neighborhoods: [
-      { id: "mk_unionville", name: "于家村历史老街 (Historic Main St Unionville)", nameEn: "Unionville & Main St", keywords: ["main st", "unionville", "carlton", "fred varley", "kennedy"], center: { lat: 43.8670, lng: -79.3135 }, zoom: 15 },
-      { id: "mk_pacific_mall", name: "太古商圈 / 太子中心 (Pacific Mall & Milliken)", nameEn: "Pacific Mall & Milliken", keywords: ["pacific mall", "steeles", "silver star", "redlea", "milliken"], center: { lat: 43.8258, lng: -79.3060 }, zoom: 16 },
-      { id: "mk_fmp", name: "万锦广场 / 寰宇角 (First Markham Place & Commerce Gate)", nameEn: "First Markham Place & Commerce Gate", keywords: ["first markham", "commerce gate", "hwy 7", "woodbine", "montgomery"], center: { lat: 43.8485, lng: -79.3490 }, zoom: 16 },
-      { id: "mk_village_cornell", name: "万锦村 / 康奈尔 (Markham Village & Cornell)", nameEn: "Markham Village & Cornell", keywords: ["cornell", "bur oak", "markham rd", "16th ave", "9th line", "box grove"], center: { lat: 43.8820, lng: -79.2550 }, zoom: 14 },
-      { id: "mk_cachet", name: "凯旋豪宅商圈 (Cachet & Woodbine)", nameEn: "Cachet & Woodbine", keywords: ["cachet", "woodbine", "16th", "apple creek", "angus glen"], center: { lat: 43.8620, lng: -79.3620 }, zoom: 15 }
+      { id: "mk_unionville", name: "于家村历史老街 (Historic Main St Unionville)", nameEn: "Unionville & Main St", keywords: ["main st", "unionville", "carlton", "fred varley", "kennedy"], center: { lat: 43.8670, lng: -79.3135 }, radius: 2200, zoom: 15 },
+      { id: "mk_pacific_mall", name: "太古商圈 / 太子中心 (Pacific Mall & Milliken)", nameEn: "Pacific Mall & Milliken", keywords: ["pacific mall", "steeles", "silver star", "redlea", "milliken"], center: { lat: 43.8258, lng: -79.3060 }, radius: 1800, zoom: 16 },
+      { id: "mk_fmp", name: "万锦广场 / 寰宇角 (First Markham Place & Commerce Gate)", nameEn: "First Markham Place & Commerce Gate", keywords: ["first markham", "commerce gate", "hwy 7", "woodbine", "montgomery"], center: { lat: 43.8485, lng: -79.3490 }, radius: 2000, zoom: 16 },
+      { id: "mk_village_cornell", name: "万锦村 / 康奈尔 (Markham Village & Cornell)", nameEn: "Markham Village & Cornell", keywords: ["cornell", "bur oak", "markham rd", "16th ave", "9th line", "box grove"], center: { lat: 43.8820, lng: -79.2550 }, radius: 3000, zoom: 14 },
+      { id: "mk_cachet", name: "凯旋豪宅商圈 (Cachet & Woodbine)", nameEn: "Cachet & Woodbine", keywords: ["cachet", "woodbine", "16th", "apple creek", "angus glen"], center: { lat: 43.8620, lng: -79.3620 }, radius: 2500, zoom: 15 }
     ]
   },
   {
@@ -65,11 +65,11 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.7615, lng: -79.4111 },
     zoom: 13,
     neighborhoods: [
-      { id: "ny_yonge_finch", name: "央街芬治韩国城 (Yonge & Finch / Koreatown North)", nameEn: "Yonge & Finch Koreatown", keywords: ["finch", "koreatown", "olive", "byng", "drewry", "cummer", "northtown"], center: { lat: 43.7795, lng: -79.4155 }, zoom: 16 },
-      { id: "ny_city_centre", name: "北约克城市中心 (Willowdale & NYCC)", nameEn: "Willowdale & NYCC", keywords: ["sheppard", "empress", "park home", "mel lastman", "doris", "beecroft"], center: { lat: 43.7675, lng: -79.4125 }, zoom: 16 },
-      { id: "ny_fairview", name: "锦绣商圈 / 唐米尔斯 (Don Mills & Fairview Mall)", nameEn: "Fairview Mall & Don Mills", keywords: ["fairview", "don mills", "sheppard e", "godstone"], center: { lat: 43.7780, lng: -79.3440 }, zoom: 15 },
-      { id: "ny_bayview", name: "湾景村社区 (Bayview Village)", nameEn: "Bayview Village", keywords: ["bayview", "sheppard e", "rector", "mallingham"], center: { lat: 43.7690, lng: -79.3870 }, zoom: 15 },
-      { id: "ny_york_u", name: "约克大学高地 (York University Heights & Downsview)", nameEn: "York University Heights", keywords: ["keele", "finch w", "steeles w", "allen", "chesswood", "dufferin"], center: { lat: 43.7730, lng: -79.4950 }, zoom: 14 }
+      { id: "ny_yonge_finch", name: "央街芬治韩国城 (Yonge & Finch / Koreatown North)", nameEn: "Yonge & Finch Koreatown", keywords: ["finch", "koreatown", "olive", "byng", "drewry", "cummer", "northtown"], center: { lat: 43.7795, lng: -79.4155 }, radius: 1600, zoom: 16 },
+      { id: "ny_city_centre", name: "北约克城市中心 (Willowdale & NYCC)", nameEn: "Willowdale & NYCC", keywords: ["sheppard", "empress", "park home", "mel lastman", "doris", "beecroft"], center: { lat: 43.7675, lng: -79.4125 }, radius: 1800, zoom: 16 },
+      { id: "ny_fairview", name: "锦绣商圈 / 唐米尔斯 (Don Mills & Fairview Mall)", nameEn: "Fairview Mall & Don Mills", keywords: ["fairview", "don mills", "sheppard e", "godstone"], center: { lat: 43.7780, lng: -79.3440 }, radius: 2000, zoom: 15 },
+      { id: "ny_bayview", name: "湾景村社区 (Bayview Village)", nameEn: "Bayview Village", keywords: ["bayview", "sheppard e", "rector", "mallingham"], center: { lat: 43.7690, lng: -79.3870 }, radius: 1800, zoom: 15 },
+      { id: "ny_york_u", name: "约克大学高地 (York University Heights & Downsview)", nameEn: "York University Heights", keywords: ["keele", "finch w", "steeles w", "allen", "chesswood", "dufferin"], center: { lat: 43.7730, lng: -79.4950 }, radius: 2600, zoom: 14 }
     ]
   },
   {
@@ -80,11 +80,11 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.7764, lng: -79.2318 },
     zoom: 13,
     neighborhoods: [
-      { id: "sc_agincourt", name: "爱静阁美食商圈 (Agincourt / Midland & Sheppard)", nameEn: "Agincourt / Midland & Sheppard", keywords: ["agincourt", "midland", "glen watford", "rural", "dragon centre"], center: { lat: 43.7885, lng: -79.2780 }, zoom: 15 },
-      { id: "sc_stc", name: "士嘉堡市中心 (Scarborough Town Centre)", nameEn: "Scarborough Town Centre", keywords: ["borough", "mccowan", "ellesmere", "town centre"], center: { lat: 43.7745, lng: -79.2575 }, zoom: 15 },
-      { id: "sc_silverstar", name: "东方广场 / 锦绣中华 (Steeles & Silver Star)", nameEn: "Steeles & Silver Star", keywords: ["silver star", "steeles e", "splendid china", "redlea", "milliken"], center: { lat: 43.8235, lng: -79.2980 }, zoom: 16 },
-      { id: "sc_warden_finch", name: "丰泰商圈 / 华登 (Warden & Finch / Bridlewood)", nameEn: "Warden & Finch / Bridlewood", keywords: ["warden", "bridlewood", "finch e", "bamburgh"], center: { lat: 43.7990, lng: -79.3190 }, zoom: 15 },
-      { id: "sc_kingston", name: "悬崖公园湖滨走廊 (Guildwood & Kingston Rd)", nameEn: "Guildwood & Kingston Rd", keywords: ["kingston", "guildwood", "lawrence e", "eglinton e", "scarborough golf"], center: { lat: 43.7420, lng: -79.2150 }, zoom: 14 }
+      { id: "sc_agincourt", name: "爱静阁美食商圈 (Agincourt / Midland & Sheppard)", nameEn: "Agincourt / Midland & Sheppard", keywords: ["agincourt", "midland", "glen watford", "rural", "dragon centre"], center: { lat: 43.7885, lng: -79.2780 }, radius: 2200, zoom: 15 },
+      { id: "sc_stc", name: "士嘉堡市中心 (Scarborough Town Centre)", nameEn: "Scarborough Town Centre", keywords: ["borough", "mccowan", "ellesmere", "town centre"], center: { lat: 43.7745, lng: -79.2575 }, radius: 2200, zoom: 15 },
+      { id: "sc_silverstar", name: "东方广场 / 锦绣中华 (Steeles & Silver Star)", nameEn: "Steeles & Silver Star", keywords: ["silver star", "steeles e", "splendid china", "redlea", "milliken"], center: { lat: 43.8235, lng: -79.2980 }, radius: 1800, zoom: 16 },
+      { id: "sc_warden_finch", name: "丰泰商圈 / 华登 (Warden & Finch / Bridlewood)", nameEn: "Warden & Finch / Bridlewood", keywords: ["warden", "bridlewood", "finch e", "bamburgh"], center: { lat: 43.7990, lng: -79.3190 }, radius: 2200, zoom: 15 },
+      { id: "sc_kingston", name: "悬崖公园湖滨走廊 (Guildwood & Kingston Rd)", nameEn: "Guildwood & Kingston Rd", keywords: ["kingston", "guildwood", "lawrence e", "eglinton e", "scarborough golf"], center: { lat: 43.7420, lng: -79.2150 }, radius: 3000, zoom: 14 }
     ]
   },
   {
@@ -95,10 +95,10 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.8828, lng: -79.4403 },
     zoom: 13,
     neighborhoods: [
-      { id: "rh_times_square", name: "时代广场 / 黄金商场 (Times Square & Beaver Creek)", nameEn: "Times Square & Beaver Creek", keywords: ["times square", "beaver creek", "leslie", "hwy 7", "highway 7"], center: { lat: 43.8430, lng: -79.3875 }, zoom: 16 },
-      { id: "rh_centre", name: "央街老街市中心 (Richmond Hill Centre & Yonge)", nameEn: "Richmond Hill Centre & Yonge", keywords: ["yonge", "major mackenzie", "crosby", "wright"], center: { lat: 43.8765, lng: -79.4385 }, zoom: 15 },
-      { id: "rh_hillcrest", name: "喜尔客 / 富豪山庄 (Hillcrest Mall & South Richvale)", nameEn: "Hillcrest Mall & South Richvale", keywords: ["hillcrest", "16th ave", "carrville", "weldrick"], center: { lat: 43.8580, lng: -79.4350 }, zoom: 15 },
-      { id: "rh_elgin_mills", name: "爱尔金湖畔社区 (Elgin Mills & Jefferson)", nameEn: "Elgin Mills & Jefferson", keywords: ["elgin mills", "jefferson", "tower hill", "gamble"], center: { lat: 43.9050, lng: -79.4450 }, zoom: 14 }
+      { id: "rh_times_square", name: "时代广场 / 黄金商场 (Times Square & Beaver Creek)", nameEn: "Times Square & Beaver Creek", keywords: ["times square", "beaver creek", "leslie", "hwy 7", "highway 7"], center: { lat: 43.8430, lng: -79.3875 }, radius: 1800, zoom: 16 },
+      { id: "rh_centre", name: "央街老街市中心 (Richmond Hill Centre & Yonge)", nameEn: "Richmond Hill Centre & Yonge", keywords: ["yonge", "major mackenzie", "crosby", "wright"], center: { lat: 43.8765, lng: -79.4385 }, radius: 2200, zoom: 15 },
+      { id: "rh_hillcrest", name: "喜尔客 / 富豪山庄 (Hillcrest Mall & South Richvale)", nameEn: "Hillcrest Mall & South Richvale", keywords: ["hillcrest", "16th ave", "carrville", "weldrick"], center: { lat: 43.8580, lng: -79.4350 }, radius: 2000, zoom: 15 },
+      { id: "rh_elgin_mills", name: "爱尔金湖畔社区 (Elgin Mills & Jefferson)", nameEn: "Elgin Mills & Jefferson", keywords: ["elgin mills", "jefferson", "tower hill", "gamble"], center: { lat: 43.9050, lng: -79.4450 }, radius: 3000, zoom: 14 }
     ]
   },
   {
@@ -109,11 +109,11 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.5890, lng: -79.6441 },
     zoom: 13,
     neighborhoods: [
-      { id: "ms_square_one", name: "第一广场市中心 (Square One & City Centre)", nameEn: "Square One & City Centre", keywords: ["square one", "burnhamthorpe", "duke of york", "hurontario", "rathburn", "livingarts"], center: { lat: 43.5930, lng: -79.6425 }, zoom: 15 },
-      { id: "ms_chinatown", name: "密市中国城 (Chinatown Mississauga & Cooksville)", nameEn: "Chinatown Mississauga & Cooksville", keywords: ["cawthra", "dundas e", "cooksville", "golden square", "central pkwy"], center: { lat: 43.5840, lng: -79.6050 }, zoom: 15 },
-      { id: "ms_dixie", name: "迪克西餐饮长廊 (Dixie & Dundas Commercial)", nameEn: "Dixie & Dundas Commercial", keywords: ["dixie", "matheson", "tomken", "aimco"], center: { lat: 43.6050, lng: -79.5780 }, zoom: 14 },
-      { id: "ms_streetsville", name: "斯特里茨维尔历史小镇 (Streetsville Village)", nameEn: "Streetsville Village", keywords: ["streetsville", "queen st s", "britannia"], center: { lat: 43.5820, lng: -79.7130 }, zoom: 15 },
-      { id: "ms_port_credit", name: "湖滨游艇港镇 (Port Credit Waterfront)", nameEn: "Port Credit Waterfront", keywords: ["port credit", "lakeshore", "stavebank"], center: { lat: 43.5510, lng: -79.5850 }, zoom: 15 }
+      { id: "ms_square_one", name: "第一广场市中心 (Square One & City Centre)", nameEn: "Square One & City Centre", keywords: ["square one", "burnhamthorpe", "duke of york", "hurontario", "rathburn", "livingarts"], center: { lat: 43.5930, lng: -79.6425 }, radius: 2500, zoom: 15 },
+      { id: "ms_chinatown", name: "密市中国城 (Chinatown Mississauga & Cooksville)", nameEn: "Chinatown Mississauga & Cooksville", keywords: ["cawthra", "dundas e", "cooksville", "golden square", "central pkwy"], center: { lat: 43.5840, lng: -79.6050 }, radius: 2000, zoom: 15 },
+      { id: "ms_dixie", name: "迪克西餐饮长廊 (Dixie & Dundas Commercial)", nameEn: "Dixie & Dundas Commercial", keywords: ["dixie", "matheson", "tomken", "aimco"], center: { lat: 43.6050, lng: -79.5780 }, radius: 2500, zoom: 14 },
+      { id: "ms_streetsville", name: "斯特里茨维尔历史小镇 (Streetsville Village)", nameEn: "Streetsville Village", keywords: ["streetsville", "queen st s", "britannia"], center: { lat: 43.5820, lng: -79.7130 }, radius: 2200, zoom: 15 },
+      { id: "ms_port_credit", name: "湖滨游艇港镇 (Port Credit Waterfront)", nameEn: "Port Credit Waterfront", keywords: ["port credit", "lakeshore", "stavebank"], center: { lat: 43.5510, lng: -79.5850 }, radius: 2000, zoom: 15 }
     ]
   },
   {
@@ -124,27 +124,146 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.8563, lng: -79.5085 },
     zoom: 13,
     neighborhoods: [
-      { id: "vg_vmc", name: "旺市大都会中心 (VMC & Jane St)", nameEn: "VMC & Jane St", keywords: ["vmc", "metropolitan", "portage", "jane", "edgeley"], center: { lat: 43.7940, lng: -79.5280 }, zoom: 15 },
-      { id: "vg_promenade", name: "康山商业走廊 (Thornhill & Promenade Mall)", nameEn: "Thornhill & Promenade Mall", keywords: ["promenade", "bathurst", "centre st", "clark"], center: { lat: 43.8060, lng: -79.4520 }, zoom: 15 },
-      { id: "vg_woodbridge", name: "伍德布里奇意大利街区 (Woodbridge & Weston Rd)", nameEn: "Woodbridge & Weston Rd", keywords: ["woodbridge", "weston rd", "hwy 7", "islington"], center: { lat: 43.7870, lng: -79.5950 }, zoom: 14 },
-      { id: "vg_mills_maple", name: "枫树镇 / 旺市购物中心 (Maple & Vaughan Mills)", nameEn: "Maple & Vaughan Mills", keywords: ["vaughan mills", "rutherford", "bass pro", "major mackenzie w"], center: { lat: 43.8260, lng: -79.5390 }, zoom: 14 }
+      { id: "vg_vmc", name: "旺市大都会中心 (VMC & Jane St)", nameEn: "VMC & Jane St", keywords: ["vmc", "metropolitan", "portage", "jane", "edgeley"], center: { lat: 43.7940, lng: -79.5280 }, radius: 2200, zoom: 15 },
+      { id: "vg_promenade", name: "康山商业走廊 (Thornhill & Promenade Mall)", nameEn: "Thornhill & Promenade Mall", keywords: ["promenade", "bathurst", "centre st", "clark"], center: { lat: 43.8060, lng: -79.4520 }, radius: 2200, zoom: 15 },
+      { id: "vg_woodbridge", name: "伍德布里奇意大利街区 (Woodbridge & Weston Rd)", nameEn: "Woodbridge & Weston Rd", keywords: ["woodbridge", "weston rd", "hwy 7", "islington"], center: { lat: 43.7870, lng: -79.5950 }, radius: 3000, zoom: 14 },
+      { id: "vg_mills_maple", name: "枫树镇 / 旺市购物中心 (Maple & Vaughan Mills)", nameEn: "Maple & Vaughan Mills", keywords: ["vaughan mills", "rutherford", "bass pro", "major mackenzie w"], center: { lat: 43.8260, lng: -79.5390 }, radius: 3000, zoom: 14 }
     ]
   }
 ];
 
 export const GTA_STREETS = [
-  { id: "all", name: "全部商业街廊 (All Streets)", keyword: "" },
-  { id: "yonge", name: "央街走廊 (Yonge St Corridor)", keyword: "yonge" },
-  { id: "hwy7", name: "7号公路走廊 (Highway 7 Corridor)", keyword: "hwy 7" },
-  { id: "spadina", name: "士巴丹拿大道 (Spadina Ave)", keyword: "spadina" },
-  { id: "dundas", name: "登打士街 (Dundas St)", keyword: "dundas" },
-  { id: "steeles", name: "士刁大道 (Steeles Ave Strip)", keyword: "steeles" },
-  { id: "sheppard", name: "雪柏大道 (Sheppard Ave Corridor)", keyword: "sheppard" },
-  { id: "midland", name: "米兰街 (Midland Ave Food Strip)", keyword: "midland" },
-  { id: "burnhamthorpe", name: "伯纳姆索普路 (Burnhamthorpe Rd / Square One)", keyword: "burnhamthorpe" },
-  { id: "queen", name: "皇后街 (Queen St Commercial Strip)", keyword: "queen" },
-  { id: "bloor", name: "布鲁尔街 (Bloor St Corridor)", keyword: "bloor" },
-  { id: "major_mackenzie", name: "麦健时少校大道 (Major Mackenzie Dr)", keyword: "major mackenzie" }
+  { id: "all", name: "全部商业街廊 (All Streets)", keyword: "", path: [] },
+  {
+    id: "hwy7",
+    name: "7号公路走廊 (Highway 7 Corridor)",
+    keyword: "hwy 7",
+    path: [
+      { lat: 43.785, lng: -79.610 },
+      { lat: 43.830, lng: -79.520 },
+      { lat: 43.845, lng: -79.430 },
+      { lat: 43.854, lng: -79.340 },
+      { lat: 43.865, lng: -79.280 },
+      { lat: 43.875, lng: -79.220 }
+    ]
+  },
+  {
+    id: "yonge",
+    name: "央街走廊 (Yonge St Corridor)",
+    keyword: "yonge",
+    path: [
+      { lat: 43.642, lng: -79.378 },
+      { lat: 43.670, lng: -79.387 },
+      { lat: 43.705, lng: -79.398 },
+      { lat: 43.765, lng: -79.412 },
+      { lat: 43.805, lng: -79.423 },
+      { lat: 43.855, lng: -79.436 },
+      { lat: 43.905, lng: -79.447 }
+    ]
+  },
+  {
+    id: "spadina",
+    name: "士巴丹拿大道 (Spadina Ave)",
+    keyword: "spadina",
+    path: [
+      { lat: 43.639, lng: -79.392 },
+      { lat: 43.653, lng: -79.398 },
+      { lat: 43.666, lng: -79.403 }
+    ]
+  },
+  {
+    id: "dundas",
+    name: "登打士街 (Dundas St)",
+    keyword: "dundas",
+    path: [
+      { lat: 43.657, lng: -79.370 },
+      { lat: 43.653, lng: -79.398 },
+      { lat: 43.650, lng: -79.430 },
+      { lat: 43.648, lng: -79.480 },
+      { lat: 43.590, lng: -79.620 }
+    ]
+  },
+  {
+    id: "steeles",
+    name: "士刁大道 (Steeles Ave Strip)",
+    keyword: "steeles",
+    path: [
+      { lat: 43.780, lng: -79.620 },
+      { lat: 43.795, lng: -79.520 },
+      { lat: 43.810, lng: -79.420 },
+      { lat: 43.823, lng: -79.310 },
+      { lat: 43.835, lng: -79.230 }
+    ]
+  },
+  {
+    id: "sheppard",
+    name: "雪柏大道 (Sheppard Ave Corridor)",
+    keyword: "sheppard",
+    path: [
+      { lat: 43.755, lng: -79.520 },
+      { lat: 43.762, lng: -79.412 },
+      { lat: 43.775, lng: -79.330 },
+      { lat: 43.788, lng: -79.250 },
+      { lat: 43.805, lng: -79.180 }
+    ]
+  },
+  {
+    id: "midland",
+    name: "米兰街 (Midland Ave Food Strip)",
+    keyword: "midland",
+    path: [
+      { lat: 43.715, lng: -79.250 },
+      { lat: 43.755, lng: -79.263 },
+      { lat: 43.788, lng: -79.278 },
+      { lat: 43.823, lng: -79.298 }
+    ]
+  },
+  {
+    id: "burnhamthorpe",
+    name: "伯纳姆索普路 (Burnhamthorpe Rd / Square One)",
+    keyword: "burnhamthorpe",
+    path: [
+      { lat: 43.645, lng: -79.540 },
+      { lat: 43.615, lng: -79.600 },
+      { lat: 43.593, lng: -79.645 },
+      { lat: 43.560, lng: -79.720 }
+    ]
+  },
+  {
+    id: "queen",
+    name: "皇后街 (Queen St Commercial Strip)",
+    keyword: "queen",
+    path: [
+      { lat: 43.665, lng: -79.300 },
+      { lat: 43.655, lng: -79.375 },
+      { lat: 43.648, lng: -79.415 },
+      { lat: 43.640, lng: -79.445 }
+    ]
+  },
+  {
+    id: "bloor",
+    name: "布鲁尔街 (Bloor St Corridor)",
+    keyword: "bloor",
+    path: [
+      { lat: 43.673, lng: -79.370 },
+      { lat: 43.668, lng: -79.395 },
+      { lat: 43.664, lng: -79.420 },
+      { lat: 43.652, lng: -79.465 },
+      { lat: 43.645, lng: -79.530 }
+    ]
+  },
+  {
+    id: "major_mackenzie",
+    name: "麦健时少校大道 (Major Mackenzie Dr)",
+    keyword: "major mackenzie",
+    path: [
+      { lat: 43.840, lng: -79.590 },
+      { lat: 43.865, lng: -79.510 },
+      { lat: 43.876, lng: -79.435 },
+      { lat: 43.885, lng: -79.350 },
+      { lat: 43.895, lng: -79.250 }
+    ]
+  }
 ];
 
 export const MapExplorer = {
@@ -170,6 +289,11 @@ export const MapExplorer = {
   activeCityId: "all",
   activeNeighborhoodId: "all",
   activeStreetId: "all",
+  activeNeighborhoodIds: new Set(["all"]),
+  activeStreetIds: new Set(["all"]),
+  boundaryOverlays: [],
+  currentZoom: 11,
+  zoomDebounceTimer: null,
   activeCategory: "全部",
   activeKvFilter: "all", // "all", "saved", "unsaved"
   searchKeyword: "",
@@ -186,6 +310,8 @@ export const MapExplorer = {
 
     this.setupAuthFailureHandler();
     this.populateSelects();
+    this.populateNeighborhoodPills();
+    this.populateStreetPills();
     this.bindEvents();
 
     // 1. Fetch Google Maps API Key and initialize map
@@ -247,6 +373,228 @@ export const MapExplorer = {
     nhSelect.innerHTML = html;
     nhSelect.value = this.activeNeighborhoodId;
   },
+
+  populateNeighborhoodPills() {
+    const container = document.getElementById("mapNeighborhoodPills");
+    if (!container) return;
+
+    const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
+    let neighborhoods = [];
+    if (city && city.neighborhoods && city.neighborhoods.length > 0) {
+      neighborhoods = city.neighborhoods;
+    } else {
+      GTA_COMMUNITIES.forEach(c => {
+        if (c.neighborhoods) neighborhoods.push(...c.neighborhoods);
+      });
+    }
+
+    const pool = (city && city.id !== "all") 
+      ? this.allRestaurants.filter(r => r.region && r.region.includes(city.name.split(" ")[0]))
+      : this.allRestaurants;
+
+    const isAll = this.activeNeighborhoodIds.has("all");
+    let html = `
+      <button type="button" class="map-pill-btn ${isAll ? 'active' : ''}" data-id="all">
+        全部社区 <span class="map-pill-count">${pool.length}</span>
+      </button>
+    `;
+
+    html += neighborhoods.map(nh => {
+      const isActive = !isAll && this.activeNeighborhoodIds.has(nh.id);
+      let count = 0;
+      if (nh.keywords && nh.keywords.length > 0) {
+        count = pool.filter(r => {
+          const text = [r.address, r.name, r.hubName, r.hubId].join(" ").toLowerCase();
+          return nh.keywords.some(kw => text.includes(kw.toLowerCase()));
+        }).length;
+      }
+      const shortName = nh.name.split(" (")[0];
+      return `
+        <button type="button" class="map-pill-btn ${isActive ? 'active' : ''}" data-id="${nh.id}" title="${nh.name}">
+          ${shortName} <span class="map-pill-count">${count}</span>
+        </button>
+      `;
+    }).join("");
+
+    container.innerHTML = html;
+    this.updateNeighborhoodBadge();
+  },
+
+  populateStreetPills() {
+    const container = document.getElementById("mapStreetPills");
+    if (!container) return;
+
+    const pool = this.allRestaurants;
+    const isAll = this.activeStreetIds.has("all");
+
+    let html = `
+      <button type="button" class="map-pill-btn ${isAll ? 'active' : ''}" data-id="all">
+        全部走廊 <span class="map-pill-count">${pool.length}</span>
+      </button>
+    `;
+
+    const streets = GTA_STREETS.filter(s => s.id !== "all");
+    html += streets.map(st => {
+      const isActive = !isAll && this.activeStreetIds.has(st.id);
+      const count = pool.filter(r => (r.address || "").toLowerCase().includes(st.keyword.toLowerCase())).length;
+      const shortName = st.name.split(" (")[0];
+      return `
+        <button type="button" class="map-pill-btn ${isActive ? 'active' : ''}" data-id="${st.id}" title="${st.name}">
+          ${shortName} <span class="map-pill-count">${count}</span>
+        </button>
+      `;
+    }).join("");
+
+    container.innerHTML = html;
+    this.updateStreetBadge();
+  },
+
+  updateNeighborhoodBadge() {
+    const badge = document.getElementById("mapSelectedNeighborhoodsCount");
+    if (!badge) return;
+    if (this.activeNeighborhoodIds.has("all")) {
+      badge.textContent = "全部社区";
+      badge.style.background = "#e0f2fe";
+      badge.style.color = "#0369a1";
+    } else {
+      const count = this.activeNeighborhoodIds.size;
+      badge.textContent = `已选 ${count} 个商圈`;
+      badge.style.background = "#dbeafe";
+      badge.style.color = "#1d4ed8";
+    }
+  },
+
+  updateStreetBadge() {
+    const badge = document.getElementById("mapSelectedStreetsCount");
+    if (!badge) return;
+    if (this.activeStreetIds.has("all")) {
+      badge.textContent = "全部走廊";
+      badge.style.background = "#e0f2fe";
+      badge.style.color = "#0369a1";
+    } else {
+      const count = this.activeStreetIds.size;
+      badge.textContent = `已选 ${count} 条走廊`;
+      badge.style.background = "#ede9fe";
+      badge.style.color = "#6d28d9";
+    }
+  },
+
+  clearBoundaries() {
+    if (this.boundaryOverlays && this.boundaryOverlays.length > 0) {
+      this.boundaryOverlays.forEach(overlay => {
+        if (overlay.setMap) {
+          overlay.setMap(null);
+        } else if (overlay.remove) {
+          overlay.remove();
+        }
+      });
+      this.boundaryOverlays = [];
+    }
+  },
+
+  drawSelectedBoundaries() {
+    this.clearBoundaries();
+
+    const isAllNhs = this.activeNeighborhoodIds.has("all");
+    const isAllSts = this.activeStreetIds.has("all");
+    if (isAllNhs && isAllSts) return;
+
+    // Collect coordinates to fit map bounds
+    let googleBounds = null;
+    let leafletBounds = [];
+
+    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+      googleBounds = new google.maps.LatLngBounds();
+    }
+
+    // 1. Draw Neighborhood boundaries (Circles)
+    if (!isAllNhs) {
+      this.activeNeighborhoodIds.forEach(nhId => {
+        let nh = null;
+        for (const city of GTA_COMMUNITIES) {
+          const found = (city.neighborhoods || []).find(n => n.id === nhId);
+          if (found) { nh = found; break; }
+        }
+        if (!nh || !nh.center) return;
+
+        const radius = nh.radius || 2000;
+
+        if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+          const circle = new google.maps.Circle({
+            strokeColor: "#2563eb",
+            strokeOpacity: 0.85,
+            strokeWeight: 2,
+            fillColor: "#3b82f6",
+            fillOpacity: 0.12,
+            map: this.googleMap,
+            center: nh.center,
+            radius: radius,
+            clickable: false
+          });
+          this.boundaryOverlays.push(circle);
+          googleBounds.union(circle.getBounds());
+        } else if (this.fallbackMap && window.L) {
+          const circle = L.circle([nh.center.lat, nh.center.lng], {
+            color: "#2563eb",
+            weight: 2,
+            fillColor: "#3b82f6",
+            fillOpacity: 0.12,
+            radius: radius
+          }).addTo(this.fallbackMap);
+          circle.bindTooltip(nh.name.split(" (")[0], { permanent: true, direction: "top", className: "map-boundary-tooltip" });
+          this.boundaryOverlays.push(circle);
+          leafletBounds.push(circle.getBounds());
+        }
+      });
+    }
+
+    // 2. Draw Commercial Street corridors (Polylines)
+    if (!isAllSts) {
+      this.activeStreetIds.forEach(stId => {
+        const st = GTA_STREETS.find(s => s.id === stId);
+        if (!st || !st.path || st.path.length === 0) return;
+
+        if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+          const polyline = new google.maps.Polyline({
+            path: st.path,
+            geodesic: true,
+            strokeColor: "#7c3aed",
+            strokeOpacity: 0.85,
+            strokeWeight: 5,
+            map: this.googleMap
+          });
+          this.boundaryOverlays.push(polyline);
+          st.path.forEach(pt => googleBounds.extend(pt));
+        } else if (this.fallbackMap && window.L) {
+          const polyline = L.polyline(st.path.map(p => [p.lat, p.lng]), {
+            color: "#7c3aed",
+            weight: 5,
+            opacity: 0.85
+          }).addTo(this.fallbackMap);
+          polyline.bindTooltip(st.name.split(" (")[0], { sticky: true, className: "map-boundary-tooltip" });
+          this.boundaryOverlays.push(polyline);
+          leafletBounds.push(polyline.getBounds());
+        }
+      });
+    }
+
+    // Fit map bounds to encompass all selected boundaries
+    if (googleBounds && !googleBounds.isEmpty()) {
+      this.googleMap.fitBounds(googleBounds);
+      const listener = google.maps.event.addListenerOnce(this.googleMap, "idle", () => {
+        if (this.googleMap.getZoom() > 16) {
+          this.googleMap.setZoom(16);
+        }
+      });
+    } else if (this.fallbackMap && leafletBounds.length > 0) {
+      let combined = leafletBounds[0];
+      for (let i = 1; i < leafletBounds.length; i++) {
+        combined = combined.extend(leafletBounds[i]);
+      }
+      this.fallbackMap.fitBounds(combined, { maxZoom: 16 });
+    }
+  },
+
 
   async initGoogleMap() {
     const canvas = document.getElementById("mapExplorerCanvas");
@@ -329,6 +677,20 @@ export const MapExplorer = {
         }
       });
 
+      this.googleMap.addListener("zoom_changed", () => {
+        clearTimeout(this.zoomDebounceTimer);
+        this.zoomDebounceTimer = setTimeout(() => {
+          const newZoom = this.googleMap.getZoom();
+          const wasClustered = this.currentZoom < 14;
+          const isClustered = newZoom < 14 && this.activeNeighborhoodIds.has("all");
+          this.currentZoom = newZoom;
+          this.updateResultsHeader();
+          if (wasClustered !== isClustered || isClustered) {
+            this.renderMarkers();
+          }
+        }, 150);
+      });
+
       this.googleMap.addListener("click", (e) => {
         if (e.placeId) {
           e.stop();
@@ -393,6 +755,20 @@ export const MapExplorer = {
 
     this.fallbackLayerGroup = L.layerGroup().addTo(this.fallbackMap);
 
+    this.fallbackMap.on("zoomend", () => {
+      clearTimeout(this.zoomDebounceTimer);
+      this.zoomDebounceTimer = setTimeout(() => {
+        const newZoom = this.fallbackMap.getZoom();
+        const wasClustered = this.currentZoom < 14;
+        const isClustered = newZoom < 14 && this.activeNeighborhoodIds.has("all");
+        this.currentZoom = newZoom;
+        this.updateResultsHeader();
+        if (wasClustered !== isClustered || isClustered) {
+          this.renderMarkers();
+        }
+      }, 150);
+    });
+
     if (this.filteredRestaurants.length > 0) {
       this.renderMarkers();
     }
@@ -434,6 +810,8 @@ export const MapExplorer = {
     }
 
     if (badge) badge.textContent = `已收录 ${this.allRestaurants.length.toLocaleString()} 家餐馆`;
+    this.populateNeighborhoodPills();
+    this.populateStreetPills();
     this.applyFilters(true);
   },
 
@@ -443,26 +821,130 @@ export const MapExplorer = {
       citySelect.addEventListener("change", (e) => {
         this.activeCityId = e.target.value;
         this.activeNeighborhoodId = "all";
+        this.activeNeighborhoodIds.clear();
+        this.activeNeighborhoodIds.add("all");
         this.updateNeighborhoodSelect();
+        this.populateNeighborhoodPills();
+        this.clearBoundaries();
         this.panToSelectedArea();
         this.applyFilters(true);
       });
     }
 
-    const nhSelect = document.getElementById("mapNeighborhoodSelect");
-    if (nhSelect) {
-      nhSelect.addEventListener("change", (e) => {
-        this.activeNeighborhoodId = e.target.value;
-        this.panToSelectedArea();
-        this.applyFilters(true);
+    // Neighborhood Pills Multi-Select Click Handler
+    const nhContainer = document.getElementById("mapNeighborhoodPills");
+    if (nhContainer) {
+      nhContainer.addEventListener("click", (e) => {
+        const btn = e.target.closest(".map-pill-btn");
+        if (!btn) return;
+        const id = btn.dataset.id;
+        if (!id) return;
+
+        if (id === "all") {
+          this.activeNeighborhoodIds.clear();
+          this.activeNeighborhoodIds.add("all");
+        } else {
+          this.activeNeighborhoodIds.delete("all");
+          if (this.activeNeighborhoodIds.has(id)) {
+            this.activeNeighborhoodIds.delete(id);
+          } else {
+            this.activeNeighborhoodIds.add(id);
+          }
+          if (this.activeNeighborhoodIds.size === 0) {
+            this.activeNeighborhoodIds.add("all");
+          }
+        }
+
+        this.populateNeighborhoodPills();
+        this.drawSelectedBoundaries();
+        this.applyFilters(false);
       });
     }
 
-    const streetSelect = document.getElementById("mapStreetSelect");
-    if (streetSelect) {
-      streetSelect.addEventListener("change", (e) => {
-        this.activeStreetId = e.target.value;
-        this.applyFilters(true);
+    // Street Pills Multi-Select Click Handler
+    const stContainer = document.getElementById("mapStreetPills");
+    if (stContainer) {
+      stContainer.addEventListener("click", (e) => {
+        const btn = e.target.closest(".map-pill-btn");
+        if (!btn) return;
+        const id = btn.dataset.id;
+        if (!id) return;
+
+        if (id === "all") {
+          this.activeStreetIds.clear();
+          this.activeStreetIds.add("all");
+        } else {
+          this.activeStreetIds.delete("all");
+          if (this.activeStreetIds.has(id)) {
+            this.activeStreetIds.delete(id);
+          } else {
+            this.activeStreetIds.add(id);
+          }
+          if (this.activeStreetIds.size === 0) {
+            this.activeStreetIds.add("all");
+          }
+        }
+
+        this.populateStreetPills();
+        this.drawSelectedBoundaries();
+        this.applyFilters(false);
+      });
+    }
+
+    // Quick Action: All / Clear Neighborhoods
+    const btnAllNhs = document.getElementById("mapBtnAllNeighborhoods");
+    if (btnAllNhs) {
+      btnAllNhs.addEventListener("click", () => {
+        const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
+        let nhs = [];
+        if (city && city.neighborhoods && city.neighborhoods.length > 0) {
+          nhs = city.neighborhoods;
+        } else {
+          GTA_COMMUNITIES.forEach(c => {
+            if (c.neighborhoods) nhs.push(...c.neighborhoods);
+          });
+        }
+        this.activeNeighborhoodIds.clear();
+        nhs.forEach(n => this.activeNeighborhoodIds.add(n.id));
+        this.populateNeighborhoodPills();
+        this.drawSelectedBoundaries();
+        this.applyFilters(false);
+      });
+    }
+
+    const btnClearNhs = document.getElementById("mapBtnClearNeighborhoods");
+    if (btnClearNhs) {
+      btnClearNhs.addEventListener("click", () => {
+        this.activeNeighborhoodIds.clear();
+        this.activeNeighborhoodIds.add("all");
+        this.populateNeighborhoodPills();
+        this.clearBoundaries();
+        this.panToSelectedArea();
+        this.applyFilters(false);
+      });
+    }
+
+    // Quick Action: All / Clear Commercial Streets
+    const btnAllSts = document.getElementById("mapBtnAllStreets");
+    if (btnAllSts) {
+      btnAllSts.addEventListener("click", () => {
+        this.activeStreetIds.clear();
+        GTA_STREETS.filter(s => s.id !== "all").forEach(s => this.activeStreetIds.add(s.id));
+        this.populateStreetPills();
+        this.drawSelectedBoundaries();
+        this.applyFilters(false);
+      });
+    }
+
+    const btnClearSts = document.getElementById("mapBtnClearStreets");
+    if (btnClearSts) {
+      btnClearSts.addEventListener("click", () => {
+        this.activeStreetIds.clear();
+        this.activeStreetIds.add("all");
+        this.populateStreetPills();
+        this.clearBoundaries();
+        this.panToSelectedArea();
+        this.applyFilters(false);
       });
     }
 
@@ -564,19 +1046,17 @@ export const MapExplorer = {
   },
 
   panToSelectedArea() {
+    // If specific neighborhood or street boundaries are selected, fit to them
+    if (!this.activeNeighborhoodIds.has("all") || !this.activeStreetIds.has("all")) {
+      this.drawSelectedBoundaries();
+      return;
+    }
+
     const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
     if (!city) return;
 
     let center = city.center;
     let zoom = city.zoom || 12;
-
-    if (this.activeNeighborhoodId && this.activeNeighborhoodId !== "all" && city.neighborhoods) {
-      const nh = city.neighborhoods.find(n => n.id === this.activeNeighborhoodId);
-      if (nh && nh.center) {
-        center = nh.center;
-        zoom = nh.zoom || 15;
-      }
-    }
 
     if (this.googleMap && !this.isFallbackMode) {
       this.googleMap.panTo(center);
@@ -605,15 +1085,19 @@ export const MapExplorer = {
 
       const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
 
-      if (this.activeNeighborhoodId !== "all" && city?.neighborhoods) {
-        const nh = city.neighborhoods.find(n => n.id === this.activeNeighborhoodId);
-        if (nh) {
-          areaLabel = `${city.name.split(" ")[0]} · ${nh.name.split(" ")[0]}`;
-          locationQuery = `${nh.nameEn || nh.name} ${city.nameEn || city.name}`;
-          if (nh.center) {
-            center = nh.center;
-            radius = 2200;
-          }
+      if (!this.activeNeighborhoodIds.has("all")) {
+        const selectedNhs = [];
+        GTA_COMMUNITIES.forEach(c => {
+          (c.neighborhoods || []).forEach(n => {
+            if (this.activeNeighborhoodIds.has(n.id)) selectedNhs.push(n);
+          });
+        });
+        if (selectedNhs.length > 0) {
+          center = selectedNhs[0].center;
+          radius = selectedNhs[0].radius || 2500;
+          areaLabel = selectedNhs.map(n => n.name.split(" ")[0]).slice(0, 3).join("+");
+          if (selectedNhs.length > 3) areaLabel += `等${selectedNhs.length}商圈`;
+          locationQuery = selectedNhs.map(n => n.nameEn || n.name).join(" ");
         }
       } else if (city && city.id !== "all") {
         areaLabel = city.name.split(" ")[0];
@@ -632,11 +1116,11 @@ export const MapExplorer = {
         radius = 3500;
       }
 
-      if (this.activeStreetId !== "all") {
-        const st = GTA_STREETS.find(s => s.id === this.activeStreetId);
-        if (st && st.name) {
-          areaLabel += ` · ${st.name.split(" ")[0]}`;
-          locationQuery = `${st.name.split(" ")[0]} ${locationQuery}`;
+      if (!this.activeStreetIds.has("all")) {
+        const selectedSts = GTA_STREETS.filter(s => this.activeStreetIds.has(s.id));
+        if (selectedSts.length > 0) {
+          areaLabel += ` · ${selectedSts.map(s => s.name.split(" ")[0]).join("+")}`;
+          locationQuery = `${selectedSts.map(s => s.name.split(" ")[0]).join(" ")} ${locationQuery}`;
         }
       }
 
@@ -832,27 +1316,30 @@ export const MapExplorer = {
       result = result.filter(r => r.region && r.region.includes(matchCityStr));
     }
 
-    // 2. Neighborhood Filter
-    if (this.activeNeighborhoodId !== "all") {
-      const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
-      const nh = city?.neighborhoods?.find(n => n.id === this.activeNeighborhoodId);
-      if (nh && nh.keywords) {
-        result = result.filter(r => {
-          const text = [r.address, r.name, r.hubName, r.hubId].join(" ").toLowerCase();
-          return nh.keywords.some(kw => text.includes(kw.toLowerCase()));
+    // 2. Multi-Neighborhood Filter
+    if (!this.activeNeighborhoodIds.has("all")) {
+      const selectedNhs = [];
+      GTA_COMMUNITIES.forEach(c => {
+        (c.neighborhoods || []).forEach(n => {
+          if (this.activeNeighborhoodIds.has(n.id)) {
+            selectedNhs.push(n);
+          }
         });
-      }
+      });
+
+      result = result.filter(r => {
+        const text = [r.address, r.name, r.hubName, r.hubId].join(" ").toLowerCase();
+        return selectedNhs.some(nh => nh.keywords && nh.keywords.some(kw => text.includes(kw.toLowerCase())));
+      });
     }
 
-    // 3. Street Filter
-    if (this.activeStreetId !== "all") {
-      const st = GTA_STREETS.find(s => s.id === this.activeStreetId);
-      if (st && st.keyword) {
-        result = result.filter(r => {
-          const text = (r.address || "").toLowerCase();
-          return text.includes(st.keyword.toLowerCase());
-        });
-      }
+    // 3. Multi-Street Filter
+    if (!this.activeStreetIds.has("all")) {
+      const selectedStreets = GTA_STREETS.filter(s => this.activeStreetIds.has(s.id));
+      result = result.filter(r => {
+        const text = (r.address || "").toLowerCase();
+        return selectedStreets.some(st => st.keyword && text.includes(st.keyword.toLowerCase()));
+      });
     }
 
     // 4. KV Status Filter
@@ -923,13 +1410,28 @@ export const MapExplorer = {
 
     const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
     let titleStr = city ? city.name : "全大区餐馆";
-    if (this.activeNeighborhoodId !== "all" && city?.neighborhoods) {
-      const nh = city.neighborhoods.find(n => n.id === this.activeNeighborhoodId);
-      if (nh) titleStr += ` · ${nh.name}`;
+
+    if (!this.activeNeighborhoodIds.has("all")) {
+      const count = this.activeNeighborhoodIds.size;
+      if (count === 1) {
+        const nhId = Array.from(this.activeNeighborhoodIds)[0];
+        let foundNh = null;
+        GTA_COMMUNITIES.forEach(c => (c.neighborhoods || []).forEach(n => { if (n.id === nhId) foundNh = n; }));
+        if (foundNh) titleStr += ` · ${foundNh.name.split(" ")[0]}`;
+      } else {
+        titleStr += ` · 已选 ${count} 个商圈`;
+      }
     }
-    if (this.activeStreetId !== "all") {
-      const st = GTA_STREETS.find(s => s.id === this.activeStreetId);
-      if (st) titleStr += ` · ${st.name}`;
+
+    if (!this.activeStreetIds.has("all")) {
+      const count = this.activeStreetIds.size;
+      if (count === 1) {
+        const stId = Array.from(this.activeStreetIds)[0];
+        const st = GTA_STREETS.find(s => s.id === stId);
+        if (st) titleStr += ` · ${st.name.split(" ")[0]}`;
+      } else {
+        titleStr += ` · 已选 ${count} 条走廊`;
+      }
     }
 
     const totalCount = this.filteredRestaurants.length;
@@ -940,12 +1442,14 @@ export const MapExplorer = {
     if (unsavedCountEl) unsavedCountEl.textContent = unsavedCount.toLocaleString();
     if (badgeEl) {
       const modeLabel = this.isFallbackMode ? " (备用地图模式)" : "";
-      badgeEl.textContent = `📍 展示: ${totalCount.toLocaleString()} 家 (未入库: ${unsavedCount} 家)${modeLabel}`;
+      const zoom = this.googleMap ? (this.googleMap.getZoom() || 11) : (this.fallbackMap ? (this.fallbackMap.getZoom() || 11) : 11);
+      const clusterLabel = (zoom < 14 && (this.activeNeighborhoodIds.has("all") || totalCount > 40)) ? " [区域聚合视图]" : "";
+      badgeEl.textContent = `📍 展示: ${totalCount.toLocaleString()} 家 (未入库: ${unsavedCount} 家)${clusterLabel}${modeLabel}`;
     }
   },
 
   // -------------------------------------------------------------
-  // Map Markers Management (Google Maps & Leaflet)
+  // Map Markers Management (Google Maps & Leaflet with Zoom LOD)
   // -------------------------------------------------------------
   clearMarkers() {
     if (this.isFallbackMode && this.fallbackLayerGroup) {
@@ -958,18 +1462,153 @@ export const MapExplorer = {
     this.markersMap.clear();
   },
 
+  computeClusters() {
+    const clusters = [];
+    const matchedKeys = new Set();
+
+    // 1. Group by defined commercial neighborhoods
+    GTA_COMMUNITIES.forEach(city => {
+      if (this.activeCityId !== "all" && city.id !== this.activeCityId) return;
+
+      (city.neighborhoods || []).forEach(nh => {
+        if (!nh.keywords || !nh.center) return;
+        const nhRests = this.filteredRestaurants.filter(r => {
+          const text = [r.address, r.name, r.hubName, r.hubId].join(" ").toLowerCase();
+          return nh.keywords.some(kw => text.includes(kw.toLowerCase()));
+        });
+
+        if (nhRests.length > 0) {
+          nhRests.forEach(r => matchedKeys.add(r.placeId || r.name));
+          const unsaved = nhRests.filter(r => !r.inKV).length;
+          clusters.push({
+            id: nh.id,
+            name: nh.name.split(" (")[0],
+            center: nh.center,
+            totalCount: nhRests.length,
+            unsavedCount: unsaved
+          });
+        }
+      });
+    });
+
+    // 2. Group any remaining restaurants by city center
+    const unmatched = this.filteredRestaurants.filter(r => !matchedKeys.has(r.placeId || r.name));
+    if (unmatched.length > 0) {
+      GTA_COMMUNITIES.forEach(city => {
+        if (city.id === "all" || !city.center) return;
+        if (this.activeCityId !== "all" && city.id !== this.activeCityId) return;
+
+        const cityName = city.name.split(" ")[0];
+        const cityRests = unmatched.filter(r => r.region && r.region.includes(cityName));
+        if (cityRests.length > 0) {
+          const unsaved = cityRests.filter(r => !r.inKV).length;
+          clusters.push({
+            id: `city_${city.id}`,
+            name: `${cityName}其它社区`,
+            center: city.center,
+            totalCount: cityRests.length,
+            unsavedCount: unsaved
+          });
+        }
+      });
+    }
+
+    return clusters;
+  },
+
   renderMarkers() {
     this.clearMarkers();
 
-    if (this.isFallbackMode && this.fallbackMap && window.L) {
-      this.renderLeafletMarkers();
-      return;
-    }
+    const currentZoom = this.googleMap ? (this.googleMap.getZoom() || 11) : (this.fallbackMap ? (this.fallbackMap.getZoom() || 11) : 11);
+    const shouldCluster = currentZoom < 14 && (this.activeNeighborhoodIds.has("all") || this.filteredRestaurants.length > 40);
 
+    if (shouldCluster) {
+      if (this.isFallbackMode && this.fallbackMap && window.L) {
+        this.renderLeafletClusters();
+      } else if (this.googleMap && window.google && window.google.maps) {
+        this.renderGoogleClusters();
+      }
+    } else {
+      if (this.isFallbackMode && this.fallbackMap && window.L) {
+        this.renderLeafletMarkers();
+      } else if (this.googleMap && window.google && window.google.maps) {
+        this.renderGoogleMarkers();
+      }
+    }
+  },
+
+  renderGoogleClusters() {
+    const clusters = this.computeClusters();
+    clusters.forEach(c => {
+      const hasUnsaved = c.unsavedCount > 0;
+      const radius = Math.min(26, Math.max(16, 14 + Math.round(Math.log10(c.totalCount + 1) * 6)));
+      const badgeText = `${c.totalCount}${hasUnsaved ? `(+${c.unsavedCount})` : ''}`;
+
+      const marker = new google.maps.Marker({
+        position: c.center,
+        map: this.googleMap,
+        title: `${c.name}: 共 ${c.totalCount} 家餐馆 (未入库: ${c.unsavedCount}) - 点击放大查看详情`,
+        label: {
+          text: badgeText,
+          color: "#ffffff",
+          fontSize: "11px",
+          fontWeight: "bold"
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: hasUnsaved ? "#d97706" : "#2563eb",
+          fillOpacity: 0.95,
+          strokeWeight: 3,
+          strokeColor: "#ffffff",
+          scale: radius
+        },
+        zIndex: 200 + c.totalCount
+      });
+
+      marker.addListener("click", () => {
+        this.googleMap.panTo(c.center);
+        this.googleMap.setZoom(15);
+      });
+
+      this.markersMap.set(c.id, marker);
+    });
+  },
+
+  renderLeafletClusters() {
+    const clusters = this.computeClusters();
+    clusters.forEach(c => {
+      const hasUnsaved = c.unsavedCount > 0;
+      const bgClass = hasUnsaved ? "has-unsaved" : "";
+      const size = Math.min(54, Math.max(38, 34 + Math.round(Math.log10(c.totalCount + 1) * 10)));
+      const html = `
+        <div class="map-cluster-marker ${bgClass}" style="width:${size}px; height:${size}px;" title="${c.name}: 共 ${c.totalCount} 家餐馆 (未入库: ${c.unsavedCount}) - 点击放大查看">
+          <span class="map-cluster-count">${c.totalCount}</span>
+          ${hasUnsaved ? `<span class="map-cluster-sub">+${c.unsavedCount}新</span>` : ''}
+        </div>
+      `;
+
+      const icon = L.divIcon({
+        className: "map-cluster-icon-wrapper",
+        html: html,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+
+      const marker = L.marker([c.center.lat, c.center.lng], { icon, zIndexOffset: 200 + c.totalCount });
+      marker.on("click", () => {
+        this.fallbackMap.setView([c.center.lat, c.center.lng], 15);
+      });
+
+      this.fallbackLayerGroup.addLayer(marker);
+      this.markersMap.set(c.id, marker);
+    });
+  },
+
+  renderGoogleMarkers() {
     if (!this.googleMap || !window.google || !window.google.maps) return;
 
-    const bounds = new google.maps.LatLngBounds();
-    const pinsToRender = this.filteredRestaurants.slice(0, 1500);
+    // Render up to 250 pins when zoomed in for ultra smooth performance
+    const pinsToRender = this.filteredRestaurants.slice(0, 250);
 
     pinsToRender.forEach(r => {
       const lat = parseFloat(r.latitude);
@@ -977,8 +1616,6 @@ export const MapExplorer = {
       if (isNaN(lat) || isNaN(lng)) return;
 
       const pos = { lat, lng };
-      bounds.extend(pos);
-
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
 
@@ -1002,7 +1639,7 @@ export const MapExplorer = {
   renderLeafletMarkers() {
     if (!this.fallbackMap || !this.fallbackLayerGroup || !window.L) return;
 
-    const pinsToRender = this.filteredRestaurants.slice(0, 1500);
+    const pinsToRender = this.filteredRestaurants.slice(0, 250);
 
     pinsToRender.forEach(r => {
       const lat = parseFloat(r.latitude);
@@ -1152,18 +1789,27 @@ export const MapExplorer = {
     if (isNaN(lat) || isNaN(lng)) return;
 
     const key = r.placeId || r.name;
-    const marker = this.markersMap.get(key);
 
     if (this.isFallbackMode && this.fallbackMap) {
+      const wasMacro = (this.fallbackMap.getZoom() || 11) < 14;
       this.fallbackMap.setView([lat, lng], 16);
+      if (wasMacro) {
+        this.renderMarkers();
+      }
+      const marker = this.markersMap.get(key);
       if (marker && marker.openPopup) {
         marker.openPopup();
       }
     } else if (this.googleMap) {
+      const wasMacro = (this.googleMap.getZoom() || 11) < 14;
       this.googleMap.panTo({ lat, lng });
       if (this.googleMap.getZoom() < 15) {
         this.googleMap.setZoom(15);
       }
+      if (wasMacro) {
+        this.renderMarkers();
+      }
+      const marker = this.markersMap.get(key);
       if (marker) {
         this.showInfoWindow(r, marker);
       }

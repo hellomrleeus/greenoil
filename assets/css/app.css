@@ -2648,3 +2648,115 @@ body {
     min-height: 320px;
   }
 }
+
+/* Map Multi-Select Pills & Boundary Styles */
+.map-pills-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-height: 125px;
+  overflow-y: auto;
+  padding: 3px 1px;
+}
+
+.map-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.map-pill-btn:hover {
+  background: var(--surface-hover);
+  border-color: #cbd5e1;
+}
+
+.map-pill-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+
+.map-pill-btn.active .map-pill-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.map-pill-count {
+  display: inline-block;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.map-boundary-tooltip {
+  background: rgba(30, 58, 138, 0.88);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+}
+
+.leaflet-tooltip-pane .map-boundary-tooltip {
+  white-space: nowrap;
+}
+
+/* Cluster Badge Styles (LOD Map Engine) */
+.map-cluster-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #2563eb;
+  color: #ffffff;
+  border-radius: 50%;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  border: 2.5px solid #ffffff;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-align: center;
+}
+
+.map-cluster-marker:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
+}
+
+.map-cluster-marker.has-unsaved {
+  background: #d97706;
+  border-color: #fef3c7;
+}
+
+.map-cluster-count {
+  font-size: 13px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.map-cluster-sub {
+  font-size: 9px;
+  opacity: 0.95;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+

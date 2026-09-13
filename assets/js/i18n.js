@@ -94,7 +94,8 @@ export const TRANSLATIONS = {
     // Selection Bar
     sel_selected: "已选",
     sel_count: "{count} 家餐馆",
-    btn_clear_selection: "清空",
+    btn_clear: "清空选择",
+    btn_clear_selection: "清空选择",
     btn_export_selection: "导出所选 ({count} 家)",
 
     // Detail Modal
@@ -222,7 +223,8 @@ export const TRANSLATIONS = {
     fs_record_title_new: "新建外勤拜访记录",
     fs_record_title_edit: "编辑拜访记录",
     fs_record_select_rest: "关联餐馆",
-    fs_record_gps_prompt: "已根据当前位置推荐最近餐馆",
+    fs_record_gps_prompt: "🗺️ 优先推荐当前路线规划中的途经站点",
+    fs_record_route_prompt: "🗺️ 优先推荐当前路线规划中的途经站点（可直接从排线列表中记录）",
     fs_record_rest_not_found: "列表中未收录？",
     fs_record_btn_search_gmap: "通过 Google 地图添加",
     fs_record_method: "销售方式",
@@ -394,7 +396,8 @@ export const TRANSLATIONS = {
     // Selection Bar
     sel_selected: "Selected",
     sel_count: "{count} restaurants",
-    btn_clear_selection: "Clear",
+    btn_clear: "Clear Selection",
+    btn_clear_selection: "Clear Selection",
     btn_export_selection: "Export Selected ({count})",
 
     // Detail Modal
@@ -522,7 +525,8 @@ export const TRANSLATIONS = {
     fs_record_title_new: "New Field Sales Record",
     fs_record_title_edit: "Edit Sales Record",
     fs_record_select_rest: "Linked Restaurant",
-    fs_record_gps_prompt: "Nearest restaurant recommended based on GPS location",
+    fs_record_gps_prompt: "Recommended stops from route plan",
+    fs_record_route_prompt: "🗺️ Prioritizing stops from current route planning list",
     fs_record_rest_not_found: "Not in database?",
     fs_record_btn_search_gmap: "Add via Google Maps",
     fs_record_method: "Sales Method",
@@ -694,6 +698,7 @@ export const TRANSLATIONS = {
     // Selection Bar
     sel_selected: "선택됨",
     sel_count: "{count}개 식당",
+    btn_clear: "선택 해제",
     btn_clear_selection: "선택 해제",
     btn_export_selection: "선택 항목 내보내기 ({count}개)",
 
@@ -822,7 +827,8 @@ export const TRANSLATIONS = {
     fs_record_title_new: "현장 영업 방문 기록",
     fs_record_title_edit: "영업 기록 수정",
     fs_record_select_rest: "연계 식당",
-    fs_record_gps_prompt: "현재 위치 기반 가장 가까운 식당 추천",
+    fs_record_gps_prompt: "현재 경로 계획 기반 추천",
+    fs_record_route_prompt: "🗺️ 현재 경로 계획의 정류장을 우선 추천합니다",
     fs_record_rest_not_found: "목록에 없습니까?",
     fs_record_btn_search_gmap: "Google 지도에서 검색 추가",
     fs_record_method: "영업 방식",
