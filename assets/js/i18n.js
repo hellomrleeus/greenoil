@@ -302,7 +302,19 @@ export const TRANSLATIONS = {
     map_follow_bounds: "跟随地图视野实时筛选",
     map_reset_view: "重置视角",
     map_select_area: "全选当前筛选",
-    th_kv_status: "KV状态"
+    th_kv_status: "KV状态",
+    filter_visited: "是否拜访",
+    filter_outcome: "拜访结果",
+    visited_all: "全部 (拜访状态)",
+    visited_yes: "已拜访",
+    visited_no: "未拜访",
+    outcome_all: "全部结果",
+    outcome_contract: "签订合同",
+    outcome_interested: "有意向",
+    outcome_considering: "考虑中",
+    outcome_not_interested: "暂无意向",
+    outcome_rejected: "拒绝合作",
+    outcome_closed: "已打烊/关店"
   },
 
   en: {
@@ -603,7 +615,19 @@ export const TRANSLATIONS = {
     map_follow_bounds: "Filter by map viewport",
     map_reset_view: "Reset View",
     map_select_area: "Select All Filtered",
-    th_kv_status: "KV Status"
+    th_kv_status: "KV Status",
+    filter_visited: "Visited Status",
+    filter_outcome: "Visit Outcome",
+    visited_all: "All (Visited & Unvisited)",
+    visited_yes: "Visited",
+    visited_no: "Not Visited",
+    outcome_all: "All Outcomes",
+    outcome_contract: "Contract Signed",
+    outcome_interested: "Interested",
+    outcome_considering: "Considering",
+    outcome_not_interested: "Not Interested",
+    outcome_rejected: "Rejected",
+    outcome_closed: "Closed Down"
   },
 
   ko: {
@@ -904,7 +928,19 @@ export const TRANSLATIONS = {
     map_follow_bounds: "지도 시야 실시간 필터",
     map_reset_view: "시점 초기화",
     map_select_area: "현재 필터 전체 선택",
-    th_kv_status: "KV 상태"
+    th_kv_status: "KV 상태",
+    filter_visited: "방문 여부",
+    filter_outcome: "방문 결과",
+    visited_all: "전체 (방문 여부)",
+    visited_yes: "방문 완료",
+    visited_no: "미방문",
+    outcome_all: "전체 결과",
+    outcome_contract: "계약 완료",
+    outcome_interested: "관심 있음",
+    outcome_considering: "고려 중",
+    outcome_not_interested: "관심 없음",
+    outcome_rejected: "거절",
+    outcome_closed: "폐업/영업종료"
   }
 };
 

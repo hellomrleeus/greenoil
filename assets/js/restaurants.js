@@ -18,6 +18,8 @@ export const Restaurants = {
   activeCategory: "全部",
   searchQuery: "",
   sortBy: "rating",
+  activeVisited: "all",
+  activeOutcome: "all",
   viewMode: "cards",
   selectedRestaurant: null,
 
@@ -142,6 +144,24 @@ export const Restaurants = {
     if (sortSelect) {
       sortSelect.addEventListener("change", (e) => {
         this.sortBy = e.target.value;
+        this.currentPage = 1;
+        this.fetchData();
+      });
+    }
+
+    const filterVisitedSelect = document.getElementById("filterVisitedSelect");
+    if (filterVisitedSelect) {
+      filterVisitedSelect.addEventListener("change", (e) => {
+        this.activeVisited = e.target.value;
+        this.currentPage = 1;
+        this.fetchData();
+      });
+    }
+
+    const filterOutcomeSelect = document.getElementById("filterOutcomeSelect");
+    if (filterOutcomeSelect) {
+      filterOutcomeSelect.addEventListener("change", (e) => {
+        this.activeOutcome = e.target.value;
         this.currentPage = 1;
         this.fetchData();
       });
@@ -314,7 +334,9 @@ export const Restaurants = {
         hub: this.activeHub,
         keyword: this.searchQuery,
         category: this.activeCategory,
-        sort: this.sortBy
+        sort: this.sortBy,
+        visited: this.activeVisited,
+        outcome: this.activeOutcome
       });
 
       this.currentPageData = res.data || [];
@@ -509,7 +531,10 @@ export const Restaurants = {
               />
               <h4 class="rest-name">${this.escapeHtml(r.name)}</h4>
             </div>
-            <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+              <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
+              ${r.isVisited ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 5px; border-radius:3px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">🏷️ ${this.escapeHtml(r.lastOutcome || '已拜访')}</span>` : ''}
+            </div>
           </div>
 
           <div class="card-rating-row">
@@ -602,7 +627,10 @@ export const Restaurants = {
           </td>
           <td class="col-category" title="${this.escapeHtml(r.categoriesRaw)}">${this.escapeHtml(r.categoriesRaw)}</td>
           <td><b>★ ${r.rating ? r.rating.toFixed(1) : '-'}</b> (${r.reviews})</td>
-          <td><span class="status-badge ${statusObj.cls}">${statusObj.label}</span></td>
+          <td>
+            <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
+            ${r.isVisited ? `<div style="margin-top: 3px;"><span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 4px; border-radius:3px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">🏷️ ${this.escapeHtml(r.lastOutcome || '已拜访')}</span></div>` : ''}
+          </td>
           <td>${this.escapeHtml(r.price)}</td>
           <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(r.address)}</td>
           <td>${this.escapeHtml(r.phone)}</td>

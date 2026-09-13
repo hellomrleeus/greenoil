@@ -135,6 +135,28 @@
                     <option value="name" data-i18n="sort_name">餐馆名称 A-Z</option>
                   </select>
                 </div>
+
+                <div>
+                  <label class="form-label" for="filterVisitedSelect" data-i18n="filter_visited">是否拜访</label>
+                  <select class="form-select" id="filterVisitedSelect">
+                    <option value="all" data-i18n="visited_all">全部 (拜访状态)</option>
+                    <option value="visited" data-i18n="visited_yes">已拜访</option>
+                    <option value="unvisited" data-i18n="visited_no">未拜访</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="form-label" for="filterOutcomeSelect" data-i18n="filter_outcome">拜访结果</label>
+                  <select class="form-select" id="filterOutcomeSelect">
+                    <option value="all" data-i18n="outcome_all">全部结果</option>
+                    <option value="签订合同" data-i18n="outcome_contract">签订合同</option>
+                    <option value="有意向" data-i18n="outcome_interested">有意向</option>
+                    <option value="考虑中" data-i18n="outcome_considering">考虑中</option>
+                    <option value="暂无意向" data-i18n="outcome_not_interested">暂无意向</option>
+                    <option value="拒绝" data-i18n="outcome_rejected">拒绝合作</option>
+                    <option value="已打烊" data-i18n="outcome_closed">已打烊/关店</option>
+                  </select>
+                </div>
               </div>
 
               <!-- Categories Pill Filter & Action Buttons Bar (Always Horizontal) -->
@@ -696,230 +718,181 @@
 
         <!-- TAB 5: EMBEDDED GOOGLE MAPS RESTAURANT EXPLORER -->
         <section class="tab-view" id="tab-mapexplorer">
-          <!-- Community & Map Filters Card -->
-          <div class="card" style="margin-bottom: 1rem;">
-            <div class="filters-section">
-              <!-- Row 1: Granular Location Filters -->
-              <div class="map-filters-grid" style="grid-template-columns: 1fr 1fr 1.5fr;">
-                <div>
-                  <label class="form-label" for="mapCitySelect" data-i18n="map_filter_city">大区 / 城市</label>
-                  <select class="form-select" id="mapCitySelect">
-                    <option value="all">全部大区 (All GTA)</option>
-                    <option value="downtown">多伦多市中心 (Downtown)</option>
-                    <option value="markham">万锦 (Markham)</option>
-                    <option value="north_york">北约克 (North York)</option>
-                    <option value="scarborough">士嘉堡 (Scarborough)</option>
-                    <option value="richmond_hill">列治文山 (Richmond Hill)</option>
-                    <option value="mississauga">密西沙加 (Mississauga)</option>
-                    <option value="vaughan">旺市 (Vaughan)</option>
-                  </select>
+          <!-- Topbar Search & Filter Ribbon (Apartments.com inspired) -->
+          <div class="card map-explorer-toolbar-card" style="margin-bottom: 0.85rem; padding: 0.65rem 0.85rem;">
+            <div class="map-explorer-toolbar">
+              <!-- 1. Independent Area Search Pill with Floating Popover Panel -->
+              <div class="area-search-pill-container" id="areaSearchPillContainer">
+                <div class="area-search-pill-btn" id="areaSearchPillBtn" title="点击展开大区与商圈多选">
+                  <div class="area-active-tags-summary" id="areaActiveTagsSummary">
+                    <span class="area-tag-pill active">全部大区 (All GTA)</span>
+                  </div>
+                  <span class="area-pill-chevron">▼</span>
                 </div>
 
-                <div>
-                  <label class="form-label" for="mapKvStatusSelect" data-i18n="map_filter_kv">KV 入库状态</label>
-                  <select class="form-select" id="mapKvStatusSelect">
-                    <option value="all">全部餐馆 (已入库 + 未入库)</option>
-                    <option value="saved">✓ 仅看已入库 (已在KV)</option>
-                    <option value="unsaved">🆕 仅看未入库 (Google Maps 新发现)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="form-label" for="mapKeywordInput" data-i18n="search_label">关键词检索</label>
-                  <div style="display: flex; gap: 0.35rem;">
-                    <input type="text" class="form-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." />
-                    <button class="btn btn-primary" id="mapBtnSearchGmap" style="padding: 0 0.75rem; white-space: nowrap;" title="在 Google Maps 上深入搜索">
-                      <span>🔍</span>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Hidden legacy selects for compatibility -->
-                <select id="mapNeighborhoodSelect" style="display: none;"><option value="all">全部社区</option></select>
-                <select id="mapStreetSelect" style="display: none;"><option value="all">全部商业街廊</option></select>
-              </div>
-
-              <!-- Multi-Select Neighborhoods & Streets Container -->
-              <div class="map-multiselect-container" style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px dashed var(--border);">
-                <!-- Neighborhoods Row -->
-                <div class="map-multiselect-row" style="margin-bottom: 0.65rem;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 0.5rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                      <span style="font-weight: 700; font-size: 0.85rem; color: var(--primary-dark);">🏘️ 细分社区 / 商圈 (支持多选):</span>
-                      <span id="mapSelectedNeighborhoodsCount" class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.75rem;">全部社区</span>
+                <!-- Floating Popover Modal (Screenshot 2) -->
+                <div class="area-popover-panel" id="areaPopoverPanel" style="display: none;">
+                  <div class="popover-top-bar">
+                    <div class="popover-tags-row" id="popoverActiveTagsRow">
+                      <!-- Selected tags rendered dynamically with ✕ -->
                     </div>
-                    <div style="display: flex; gap: 0.6rem; font-size: 0.78rem;">
-                      <button type="button" class="btn-link" id="mapBtnAllNeighborhoods" style="color: #2563eb; background:none; border:none; cursor:pointer; font-weight: 600; padding:0;">+ 全选商圈</button>
-                      <span style="color: #cbd5e1;">|</span>
-                      <button type="button" class="btn-link" id="mapBtnClearNeighborhoods" style="color: #64748b; background:none; border:none; cursor:pointer; padding:0;">重置</button>
+                    <button type="button" class="btn-clear-all" id="popoverClearAllBtn">Clear All</button>
+                  </div>
+                  
+                  <div class="popover-search-input-wrap">
+                    <span class="popover-search-icon">🔍</span>
+                    <input type="text" id="popoverSearchInput" class="popover-search-input" placeholder="输入城市或商圈社区名称过滤..." />
+                    <button type="button" class="popover-search-submit" id="popoverSearchSubmit">➔</button>
+                  </div>
+
+                  <div class="popover-location-action" id="popoverCurrentLocationBtn">
+                    <span>🧭</span> <span>重置为多伦多大区中心 (All GTA)</span>
+                  </div>
+
+                  <!-- Cities Pills Section -->
+                  <div class="popover-section">
+                    <div class="popover-section-title">大区城市 (CITIES)</div>
+                    <div class="popover-pills-row" id="popoverCityPills">
+                      <!-- Rendered dynamically -->
                     </div>
                   </div>
-                  <div class="category-pills map-pills-scroll" id="mapNeighborhoodPills">
-                    <!-- Populated dynamically via JS -->
-                  </div>
-                </div>
 
-                <!-- Commercial Streets Row -->
-                <div class="map-multiselect-row">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 0.5rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                      <span style="font-weight: 700; font-size: 0.85rem; color: var(--primary-dark);">🛣️ 主要商业走廊 / 街道 (支持多选):</span>
-                      <span id="mapSelectedStreetsCount" class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.75rem;">全部走廊</span>
+                  <!-- Neighborhoods Pills Section -->
+                  <div class="popover-section" id="popoverNeighborhoodSection">
+                    <div class="popover-section-title">细分商圈 / 社区 (NEIGHBORHOODS)</div>
+                    <div class="popover-pills-row" id="popoverNeighborhoodPills">
+                      <!-- Rendered dynamically -->
                     </div>
-                    <div style="display: flex; gap: 0.6rem; font-size: 0.78rem;">
-                      <button type="button" class="btn-link" id="mapBtnAllStreets" style="color: #2563eb; background:none; border:none; cursor:pointer; font-weight: 600; padding:0;">+ 全选走廊</button>
-                      <span style="color: #cbd5e1;">|</span>
-                      <button type="button" class="btn-link" id="mapBtnClearStreets" style="color: #64748b; background:none; border:none; cursor:pointer; padding:0;">重置</button>
-                    </div>
-                  </div>
-                  <div class="category-pills map-pills-scroll" id="mapStreetPills">
-                    <!-- Populated dynamically via JS -->
                   </div>
                 </div>
               </div>
 
-              <!-- Row 2: Category Filters & Exploration Actions -->
-              <div class="filter-row-bottom">
-                <div class="filter-categories-wrap">
-                  <label class="form-label" data-i18n="cat_label" style="margin-bottom: 0.35rem;">品类筛选：</label>
-                  <div class="category-pills" id="mapCategoryPills">
-                    <button class="cat-pill active" data-category="全部" data-i18n="cat_all">全部</button>
-                    <button class="cat-pill" data-category="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</button>
-                    <button class="cat-pill" data-category="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</button>
-                    <button class="cat-pill" data-category="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</button>
-                    <button class="cat-pill" data-category="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</button>
-                    <button class="cat-pill" data-category="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</button>
-                    <button class="cat-pill" data-category="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</button>
+              <!-- 2. Category Dropdown Filter -->
+              <div class="toolbar-filter-item">
+                <select class="form-select toolbar-select" id="mapCategorySelect">
+                  <option value="全部">全部品类 (All Food)</option>
+                  <option value="中式/台式炸物小吃">中式/台式炸物</option>
+                  <option value="西式炸鸡/快餐/炸鸡翅">西式炸鸡快餐</option>
+                  <option value="韩式炸鸡">韩式炸鸡</option>
+                  <option value="炸鱼薯条">炸鱼薯条</option>
+                  <option value="日式炸物/炸猪排/天妇罗">日式炸物</option>
+                  <option value="热狗棒/吉事果/甜甜圈">热狗/甜甜圈</option>
+                </select>
+              </div>
+
+              <!-- 3. Visited Filter Dropdown (是否拜访过) -->
+              <div class="toolbar-filter-item">
+                <select class="form-select toolbar-select" id="mapVisitedSelect">
+                  <option value="all">是否拜访 (全部)</option>
+                  <option value="visited">已拜访</option>
+                  <option value="unvisited">未拜访</option>
+                </select>
+              </div>
+
+              <!-- 4. Outcome Filter Dropdown (拜访结果) -->
+              <div class="toolbar-filter-item">
+                <select class="form-select toolbar-select" id="mapOutcomeSelect">
+                  <option value="all">拜访结果 (全部)</option>
+                  <option value="签订合同">签订合同</option>
+                  <option value="有意向">有意向</option>
+                  <option value="考虑中">考虑中</option>
+                  <option value="暂无意向">暂无意向</option>
+                  <option value="拒绝">拒绝合作</option>
+                  <option value="已打烊">已打烊/关店</option>
+                </select>
+              </div>
+
+              <!-- 5. Search Keyword Input -->
+              <div class="toolbar-filter-item toolbar-search-wrap">
+                <input type="text" class="form-input toolbar-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." />
+                <button class="btn btn-primary btn-sm" id="mapBtnSearchGmap" title="搜索 Google Maps">🔍</button>
+              </div>
+
+              <!-- 6. Viewport follow checkbox & Reset view button -->
+              <div class="toolbar-actions-wrap" style="display: flex; align-items: center; gap: 0.5rem;">
+                <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; cursor: pointer; user-select: none; margin: 0; white-space: nowrap;">
+                  <input type="checkbox" id="mapFollowBounds" class="custom-checkbox" />
+                  <span data-i18n="map_follow_bounds">视野筛选</span>
+                </label>
+                <button class="btn btn-secondary btn-sm" id="mapResetViewBtn" title="重置视角">🔄</button>
+              </div>
+
+              <!-- Hidden legacy selects for script compatibility -->
+              <select id="mapCitySelect" style="display: none;"><option value="all">全部</option></select>
+              <select id="mapNeighborhoodSelect" style="display: none;"><option value="all">全部</option></select>
+              <select id="mapStreetSelect" style="display: none;"><option value="all">全部</option></select>
+              <select id="mapKvStatusSelect" style="display: none;"><option value="all">全部</option></select>
+            </div>
+          </div>
+
+          <!-- Google Maps API Not Activated Notice Banner -->
+          <div id="mapApiNotice" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <div>
+                <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;">
+                  ⚠️ Google Maps JavaScript API 尚未激活 (ApiNotActivatedMapError)
+                </div>
+                <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;">
+                  检测到您的 Google Cloud 项目尚未启用 <b>Maps JavaScript API</b>。已自动无缝切换至备用交互地图模式（餐馆标绘、社区筛选、导出与外勤路线功能正常可用）。
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;">
+                  🚀 前往 Google Cloud 一键启用
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Split Screen View: Left Map (~58%), Right List (~42%) (Apartments.com style) -->
+          <div class="map-explorer-split">
+            <!-- Left Map Column -->
+            <div class="map-explorer-map-column">
+              <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
+              <div class="map-floating-legend">
+                <span class="legend-item"><span class="legend-dot in-kv"></span>已在KV库</span>
+                <span class="legend-item"><span class="legend-dot new-place"></span>Google新店</span>
+                <span class="legend-item"><span class="legend-polygon"></span>区域精确边界</span>
+              </div>
+            </div>
+
+            <!-- Right List Column -->
+            <div class="map-explorer-list-column">
+              <!-- List Header -->
+              <div class="map-list-header">
+                <div>
+                  <h3 class="map-list-title" id="mapResultsRegionTitle">餐馆列表 (Restaurants)</h3>
+                  <div class="map-list-subtitle" id="mapResultsSummary">
+                    共匹配 <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">0</span> 家餐馆 
+                    <span style="color: #64748b;">(未入库: <span id="mapUnsavedCount" style="font-weight: 700; color: #d97706;">0</span> 家)</span>
                   </div>
                 </div>
-
-                <div class="filter-action-buttons">
-                  <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; user-select: none; margin: 0;">
-                    <input type="checkbox" id="mapFollowBounds" class="custom-checkbox" />
-                    <span data-i18n="map_follow_bounds">跟随地图视野实时筛选</span>
-                  </label>
-                  <button class="btn btn-secondary" id="mapResetViewBtn" style="white-space: nowrap;">
-                    <span>🔄</span> <span data-i18n="map_reset_view">重置视角</span>
+                <div class="map-list-actions">
+                  <button class="btn btn-secondary btn-sm" id="mapBtnSelectAll" title="全选当前餐馆">☑️ 全选</button>
+                  <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669;" title="批量保存到KV">
+                    <span>📥 +KV</span>
+                  </button>
+                  <button class="btn btn-primary btn-sm" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb;" title="规划路线">
+                    <span>🗺️ 路线</span>
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="mapBtnExportExcel" title="导出所选 Excel">
+                    <span>📊</span>
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <!-- Embedded Google Map Card -->
-          <div class="card map-canvas-card" style="margin-bottom: 1rem; padding: 0.75rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <h3 style="margin: 0; font-size: 1rem; font-weight: 700; color: var(--primary-dark);" id="mapResultsRegionTitle">
-                  全大区餐馆地图
-                </h3>
-                <span class="badge" id="mapMarkerCountBadge" style="background: #e0f2fe; color: #0369a1; font-weight: 600; font-size: 0.8rem; padding: 3px 8px; border-radius: 4px;">
-                  正在加载餐馆数据...
-                </span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.8rem; color: var(--text-muted);">
-                <span><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#10b981; margin-right:4px;"></span>已在KV库</span>
-                <span><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#f59e0b; margin-right:4px;"></span>未入库 (新发现)</span>
-                <span><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#2563eb; margin-right:4px;"></span>已选中</span>
-              </div>
-            </div>
-            <!-- Google Maps API Not Activated Notice Banner -->
-            <div id="mapApiNotice" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                <div>
-                  <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;">
-                    ⚠️ Google Maps JavaScript API 尚未激活 (ApiNotActivatedMapError)
-                  </div>
-                  <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;">
-                    检测到您的 Google Cloud 项目尚未启用 <b>Maps JavaScript API</b>。已自动无缝切换至备用交互地图模式（餐馆标绘、社区筛选、导出与外勤路线功能正常可用）。
-                  </div>
-                </div>
-                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                  <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;">
-                    🚀 前往 Google Cloud 一键启用
-                  </a>
-                  <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; text-decoration: none;">
-                    🔑 检查 Key 权限
-                  </a>
+              <!-- Scrollable Cards Container -->
+              <div class="map-places-cards-container" id="mapPlacesCardsContainer">
+                <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                  正在加载餐馆与地图数据...
                 </div>
               </div>
-            </div>
 
-            <!-- Google Map canvas container (Explicit height 500px to satisfy CF2) -->
-            <div id="mapExplorerCanvas" style="width: 100%; height: 500px; min-height: 420px; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid var(--border);"></div>
-          </div>
-
-          <!-- Synchronized Restaurants List Table Card -->
-          <div class="card">
-            <!-- Results Header & Action Toolbar -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
-              <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main);">
-                共匹配到 <span id="mapResultsCount" style="color: var(--primary); font-weight: 700;">0</span> 家餐馆
-                <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-muted); margin-left: 0.5rem;">
-                  (未入库: <span id="mapUnsavedCount" style="color: #d97706; font-weight: 700;">0</span> 家)
-                </span>
+              <!-- List Pagination -->
+              <div class="map-list-pagination" id="mapPaginationWrap" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.85rem; border-top: 1px solid var(--border); background: #f8fafc; font-size: 0.8rem;">
+                <div id="mapPaginationInfo" style="color: var(--text-muted);">显示 0 - 0 / 共 0 家</div>
+                <div id="mapPaginationControls" style="display: flex; gap: 0.35rem;"></div>
               </div>
-
-              <!-- Action Buttons Bar (Always Horizontal) -->
-              <div class="filter-action-buttons">
-                <button class="btn btn-secondary" id="mapBtnSelectAll">
-                  <span>☑️</span> <span data-i18n="btn_select_page">全选本页</span>
-                </button>
-                <button class="btn btn-secondary" id="mapBtnSelectArea">
-                  <span>🏷️</span> <span data-i18n="map_select_area">全选当前筛选</span>
-                </button>
-                <button class="btn btn-secondary" id="mapBtnClearSelection">
-                  <span>🧹</span> <span data-i18n="btn_clear">清空选择</span>
-                </button>
-                <button class="btn btn-primary" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669; font-weight: 600;">
-                  <span>📥</span> <span>批量添加到KV (0)</span>
-                </button>
-                <button class="btn btn-primary" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb;">
-                  <span>🗺️</span> <span>规划路线 (0)</span>
-                </button>
-                <button class="btn btn-primary" id="mapBtnExportExcel" style="background: #10b981; border-color: #10b981;">
-                  <span>📊</span> <span>导出所选 Excel (0)</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Table -->
-            <div class="table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th style="width: 40px; text-align: center;">
-                      <input type="checkbox" id="mapThSelectAll" class="custom-checkbox" />
-                    </th>
-                    <th data-i18n="th_name">餐馆名称</th>
-                    <th style="text-align: center;" data-i18n="th_kv_status">KV状态</th>
-                    <th data-i18n="th_region">区域</th>
-                    <th data-i18n="th_hub">商圈/社区</th>
-                    <th data-i18n="th_category">分类</th>
-                    <th data-i18n="th_rating">评分</th>
-                    <th data-i18n="th_status">状态</th>
-                    <th data-i18n="th_price">消费档次</th>
-                    <th data-i18n="th_address">地址</th>
-                    <th data-i18n="th_phone">电话</th>
-                    <th data-i18n="th_actions">操作</th>
-                  </tr>
-                </thead>
-                <tbody id="mapRestaurantsTableBody">
-                  <tr>
-                    <td colspan="12" style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                      正在加载餐馆数据...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Pagination -->
-            <div class="pagination" style="margin-top: 1rem;">
-              <div class="pagination-info" id="mapPaginationInfo">
-                显示 0 - 0 / 共 0 家餐馆
-              </div>
-              <div class="pagination-controls" id="mapPaginationControls"></div>
             </div>
           </div>
         </section>

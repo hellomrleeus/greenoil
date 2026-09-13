@@ -300,6 +300,32 @@ async function getConsolidatedRestaurants(env) {
           });
         }
       }
+
+      // Join with field sales visit records
+      let salesMap = new Map();
+      try {
+        const sales = await env.RESTAURANTS_KV.get(KV_SALES_KEY, { type: "json" });
+        if (Array.isArray(sales)) {
+          sales.forEach(s => {
+            if (s.restaurantId) salesMap.set(s.restaurantId.trim().toLowerCase(), s);
+            if (s.restaurantName) salesMap.set(s.restaurantName.trim().toLowerCase(), s);
+          });
+        }
+      } catch (err) {
+        console.warn("Error reading KV_SALES_KEY in getConsolidatedRestaurants:", err);
+      }
+
+      allRestaurants = allRestaurants.map(r => {
+        const idKey = (r.placeId || "").trim().toLowerCase();
+        const nameKey = (r.name || "").trim().toLowerCase();
+        const sale = (idKey && salesMap.get(idKey)) || (nameKey && salesMap.get(nameKey));
+        return {
+          ...r,
+          isVisited: !!sale,
+          lastOutcome: sale ? (sale.outcome || "有意向/跟进中") : "未拜访",
+          lastVisitTime: sale ? (sale.visitTime || "") : ""
+        };
+      });
     } catch (e) {
       console.warn("Error reading from RESTAURANTS_KV:", e);
     }
@@ -319,6 +345,8 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
   const keyword = (url.searchParams.get("keyword") || "").trim().toLowerCase();
   const category = (url.searchParams.get("category") || "全部").trim();
   const hub = (url.searchParams.get("hub") || "").trim();
+  const visited = (url.searchParams.get("visited") || "all").trim();
+  const outcome = (url.searchParams.get("outcome") || "all").trim();
   const sortBy = (url.searchParams.get("sort") || "rating").trim();
   const isMapFormat = url.searchParams.get("format") === "map";
 
@@ -353,7 +381,19 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
     });
   }
 
-  // 5. Apply Keyword Search
+  // 5. Apply Visited Status Filter
+  if (visited === "visited") {
+    filtered = filtered.filter(r => r.isVisited === true);
+  } else if (visited === "unvisited") {
+    filtered = filtered.filter(r => !r.isVisited);
+  }
+
+  // 6. Apply Visit Outcome Filter
+  if (outcome && outcome !== "all" && outcome !== "全部") {
+    filtered = filtered.filter(r => r.lastOutcome && r.lastOutcome.includes(outcome));
+  }
+
+  // 7. Apply Keyword Search
   if (keyword) {
     filtered = filtered.filter(r => {
       const searchTarget = [
@@ -371,7 +411,7 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
     });
   }
 
-  // 6. Apply Sorting
+  // 8. Apply Sorting
   filtered.sort((a, b) => {
     if (sortBy === "rating") {
       if ((b.rating || 0) !== (a.rating || 0)) return (b.rating || 0) - (a.rating || 0);
@@ -386,7 +426,7 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
     return 0;
   });
 
-  // 7. Pagination Slice
+  // 9. Pagination Slice
   const total = filtered.length;
   const totalPages = Math.ceil(total / pageSize) || 1;
   const startIndex = (page - 1) * pageSize;
@@ -408,7 +448,10 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
     longitude: r.longitude,
     hubId: r.hubId,
     hubName: r.hubName,
-    mapsUrl: r.mapsUrl
+    mapsUrl: r.mapsUrl,
+    isVisited: r.isVisited,
+    lastOutcome: r.lastOutcome,
+    lastVisitTime: r.lastVisitTime
   })) : paginatedData;
 
   return new Response(JSON.stringify({

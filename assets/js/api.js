@@ -33,6 +33,8 @@ export const Api = {
     hub = "",
     keyword = "",
     category = "全部",
+    visited = "all",
+    outcome = "all",
     sort = "rating"
   }) {
     const workerUrl = this.getWorkerUrl();
@@ -45,6 +47,8 @@ export const Api = {
     if (hub && hub !== "全部" && hub !== "all") url.searchParams.set("hub", hub);
     if (keyword) url.searchParams.set("keyword", keyword);
     if (category) url.searchParams.set("category", category);
+    if (visited && visited !== "all") url.searchParams.set("visited", visited);
+    if (outcome && outcome !== "all" && outcome !== "全部") url.searchParams.set("outcome", outcome);
     if (sort) url.searchParams.set("sort", sort);
 
     try {
