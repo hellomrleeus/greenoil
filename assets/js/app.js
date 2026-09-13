@@ -3,13 +3,10 @@
  */
 
 import { Auth } from "./auth.js";
-import { Api } from "./api.js";
 import { Restaurants } from "./restaurants.js";
 import { Calculator } from "./calculator.js";
 import { GreaseTrap } from "./grease-trap.js";
 import { i18n } from "./i18n.js";
-
-let lastApiStatus = null;
 
 export function initApp() {
   i18n.init();
@@ -17,17 +14,10 @@ export function initApp() {
   setupNavigation();
   setupAuth();
   setupMobileMenu();
-  setupSettings();
 
   Restaurants.init();
   Calculator.init();
   GreaseTrap.init();
-
-  checkApiStatus();
-
-  i18n.onLanguageChange(() => {
-    updateApiStatusDisplay(lastApiStatus);
-  });
 }
 
 function setupLanguageSwitcher() {
@@ -107,7 +97,6 @@ function setupAuth() {
       if (res.success) {
         if (loginAlert) loginAlert.style.display = "none";
         checkAndRenderAuth();
-        await checkApiStatus();
         Restaurants.fetchData();
       } else {
         if (loginAlert) {
@@ -150,82 +139,6 @@ function closeMobileSidebar() {
   const backdrop = document.getElementById("sidebarBackdrop");
   if (sidebar) sidebar.classList.remove("open");
   if (backdrop) backdrop.classList.remove("active");
-}
-
-function setupSettings() {
-  const btnTriggerSync = document.getElementById("btnTriggerSync");
-  const syncStatusText = document.getElementById("syncStatusText");
-
-  if (btnTriggerSync) {
-    btnTriggerSync.addEventListener("click", async () => {
-      if (!confirm(i18n.t("confirm_sync"))) {
-        return;
-      }
-
-      btnTriggerSync.disabled = true;
-      btnTriggerSync.innerHTML = `<span>${i18n.t("sync_in_progress")}</span>`;
-      if (syncStatusText) syncStatusText.textContent = i18n.t("syncing");
-
-      try {
-        const res = await Api.triggerSync();
-        if (res.success) {
-          alert(i18n.t("sync_completed"));
-          if (syncStatusText) syncStatusText.textContent = i18n.t("sync_count", { count: res.totalRecords });
-          Restaurants.fetchData();
-        } else {
-          alert(`${i18n.t("sync_failed")}: ${res.message || ''}`);
-          if (syncStatusText) syncStatusText.textContent = `${i18n.t("sync_failed")}: ${res.message}`;
-        }
-      } catch (err) {
-        alert(`${i18n.t("sync_exception")}: ${err.message}`);
-        if (syncStatusText) syncStatusText.textContent = `${i18n.t("sync_exception")}: ${err.message}`;
-      } finally {
-        btnTriggerSync.disabled = false;
-        btnTriggerSync.innerHTML = `<span>${i18n.t("btn_trigger_sync")}</span>`;
-      }
-    });
-  }
-}
-
-async function checkApiStatus() {
-  const status = await Api.getCacheStatus();
-  lastApiStatus = status;
-  updateApiStatusDisplay(status);
-}
-
-function updateApiStatusDisplay(status) {
-  const badge = document.getElementById("apiStatusBadge");
-  const syncStatusText = document.getElementById("syncStatusText");
-  const settingsWorkerStatus = document.getElementById("settingsWorkerStatus");
-  if (!badge) return;
-
-  if (status) {
-    badge.innerHTML = `<span class="dot"></span><span>${i18n.t("status_connected")}</span>`;
-    badge.style.color = "var(--primary)";
-    badge.style.borderColor = "rgba(5, 150, 105, 0.3)";
-    if (syncStatusText) {
-      syncStatusText.textContent = i18n.t("cached_count_msg", { count: status.cachedCount });
-    }
-    if (settingsWorkerStatus) {
-      settingsWorkerStatus.textContent = i18n.t("worker_online_count", { count: status.cachedCount });
-      settingsWorkerStatus.style.background = "#ecfdf5";
-      settingsWorkerStatus.style.color = "#047857";
-      settingsWorkerStatus.style.borderColor = "rgba(5, 150, 105, 0.3)";
-    }
-  } else {
-    badge.innerHTML = `<span class="dot" style="background:#f59e0b;"></span><span>${i18n.t("status_disconnected")}</span>`;
-    badge.style.color = "#d97706";
-    badge.style.borderColor = "rgba(245, 158, 11, 0.3)";
-    if (syncStatusText) {
-      syncStatusText.textContent = i18n.t("backend_not_connected");
-    }
-    if (settingsWorkerStatus) {
-      settingsWorkerStatus.textContent = i18n.t("worker_disconnected");
-      settingsWorkerStatus.style.background = "#fffbeb";
-      settingsWorkerStatus.style.color = "#d97706";
-      settingsWorkerStatus.style.borderColor = "rgba(245, 158, 11, 0.3)";
-    }
-  }
 }
 
 if (document.readyState === "loading") {

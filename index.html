@@ -39,11 +39,6 @@
           <span class="nav-icon">🛢️</span>
           <span data-i18n="nav_greasetrap">Grease Trap</span>
         </button>
-
-        <button class="nav-item" data-tab="tab-settings" data-title="设置" data-title-key="page_title_settings">
-          <span class="nav-icon">⚙️</span>
-          <span data-i18n="nav_settings">设置</span>
-        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -77,11 +72,6 @@
               <option value="en">🇨🇦 English</option>
               <option value="ko">🇰🇷 한국어</option>
             </select>
-          </div>
-
-          <div class="api-badge" id="apiStatusBadge">
-            <span class="dot"></span>
-            <span data-i18n="status_connecting">连接中</span>
           </div>
         </div>
       </header>
@@ -461,32 +451,6 @@
               </div>
             </div>
 
-          </div>
-        </section>
-
-        <!-- TAB 4: SETTINGS -->
-        <section class="tab-view" id="tab-settings">
-          <div class="card" style="max-width: 600px;">
-            <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 1.25rem;" data-i18n="settings_title">
-              系统设置
-            </h3>
-
-            <div class="form-group">
-              <label class="form-label" data-i18n="settings_backend_label">后端服务</label>
-              <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.25rem 0;">
-                <span class="api-badge" id="settingsWorkerStatus" data-i18n="settings_backend_status">检测中...</span>
-              </div>
-            </div>
-
-            <hr style="border: none; border-top: 1px solid var(--surface-border); margin: 1.5rem 0;" />
-
-            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;" data-i18n="settings_sync_title">后台数据更新</h4>
-            <div id="syncStatusText" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;" data-i18n="settings_sync_desc">
-              当前数据源已全量深度采集大多伦多 2,585 家餐馆并直灌 Cloudflare KV 数据库，支持高并发秒级检索。
-            </div>
-            <button class="btn btn-secondary btn-sm" id="btnTriggerSync">
-              <span data-i18n="btn_trigger_sync">立即同步</span>
-            </button>
           </div>
         </section>
 

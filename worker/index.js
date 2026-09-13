@@ -58,30 +58,7 @@ export default {
         return await handleGetCachedRestaurants(request, env, corsHeaders);
       }
 
-      // 3. Cache status (Protected)
-      if (url.pathname === "/api/cache/status" && request.method === "GET") {
-        const isAuthed = checkAuth(request, env);
-        if (!isAuthed) {
-          return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
-          });
-        }
-        return await handleCacheStatus(env, corsHeaders);
-      }
-
-      // 4. Sync endpoint notice (Google Maps API sync removed)
-      if (url.pathname === "/api/sync") {
-        return new Response(JSON.stringify({
-          status: "disabled",
-          message: "云端在线同步已停用，数据采用本地安全脚本全量采集后灌入 KV"
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        });
-      }
-
-      // 5. Health check
+      // 3. Health check
       if (url.pathname === "/" || url.pathname === "/api/health") {
         return new Response(JSON.stringify({
           status: "healthy",
@@ -333,30 +310,3 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
   });
 }
 
-/**
- * Check cache status
- */
-async function handleCacheStatus(env, corsHeaders) {
-  let count = 0;
-  let lastUpdated = "未同步";
-
-  if (env.RESTAURANTS_KV) {
-    try {
-      const cached = await env.RESTAURANTS_KV.get(KV_CACHE_KEY, { type: "json" });
-      if (cached && Array.isArray(cached)) count = cached.length;
-      const updated = await env.RESTAURANTS_KV.get(KV_LAST_UPDATED_KEY);
-      if (updated) lastUpdated = updated;
-    } catch {}
-  }
-
-  return new Response(JSON.stringify({
-    status: "ok",
-    cachedCount: count,
-    lastUpdated,
-    kvEnabled: Boolean(env.RESTAURANTS_KV),
-    syncMode: "local_ingestion"
-  }), {
-    status: 200,
-    headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
-}

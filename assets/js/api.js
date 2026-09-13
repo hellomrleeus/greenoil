@@ -75,50 +75,6 @@ export const Api = {
   },
 
   /**
-   * Trigger manual background sync on Cloudflare Worker
-   */
-  async triggerSync() {
-    const workerUrl = this.getWorkerUrl();
-    const token = localStorage.getItem("greenoil_session_token") || "";
-
-    const resp = await fetch(`${workerUrl}/api/sync`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      },
-      credentials: "include"
-    });
-
-    if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error(`Sync failed: HTTP ${resp.status} - ${err}`);
-    }
-
-    return await resp.json();
-  },
-
-  /**
-   * Check Worker health and cache status
-   */
-  async getCacheStatus() {
-    const workerUrl = this.getWorkerUrl();
-    const token = localStorage.getItem("greenoil_session_token") || "";
-    try {
-      const resp = await fetch(`${workerUrl}/api/cache/status`, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
-        credentials: "include"
-      });
-      if (resp.ok) return await resp.json();
-      return null;
-    } catch {
-      return null;
-    }
-  },
-
-  /**
    * Remote login against Cloudflare Worker backend
    */
   async login(username, password) {
