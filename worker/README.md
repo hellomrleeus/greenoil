@@ -37,6 +37,8 @@ npx wrangler secret put GOOGLE_MAPS_API_KEY
 # 提示时粘贴您的 Google Maps API Key
 ```
 
+餐馆数据已迁移到 D1 数据库 `greenoil-restaurants`。餐馆地图查询使用 `bbox=west,south,east,north` 经纬度条件，一次返回当前范围内的完整结果；D1 迁移完成后，餐馆数据相关 KV 键不再需要。商圈汇总和路线配置仍保存在 KV。
+
 ### 2. 部署到 Cloudflare
 ```bash
 npx wrangler deploy

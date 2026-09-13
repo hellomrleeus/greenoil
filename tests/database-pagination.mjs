@@ -42,9 +42,10 @@ try {
  await request('/api/sales?id=v1','DELETE');
  assert.equal((await (await request('/api/restaurants?visited=visited')).json()).total,0);
  assert.equal((await request('/api/restaurants/update','POST',{placeId:'missing',updates:{name:'Missing'}})).status,404);
- const q=restaurantQuery(new URLSearchParams('bbox=-79.4,43.8,-79.2,43.9'));
+const q=restaurantQuery(new URLSearchParams('bbox=-79.4,43.8,-79.2,43.9'));
  const explain=run({statements:[{sql:'EXPLAIN QUERY PLAN '+q.select,args:[...q.values,20,0]}]});
- assert(JSON.stringify(explain).includes('restaurants_lat_lng'));
+assert(JSON.stringify(explain).includes('restaurants_lat_lng'));
+assert.equal(restaurantQuery(new URLSearchParams('format=map&pageSize=5000')).pageSize,5000);
  const unauth=await worker.fetch(new Request('https://example.test/api/restaurants'),env);assert.equal(unauth.status,401);
  console.log('PASS: real SQLite queries, stable paging, bbox index, SQL injection, restaurant + visit CRUD, auth, no KV reads/writes');
 } finally {fs.rmSync(dir,{recursive:true,force:true})}

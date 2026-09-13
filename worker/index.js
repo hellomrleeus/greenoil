@@ -5,8 +5,8 @@ import * as Database from "./database.js";
  * 
  * Features:
  * 1. High-Performance D1 Storage for GTA Fried Food Restaurants (KV fallback)
- * 2. Field Sales Visit Records (CRUD in Cloudflare KV)
- * 3. Restaurant Modification & Custom Addition Sync to KV
+ * 2. Field Sales Visit Records (CRUD in Cloudflare D1, KV fallback)
+ * 3. Restaurant Modification & Custom Addition Sync to D1
  * 4. Google Maps Places API (New) & Routes API Proxies
  * 5. Server-side Filtering, Search, Sorting, and Pagination
  * 6. Secure Credential Authentication with Cookie & Token (greenoil_session)
@@ -68,12 +68,12 @@ export default {
         return await handleGetCachedRestaurants(request, env, corsHeaders);
       }
 
-      // 3. Update restaurant info in KV (Protected)
+      // 3. Update restaurant info in D1 (Protected)
       if (url.pathname === "/api/restaurants/update" && request.method === "POST") {
         return await handleUpdateRestaurant(request, env, corsHeaders);
       }
 
-      // 4. Add new restaurant to KV (Protected)
+      // 4. Add new restaurant to D1 (Protected)
       if ((url.pathname === "/api/restaurants/add" || url.pathname === "/api/restaurants/batch-add") && request.method === "POST") {
         return await handleAddRestaurant(request, env, corsHeaders);
       }

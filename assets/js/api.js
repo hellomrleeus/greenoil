@@ -377,7 +377,8 @@ export const Api = {
   async getMapRestaurants({ bbox, page = 1, category = "全部", keyword = "", visited = "all", outcome = "all", signal } = {}) {
     const url = new URL(`${this.getWorkerUrl()}/api/restaurants`);
     url.searchParams.set("page", page);
-    url.searchParams.set("pageSize", "200");
+    // D1 applies the viewport bbox in SQL; return the complete visible set in one response.
+    url.searchParams.set("pageSize", "5000");
     url.searchParams.set("format", "map");
     if (!Array.isArray(bbox) || bbox.length !== 4) throw new Error("Map bounds required");
     url.searchParams.set("bbox", bbox.join(","));

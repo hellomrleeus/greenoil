@@ -9,7 +9,7 @@ export function restaurantQuery(params) {
   const add=(sql,...args)=>{clauses.push(sql);values.push(...args)};
   const page = Number(params.get('page') || 1), size=Number(params.get('pageSize') || 20);
   if (!Number.isInteger(page)||page<1||!Number.isInteger(size)||size<1) throw new Error('Invalid pagination');
-  const pageSize=Math.min(params.get('format')==='map'?200:1000,size);
+  const pageSize=Math.min(params.get('format')==='map'?5000:1000,size);
   if(params.has('bbox')) {
     const raw=params.get('bbox').split(',');
     const box=raw.map(Number);

@@ -1159,7 +1159,7 @@ export const MapExplorer = {
       areaQuery = "restaurants in Toronto Ontario";
     }
 
-    // Start the bounded database page independently of Google discovery.
+    // Query the complete restaurant set for this viewport independently of Google discovery.
     this.displayedPlaces = [];
     this.filterAndRenderPlaces();
     const databaseLoad = this.loadMoreMapRestaurants();
@@ -1978,7 +1978,7 @@ export const MapExplorer = {
       }
     }
     if (more) {
-      more.hidden = !this.mapQueryHasMore;
+        more.hidden = !this.mapQueryHasMore;
       const lang = this.getCurrentLanguage();
       more.textContent = lang === "en" ? "Load more restaurants in this view" : lang === "ko" ? "현재 지도에서 음식점 더 불러오기" : "加载当前范围内更多餐馆";
     }
