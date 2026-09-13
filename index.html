@@ -30,6 +30,11 @@
           <span data-i18n="nav_restaurants">餐馆查询</span>
         </button>
 
+        <button class="nav-item" data-tab="tab-mapexplorer" data-title="地图找店" data-title-key="page_title_mapexplorer">
+          <span class="nav-icon">🗺️</span>
+          <span data-i18n="nav_mapexplorer">地图找店</span>
+        </button>
+
         <button class="nav-item" data-tab="tab-calculator" data-title="用油计算器" data-title-key="page_title_calculator">
           <span class="nav-icon">⚡</span>
           <span data-i18n="nav_calculator">用油计算器</span>
@@ -130,31 +135,33 @@
                     <option value="name" data-i18n="sort_name">餐馆名称 A-Z</option>
                   </select>
                 </div>
-
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                  <button class="btn btn-secondary" id="btnSelectAllPage" style="white-space: nowrap;">
-                    <span data-i18n="btn_select_page">全选本页</span>
-                  </button>
-                  <button class="btn btn-primary" id="btnPlanRouteTop" style="white-space: nowrap; background: #2563eb; border-color: #2563eb;">
-                    <span>🗺️</span> <span data-i18n="btn_plan_route">规划路线</span>
-                  </button>
-                  <button class="btn btn-primary" id="btnExportCsv" style="white-space: nowrap; background: #10b981; border-color: #10b981;">
-                    <span data-i18n="btn_export_csv">导出所选</span>
-                  </button>
-                </div>
               </div>
 
-              <!-- Categories Pill Filter -->
-              <div>
-                <label class="form-label" data-i18n="cat_label">品类筛选：</label>
-                <div class="category-pills" id="categoryPills">
-                  <button class="cat-pill active" data-category="全部" data-i18n="cat_all">全部</button>
-                  <button class="cat-pill" data-category="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</button>
-                  <button class="cat-pill" data-category="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</button>
-                  <button class="cat-pill" data-category="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</button>
-                  <button class="cat-pill" data-category="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</button>
-                  <button class="cat-pill" data-category="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</button>
-                  <button class="cat-pill" data-category="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</button>
+              <!-- Categories Pill Filter & Action Buttons Bar (Always Horizontal) -->
+              <div class="filter-row-bottom">
+                <div class="filter-categories-wrap">
+                  <label class="form-label" data-i18n="cat_label" style="margin-bottom: 0.35rem;">品类筛选：</label>
+                  <div class="category-pills" id="categoryPills">
+                    <button class="cat-pill active" data-category="全部" data-i18n="cat_all">全部</button>
+                    <button class="cat-pill" data-category="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</button>
+                    <button class="cat-pill" data-category="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</button>
+                    <button class="cat-pill" data-category="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</button>
+                    <button class="cat-pill" data-category="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</button>
+                    <button class="cat-pill" data-category="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</button>
+                    <button class="cat-pill" data-category="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</button>
+                  </div>
+                </div>
+
+                <div class="filter-action-buttons">
+                  <button class="btn btn-secondary" id="btnSelectAllPage">
+                    <span data-i18n="btn_select_page">全选本页</span>
+                  </button>
+                  <button class="btn btn-primary" id="btnPlanRouteTop" style="background: #2563eb; border-color: #2563eb;">
+                    <span>🗺️</span> <span data-i18n="btn_plan_route">规划路线</span>
+                  </button>
+                  <button class="btn btn-primary" id="btnExportCsv" style="background: #10b981; border-color: #10b981;">
+                    <span data-i18n="btn_export_csv">导出所选</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -685,6 +692,188 @@
 
           </div>
 
+        </section>
+
+        <!-- TAB 5: EMBEDDED GOOGLE MAPS RESTAURANT EXPLORER -->
+        <section class="tab-view" id="tab-mapexplorer">
+          <!-- Community & Map Filters Card -->
+          <div class="card" style="margin-bottom: 1rem;">
+            <div class="filters-section">
+              <!-- Row 1: Granular Location Filters -->
+              <div class="map-filters-grid">
+                <div>
+                  <label class="form-label" for="mapCitySelect" data-i18n="map_filter_city">大区 / 城市</label>
+                  <select class="form-select" id="mapCitySelect">
+                    <option value="all">全部大区 (All GTA)</option>
+                    <option value="downtown">多伦多市中心 (Downtown)</option>
+                    <option value="markham">万锦 (Markham)</option>
+                    <option value="north_york">北约克 (North York)</option>
+                    <option value="scarborough">士嘉堡 (Scarborough)</option>
+                    <option value="richmond_hill">列治文山 (Richmond Hill)</option>
+                    <option value="mississauga">密西沙加 (Mississauga)</option>
+                    <option value="vaughan">旺市 (Vaughan)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="form-label" for="mapNeighborhoodSelect" data-i18n="map_filter_neighborhood">细分社区 / 商圈</label>
+                  <select class="form-select" id="mapNeighborhoodSelect" disabled>
+                    <option value="all">全部社区 (All Neighborhoods)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="form-label" for="mapStreetSelect" data-i18n="map_filter_street">主要商业走廊 / 街道</label>
+                  <select class="form-select" id="mapStreetSelect">
+                    <option value="all">全部商业街廊</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="form-label" for="mapKvStatusSelect" data-i18n="map_filter_kv">KV 入库状态</label>
+                  <select class="form-select" id="mapKvStatusSelect">
+                    <option value="all">全部餐馆 (已入库 + 未入库)</option>
+                    <option value="saved">✓ 仅看已入库 (已在KV)</option>
+                    <option value="unsaved">🆕 仅看未入库 (Google Maps 新发现)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="form-label" for="mapKeywordInput" data-i18n="search_label">关键词检索</label>
+                  <div style="display: flex; gap: 0.35rem;">
+                    <input type="text" class="form-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." />
+                    <button class="btn btn-primary" id="mapBtnSearchGmap" style="padding: 0 0.75rem; white-space: nowrap;" title="在 Google Maps 上深入搜索">
+                      <span>🔍</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Row 2: Category Filters & Exploration Actions -->
+              <div class="filter-row-bottom">
+                <div class="filter-categories-wrap">
+                  <label class="form-label" data-i18n="cat_label" style="margin-bottom: 0.35rem;">品类筛选：</label>
+                  <div class="category-pills" id="mapCategoryPills">
+                    <button class="cat-pill active" data-category="全部" data-i18n="cat_all">全部</button>
+                    <button class="cat-pill" data-category="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</button>
+                    <button class="cat-pill" data-category="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</button>
+                    <button class="cat-pill" data-category="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</button>
+                    <button class="cat-pill" data-category="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</button>
+                    <button class="cat-pill" data-category="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</button>
+                    <button class="cat-pill" data-category="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</button>
+                  </div>
+                </div>
+
+                <div class="filter-action-buttons">
+                  <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; user-select: none; margin: 0;">
+                    <input type="checkbox" id="mapFollowBounds" class="custom-checkbox" />
+                    <span data-i18n="map_follow_bounds">跟随地图视野实时筛选</span>
+                  </label>
+                  <button class="btn btn-secondary" id="mapResetViewBtn" style="white-space: nowrap;">
+                    <span>🔄</span> <span data-i18n="map_reset_view">重置视角</span>
+                  </button>
+                  <button class="btn btn-primary" id="mapBtnExploreGmap" style="background: #0284c7; border-color: #0284c7; white-space: nowrap;">
+                    <span>🌐</span> <span data-i18n="map_explore_gmap">探测当前区域 Google Maps 餐馆</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Embedded Google Map Card -->
+          <div class="card map-canvas-card" style="margin-bottom: 1rem; padding: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <h3 style="margin: 0; font-size: 1rem; font-weight: 700; color: var(--primary-dark);" id="mapResultsRegionTitle">
+                  全大区餐馆地图
+                </h3>
+                <span class="badge" id="mapMarkerCountBadge" style="background: #e0f2fe; color: #0369a1; font-weight: 600; font-size: 0.8rem; padding: 3px 8px; border-radius: 4px;">
+                  正在加载餐馆数据...
+                </span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.8rem; color: var(--text-muted);">
+                <span><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#10b981; margin-right:4px;"></span>已在KV库</span>
+                <span><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#f59e0b; margin-right:4px;"></span>未入库 (新发现)</span>
+                <span><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#2563eb; margin-right:4px;"></span>已选中</span>
+              </div>
+            </div>
+            <!-- Google Map canvas container (Explicit height 500px to satisfy CF2) -->
+            <div id="mapExplorerCanvas" style="width: 100%; height: 500px; min-height: 420px; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid var(--border);"></div>
+          </div>
+
+          <!-- Synchronized Restaurants List Table Card -->
+          <div class="card">
+            <!-- Results Header & Action Toolbar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem;">
+              <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main);">
+                共匹配到 <span id="mapResultsCount" style="color: var(--primary); font-weight: 700;">0</span> 家餐馆
+                <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-muted); margin-left: 0.5rem;">
+                  (未入库: <span id="mapUnsavedCount" style="color: #d97706; font-weight: 700;">0</span> 家)
+                </span>
+              </div>
+
+              <!-- Action Buttons Bar (Always Horizontal) -->
+              <div class="filter-action-buttons">
+                <button class="btn btn-secondary" id="mapBtnSelectAll">
+                  <span>☑️</span> <span data-i18n="btn_select_page">全选本页</span>
+                </button>
+                <button class="btn btn-secondary" id="mapBtnSelectArea">
+                  <span>🏷️</span> <span data-i18n="map_select_area">全选当前筛选</span>
+                </button>
+                <button class="btn btn-secondary" id="mapBtnClearSelection">
+                  <span data-i18n="btn_clear">清空选择</span>
+                </button>
+                <button class="btn btn-primary" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669; font-weight: 600;">
+                  <span>📥</span> <span>批量添加到KV (0)</span>
+                </button>
+                <button class="btn btn-primary" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb;">
+                  <span>🗺️</span> <span>规划路线 (0)</span>
+                </button>
+                <button class="btn btn-primary" id="mapBtnExportExcel" style="background: #10b981; border-color: #10b981;">
+                  <span>📊</span> <span>导出所选 Excel (0)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 40px; text-align: center;">
+                      <input type="checkbox" id="mapThSelectAll" class="custom-checkbox" />
+                    </th>
+                    <th data-i18n="th_name">餐馆名称</th>
+                    <th style="text-align: center;" data-i18n="th_kv_status">KV状态</th>
+                    <th data-i18n="th_region">区域</th>
+                    <th data-i18n="th_hub">商圈/社区</th>
+                    <th data-i18n="th_category">分类</th>
+                    <th data-i18n="th_rating">评分</th>
+                    <th data-i18n="th_status">状态</th>
+                    <th data-i18n="th_price">消费档次</th>
+                    <th data-i18n="th_address">地址</th>
+                    <th data-i18n="th_phone">电话</th>
+                    <th data-i18n="th_actions">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="mapRestaurantsTableBody">
+                  <tr>
+                    <td colspan="12" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                      正在加载餐馆数据...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination" style="margin-top: 1rem;">
+              <div class="pagination-info" id="mapPaginationInfo">
+                显示 0 - 0 / 共 0 家餐馆
+              </div>
+              <div class="pagination-controls" id="mapPaginationControls"></div>
+            </div>
+          </div>
         </section>
 
       </main>

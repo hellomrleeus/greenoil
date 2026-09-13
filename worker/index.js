@@ -53,7 +53,7 @@ export default {
 
       // All routes below require authentication
       const isAuthed = checkAuth(request, env);
-      if (!isAuthed && url.pathname !== "/" && url.pathname !== "/api/health") {
+      if (!isAuthed && url.pathname !== "/" && url.pathname !== "/api/health" && url.pathname !== "/api/maps/config") {
         return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -71,7 +71,7 @@ export default {
       }
 
       // 4. Add new restaurant to KV (Protected)
-      if (url.pathname === "/api/restaurants/add" && request.method === "POST") {
+      if ((url.pathname === "/api/restaurants/add" || url.pathname === "/api/restaurants/batch-add") && request.method === "POST") {
         return await handleAddRestaurant(request, env, corsHeaders);
       }
 
@@ -104,7 +104,17 @@ export default {
         return await handlePlanRoute(request, env, corsHeaders);
       }
 
-      // 9. Health check
+      // 9. Google Maps Client Config
+      if (url.pathname === "/api/maps/config" && request.method === "GET") {
+        return new Response(JSON.stringify({
+          apiKey: env.GOOGLE_MAPS_API_KEY || "AIzaSyCxkEVTsCSf3BbAgKvHi0x0SWG4L09C0Tw"
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // 10. Health check
       if (url.pathname === "/" || url.pathname === "/api/health") {
         return new Response(JSON.stringify({
           status: "healthy",
@@ -304,12 +314,13 @@ async function getConsolidatedRestaurants(env) {
 async function handleGetCachedRestaurants(request, env, corsHeaders) {
   const url = new URL(request.url);
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
-  const pageSize = Math.min(200, Math.max(5, parseInt(url.searchParams.get("pageSize") || "20", 10)));
+  const pageSize = Math.min(4000, Math.max(5, parseInt(url.searchParams.get("pageSize") || "20", 10)));
   const region = (url.searchParams.get("region") || "全部 (All GTA)").trim();
   const keyword = (url.searchParams.get("keyword") || "").trim().toLowerCase();
   const category = (url.searchParams.get("category") || "全部").trim();
   const hub = (url.searchParams.get("hub") || "").trim();
   const sortBy = (url.searchParams.get("sort") || "rating").trim();
+  const isMapFormat = url.searchParams.get("format") === "map";
 
   // 1. Retrieve dataset from KV with patches applied
   const { allRestaurants, lastUpdated } = await getConsolidatedRestaurants(env);
@@ -381,6 +392,25 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
   const startIndex = (page - 1) * pageSize;
   const paginatedData = filtered.slice(startIndex, startIndex + pageSize);
 
+  const outputData = isMapFormat ? paginatedData.map(r => ({
+    placeId: r.placeId,
+    name: r.name,
+    region: r.region,
+    address: r.address,
+    phone: r.phone,
+    rating: r.rating,
+    reviews: r.reviews,
+    price: r.price,
+    status: r.status,
+    categoriesRaw: r.categoriesRaw,
+    categories: r.categories,
+    latitude: r.latitude,
+    longitude: r.longitude,
+    hubId: r.hubId,
+    hubName: r.hubName,
+    mapsUrl: r.mapsUrl
+  })) : paginatedData;
+
   return new Response(JSON.stringify({
     success: true,
     page,
@@ -388,7 +418,7 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
     total,
     totalPages,
     lastUpdated,
-    data: paginatedData
+    data: outputData
   }), {
     status: 200,
     headers: {
@@ -454,7 +484,7 @@ async function handleUpdateRestaurant(request, env, corsHeaders) {
 }
 
 /**
- * Add a new Restaurant to KV (from Google Maps search or manual input)
+ * Add a new Restaurant or batch of restaurants to KV (from Google Maps search or manual input)
  */
 async function handleAddRestaurant(request, env, corsHeaders) {
   let body;
@@ -467,17 +497,19 @@ async function handleAddRestaurant(request, env, corsHeaders) {
     });
   }
 
-  const restaurant = body.restaurant;
-  if (!restaurant || !restaurant.name) {
-    return new Response(JSON.stringify({ success: false, error: "Missing restaurant or restaurant.name" }), {
+  const rawList = Array.isArray(body.restaurants) 
+    ? body.restaurants 
+    : (body.restaurant ? [body.restaurant] : []);
+
+  if (rawList.length === 0) {
+    return new Response(JSON.stringify({ success: false, error: "Missing restaurant or restaurants array" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
 
-  // Ensure standard fields
-  const normalized = {
-    name: restaurant.name.trim(),
+  const normalizedList = rawList.map((restaurant, idx) => ({
+    name: (restaurant.name || "").trim(),
     region: restaurant.region || "全部 (All GTA)",
     categories: Array.isArray(restaurant.categories) ? restaurant.categories : ["西式炸鸡/快餐/炸鸡翅 (Western Fried Chicken & Wings)"],
     categoriesRaw: restaurant.categoriesRaw || (Array.isArray(restaurant.categories) ? restaurant.categories.join(" | ") : "西式炸鸡/快餐/炸鸡翅 (Western Fried Chicken & Wings)"),
@@ -491,34 +523,48 @@ async function handleAddRestaurant(request, env, corsHeaders) {
     address: restaurant.address || "",
     phone: restaurant.phone || "无",
     website: restaurant.website || "",
-    mapsUrl: restaurant.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name + " " + (restaurant.address || ""))}`,
+    mapsUrl: restaurant.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((restaurant.name || "") + " " + (restaurant.address || ""))}`,
     primaryType: restaurant.primaryType || "restaurant",
     keywords: Array.isArray(restaurant.keywords) ? restaurant.keywords : ["fried food"],
     keywordsRaw: restaurant.keywordsRaw || (Array.isArray(restaurant.keywords) ? restaurant.keywords.join(", ") : "fried food"),
     latitude: parseFloat(restaurant.latitude) || 43.76,
     longitude: parseFloat(restaurant.longitude) || -79.41,
-    placeId: restaurant.placeId || ("custom_" + Date.now()),
+    placeId: restaurant.placeId || ("custom_" + Date.now() + "_" + idx + "_" + Math.random().toString(36).slice(2, 7)),
     hubId: restaurant.hubId || "custom_street",
     hubName: restaurant.hubName || "沿街商圈",
     isUserAdded: true,
     addedAt: new Date().toISOString()
-  };
+  })).filter(r => r.name.length > 0);
+
+  if (normalizedList.length === 0) {
+    return new Response(JSON.stringify({ success: false, error: "No valid restaurants provided (name is required)" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
 
   if (env.RESTAURANTS_KV) {
     try {
       let patches = await env.RESTAURANTS_KV.get(KV_CUSTOM_REST_KEY, { type: "json" }) || { added: [], updated: {} };
       patches.added = patches.added || [];
-      // Deduplicate by placeId or exact name
-      patches.added = patches.added.filter(r => r.placeId !== normalized.placeId && r.name.toLowerCase() !== normalized.name.toLowerCase());
-      patches.added.unshift(normalized);
+
+      // Deduplicate each new restaurant by placeId or exact name
+      for (const norm of normalizedList) {
+        patches.added = patches.added.filter(r => r.placeId !== norm.placeId && r.name.toLowerCase() !== norm.name.toLowerCase());
+        patches.added.unshift(norm);
+      }
 
       await env.RESTAURANTS_KV.put(KV_CUSTOM_REST_KEY, JSON.stringify(patches));
       await env.RESTAURANTS_KV.put(KV_LAST_UPDATED_KEY, new Date().toISOString());
 
       return new Response(JSON.stringify({
         success: true,
-        message: "新餐馆已成功添加至云端 KV 数据库",
-        restaurant: normalized
+        count: normalizedList.length,
+        message: normalizedList.length === 1 
+          ? "新餐馆已成功添加至云端 KV 数据库" 
+          : `已成功将 ${normalizedList.length} 家新餐馆批量保存至云端 KV 数据库`,
+        restaurant: normalizedList[0],
+        restaurants: normalizedList
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -531,7 +577,13 @@ async function handleAddRestaurant(request, env, corsHeaders) {
     }
   }
 
-  return new Response(JSON.stringify({ success: true, message: "Added simulated", restaurant: normalized }), {
+  return new Response(JSON.stringify({
+    success: true,
+    count: normalizedList.length,
+    message: "Added simulated",
+    restaurant: normalizedList[0],
+    restaurants: normalizedList
+  }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
@@ -774,13 +826,23 @@ async function handleDeleteSale(request, env, corsHeaders) {
  */
 async function handleGooglePlacesSearch(request, env, corsHeaders) {
   let query = "";
+  let biasLat = 43.7615;
+  let biasLng = -79.4111;
+  let biasRadius = 40000;
+
   if (request.method === "GET") {
     const url = new URL(request.url);
     query = (url.searchParams.get("query") || url.searchParams.get("q") || "").trim();
+    if (url.searchParams.get("lat")) biasLat = parseFloat(url.searchParams.get("lat"));
+    if (url.searchParams.get("lng")) biasLng = parseFloat(url.searchParams.get("lng"));
+    if (url.searchParams.get("radius")) biasRadius = parseFloat(url.searchParams.get("radius"));
   } else {
     try {
       const body = await request.json();
       query = (body.query || body.q || "").trim();
+      if (body.lat) biasLat = parseFloat(body.lat);
+      if (body.lng) biasLng = parseFloat(body.lng);
+      if (body.radius) biasRadius = parseFloat(body.radius);
     } catch {
       query = "";
     }
@@ -825,13 +887,13 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
 
   const gmpBody = {
     textQuery: `${query} Toronto GTA Ontario Canada`,
-    maxResultCount: 10,
+    maxResultCount: 20,
     languageCode: "zh-CN",
     regionCode: "CA",
     locationBias: {
       circle: {
-        center: { latitude: 43.7615, longitude: -79.4111 },
-        radius: 40000 // 40km circle covers GTA
+        center: { latitude: biasLat, longitude: biasLng },
+        radius: Math.min(50000, Math.max(1000, biasRadius))
       }
     }
   };

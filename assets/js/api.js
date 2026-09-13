@@ -131,6 +131,25 @@ export const Api = {
   },
 
   /**
+   * Batch add multiple restaurants into Cloudflare KV
+   */
+  async batchAddRestaurants(restaurants) {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/restaurants/batch-add`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ restaurants })
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("batchAddRestaurants failed:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  /**
    * Get GTA Commercial Hubs & Shopping Malls summary
    */
   async getHubs() {
@@ -234,11 +253,14 @@ export const Api = {
   /**
    * Search Google Maps Places (Proxy)
    */
-  async searchGooglePlaces(query) {
+  async searchGooglePlaces(query, opts = {}) {
     const workerUrl = this.getWorkerUrl();
     try {
       const url = new URL(`${workerUrl}/api/places/search`);
       url.searchParams.set("query", query);
+      if (opts.lat) url.searchParams.set("lat", opts.lat);
+      if (opts.lng) url.searchParams.set("lng", opts.lng);
+      if (opts.radius) url.searchParams.set("radius", opts.radius);
       const resp = await fetch(url.toString(), {
         method: "GET",
         headers: this.getAuthHeaders(),
@@ -284,5 +306,49 @@ export const Api = {
     });
 
     return await resp.json();
+  },
+
+  /**
+   * Get Google Maps API Key from worker config or fallback
+   */
+  async getGoogleMapsApiKey() {
+    try {
+      const resp = await fetch(`${this.getWorkerUrl()}/api/maps/config`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.apiKey) return data.apiKey;
+      }
+    } catch (e) {}
+    return "AIzaSyCxkEVTsCSf3BbAgKvHi0x0SWG4L09C0Tw";
+  },
+
+  /**
+   * Get all restaurants for map explorer (lightweight format, up to 3500 items)
+   */
+  async getMapRestaurants({ region = "全部 (All GTA)", category = "全部", keyword = "" } = {}) {
+    const workerUrl = this.getWorkerUrl();
+    const token = localStorage.getItem("greenoil_session_token") || "";
+
+    const url = new URL(`${workerUrl}/api/restaurants`);
+    url.searchParams.set("page", "1");
+    url.searchParams.set("pageSize", "3500");
+    url.searchParams.set("format", "map");
+    if (region && region !== "全部 (All GTA)") url.searchParams.set("region", region);
+    if (category && category !== "全部") url.searchParams.set("category", category);
+    if (keyword) url.searchParams.set("keyword", keyword);
+
+    try {
+      const resp = await fetch(url.toString(), {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (resp.ok) {
+        const res = await resp.json();
+        if (res && res.data) return res.data;
+      }
+    } catch (e) {
+      console.error("Failed to load map restaurants:", e);
+    }
+    return [];
   }
 };

@@ -288,8 +288,20 @@ export const TRANSLATIONS = {
     fs_chart_methods_title: "销售方式成效对比",
     fs_chart_regions_title: "各区域拜访分布",
     fs_competitor_table_title: "现场竞品报价与情报汇总",
-    fs_btn_export_sales: "导出销售报告 (Excel/CSV)"
+    fs_btn_export_sales: "导出销售报告 (Excel/CSV)",
 
+    // Map Explorer
+    page_title_mapexplorer: "地图找店",
+    nav_mapexplorer: "地图找店",
+    map_filter_city: "大区 / 城市",
+    map_filter_neighborhood: "细分社区 / 商圈",
+    map_filter_street: "主要商业走廊 / 街道",
+    map_filter_kv: "KV 入库状态",
+    map_follow_bounds: "跟随地图视野实时筛选",
+    map_reset_view: "重置视角",
+    map_explore_gmap: "探测当前区域 Google Maps 餐馆",
+    map_select_area: "全选当前筛选",
+    th_kv_status: "KV状态"
   },
 
   en: {
@@ -576,8 +588,20 @@ export const TRANSLATIONS = {
     fs_chart_methods_title: "Sales Method Performance",
     fs_chart_regions_title: "Regional Visit Distribution",
     fs_competitor_table_title: "Competitor Quotes & Intelligence",
-    fs_btn_export_sales: "Export Sales Report (Excel/CSV)"
+    fs_btn_export_sales: "Export Sales Report (Excel/CSV)",
 
+    // Map Explorer
+    page_title_mapexplorer: "Map Explorer",
+    nav_mapexplorer: "Map Explorer",
+    map_filter_city: "Region / City",
+    map_filter_neighborhood: "Neighborhood / Hub",
+    map_filter_street: "Commercial Corridor / Street",
+    map_filter_kv: "KV Database Status",
+    map_follow_bounds: "Filter by map viewport",
+    map_reset_view: "Reset View",
+    map_explore_gmap: "Discover Google Maps Places in Area",
+    map_select_area: "Select All Filtered",
+    th_kv_status: "KV Status"
   },
 
   ko: {
@@ -864,8 +888,20 @@ export const TRANSLATIONS = {
     fs_chart_methods_title: "영업 방식별 성과 비교",
     fs_chart_regions_title: "지역별 방문 분포",
     fs_competitor_table_title: "경쟁사 견적 및 시장 인텔리전스",
-    fs_btn_export_sales: "영업 보고서 내보내기 (Excel/CSV)"
+    fs_btn_export_sales: "영업 보고서 내보내기 (Excel/CSV)",
 
+    // Map Explorer
+    page_title_mapexplorer: "지도 탐색",
+    nav_mapexplorer: "지도 탐색",
+    map_filter_city: "지역 / 도시",
+    map_filter_neighborhood: "세부 지역 / 상권",
+    map_filter_street: "주요 상업 거리",
+    map_filter_kv: "KV 저장 상태",
+    map_follow_bounds: "지도 시야 실시간 필터",
+    map_reset_view: "시점 초기화",
+    map_explore_gmap: "현재 지역 구글 지도 음식점 탐색",
+    map_select_area: "현재 필터 전체 선택",
+    th_kv_status: "KV 상태"
   }
 };
 

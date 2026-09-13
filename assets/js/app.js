@@ -7,6 +7,7 @@ import { Restaurants } from "./restaurants.js";
 import { Calculator } from "./calculator.js";
 import { GreaseTrap } from "./grease-trap.js";
 import { FieldSales } from "./field-sales.js";
+import { MapExplorer } from "./map-explorer.js";
 import { i18n } from "./i18n.js";
 
 export function initApp() {
@@ -20,6 +21,7 @@ export function initApp() {
   Calculator.init();
   GreaseTrap.init();
   FieldSales.init();
+  MapExplorer.init();
 }
 
 function setupLanguageSwitcher() {
@@ -58,6 +60,13 @@ function setupNavigation() {
     if (activeItem && pageTitleEl) {
       const titleKey = activeItem.getAttribute("data-title-key");
       pageTitleEl.textContent = titleKey ? i18n.t(titleKey) : (activeItem.dataset.title || "Green Oil");
+    }
+
+    if (targetTabId === "tab-mapexplorer" && MapExplorer.googleMap && window.google) {
+      setTimeout(() => {
+        google.maps.event.trigger(MapExplorer.googleMap, "resize");
+        MapExplorer.panToSelectedArea();
+      }, 100);
     }
 
     closeMobileSidebar();
