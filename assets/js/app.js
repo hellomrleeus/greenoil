@@ -129,23 +129,8 @@ function closeMobileSidebar() {
 }
 
 function setupSettings() {
-  const workerInput = document.getElementById("settingWorkerUrl");
-  const btnSave = document.getElementById("btnSaveSettings");
   const btnTriggerSync = document.getElementById("btnTriggerSync");
   const syncStatusText = document.getElementById("syncStatusText");
-
-  if (workerInput) {
-    workerInput.value = Api.getWorkerUrl();
-  }
-
-  if (btnSave && workerInput) {
-    btnSave.addEventListener("click", async () => {
-      Api.setWorkerUrl(workerInput.value);
-      alert("设置已保存");
-      await checkApiStatus();
-      Restaurants.fetchData();
-    });
-  }
 
   if (btnTriggerSync) {
     btnTriggerSync.addEventListener("click", async () => {
@@ -181,6 +166,7 @@ function setupSettings() {
 async function checkApiStatus() {
   const badge = document.getElementById("apiStatusBadge");
   const syncStatusText = document.getElementById("syncStatusText");
+  const settingsWorkerStatus = document.getElementById("settingsWorkerStatus");
   if (!badge) return;
 
   const status = await Api.getCacheStatus();
@@ -191,12 +177,24 @@ async function checkApiStatus() {
     if (syncStatusText) {
       syncStatusText.textContent = `已缓存 ${status.cachedCount} 条餐馆记录`;
     }
+    if (settingsWorkerStatus) {
+      settingsWorkerStatus.textContent = `Cloudflare Worker 在线 (${status.cachedCount} 条)`;
+      settingsWorkerStatus.style.background = "#ecfdf5";
+      settingsWorkerStatus.style.color = "#047857";
+      settingsWorkerStatus.style.borderColor = "rgba(5, 150, 105, 0.3)";
+    }
   } else {
     badge.innerHTML = `<span class="dot" style="background:#f59e0b;"></span><span>离线模式</span>`;
     badge.style.color = "#d97706";
     badge.style.borderColor = "rgba(245, 158, 11, 0.3)";
     if (syncStatusText) {
       syncStatusText.textContent = "离线模式 (608 条餐馆记录)";
+    }
+    if (settingsWorkerStatus) {
+      settingsWorkerStatus.textContent = "离线本地模式";
+      settingsWorkerStatus.style.background = "#fffbeb";
+      settingsWorkerStatus.style.color = "#d97706";
+      settingsWorkerStatus.style.borderColor = "rgba(245, 158, 11, 0.3)";
     }
   }
 }

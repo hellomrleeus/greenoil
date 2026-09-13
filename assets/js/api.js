@@ -3,17 +3,17 @@
  * Queries backend cached endpoints with server-side pagination, search, and filtering.
  */
 
-const DEFAULT_WORKER_URL = "https://greenoil-api.workers.dev";
+const DEFAULT_WORKER_URL = "https://greenoil-api.ydxhjw4j5w.workers.dev";
 
 export const Api = {
   localCacheData: null,
 
   getWorkerUrl() {
-    return localStorage.getItem("greenoil_worker_url") || DEFAULT_WORKER_URL;
+    return DEFAULT_WORKER_URL;
   },
 
   setWorkerUrl(url) {
-    localStorage.setItem("greenoil_worker_url", url.trim().replace(/\/$/, ""));
+    // No-op or optional override
   },
 
   /**

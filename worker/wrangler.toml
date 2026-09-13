@@ -10,13 +10,9 @@ WORKER_PASSWORD = "greenoil2025"
 [triggers]
 crons = ["0 3 * * *"]
 
-# Optional: Cloudflare KV Namespace for cached restaurant data
-# To enable KV persistence in Cloudflare:
-# 1. Run: npx wrangler kv:namespace create RESTAURANTS_KV
-# 2. Add the generated id below:
-# [[kv_namespaces]]
-# binding = "RESTAURANTS_KV"
-# id = "<your-kv-namespace-id>"
+[[kv_namespaces]]
+binding = "RESTAURANTS_KV"
+id = "36694f8d5c90424a8ad84d4812812d56"
 
 # Note: Set your GOOGLE_MAPS_API_KEY as a Cloudflare Secret:
 # wrangler secret put GOOGLE_MAPS_API_KEY

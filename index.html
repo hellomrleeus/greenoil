@@ -328,12 +328,10 @@
             </h3>
 
             <div class="form-group">
-              <label class="form-label" for="settingWorkerUrl">Worker API 地址</label>
-              <input type="text" class="form-input" id="settingWorkerUrl" placeholder="https://greenoil-api.<your-subdomain>.workers.dev" />
-            </div>
-
-            <div style="margin-bottom: 1.5rem;">
-              <button class="btn btn-primary" id="btnSaveSettings">保存设置</button>
+              <label class="form-label">后端服务</label>
+              <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.25rem 0;">
+                <span class="api-badge" id="settingsWorkerStatus">检测中...</span>
+              </div>
             </div>
 
             <hr style="border: none; border-top: 1px solid var(--surface-border); margin: 1.5rem 0;" />
