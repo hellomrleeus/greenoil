@@ -257,7 +257,7 @@ body {
   transition: margin-left 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Sidebar Toggle Button (Topbar) */
+/* Sidebar Toggle Button (Topbar) - Hidden before collapse, shown after collapse */
 .sidebar-toggle-btn {
   background: white;
   border: 1px solid var(--surface-border, #cbd5e1);
@@ -268,7 +268,7 @@ body {
   min-width: 20px;
   min-height: 20px;
   padding: 0;
-  display: inline-flex;
+  display: none !important;
   align-items: center;
   justify-content: center;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif;
@@ -284,6 +284,10 @@ body {
   background: var(--surface-hover, #f1f5f9);
   color: var(--primary, #059669);
   border-color: var(--primary, #059669);
+}
+
+.app-container.sidebar-collapsed .sidebar-toggle-btn {
+  display: inline-flex !important;
 }
 
 /* Collapsed Sidebar Styles */
@@ -1657,6 +1661,10 @@ body {
 
   .mobile-menu-btn {
     display: block;
+  }
+
+  .desktop-only {
+    display: none !important;
   }
 
   .content-area {

@@ -119,16 +119,26 @@ function setupSidebarCollapse() {
   function updateToggleIcons(isCollapsed) {
     const expandTitle = i18n ? i18n.t("sidebar_expand") : "展开侧边栏";
     const collapseTitle = i18n ? i18n.t("sidebar_collapse") : "折叠侧边栏";
-    toggleBtns.forEach(btn => {
-      btn.textContent = isCollapsed ? ">" : "<";
-      btn.title = isCollapsed ? expandTitle : collapseTitle;
-    });
+    const collapseBtn = document.getElementById("sidebarCollapseBtn");
+    const restoreBtn = document.getElementById("sidebarToggleBtn");
+    if (collapseBtn) {
+      collapseBtn.textContent = "<";
+      collapseBtn.title = collapseTitle;
+      collapseBtn.setAttribute("aria-label", collapseTitle);
+    }
+    if (restoreBtn) {
+      restoreBtn.textContent = ">";
+      restoreBtn.title = expandTitle;
+      restoreBtn.setAttribute("aria-label", expandTitle);
+    }
   }
 
   const savedState = localStorage.getItem("greenoil_sidebar_collapsed");
   if (savedState === "1" && window.innerWidth > 992 && container) {
     container.classList.add("sidebar-collapsed");
     updateToggleIcons(true);
+  } else {
+    updateToggleIcons(false);
   }
 
   if (i18n && typeof i18n.onLanguageChange === "function") {
