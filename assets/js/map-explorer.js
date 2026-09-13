@@ -1776,7 +1776,6 @@ export const MapExplorer = {
     rows.forEach(row => {
       if (row.dataset.key === key) {
         row.classList.add("is-active-row");
-        row.scrollIntoView({ behavior: "smooth", block: "nearest" });
       } else {
         row.classList.remove("is-active-row");
       }
