@@ -153,10 +153,12 @@ async function handleLogin(request, env, corsHeaders) {
   }
 
   const { username, password } = body || {};
-  const validUsername = env.WORKER_USERNAME;
-  const validPassword = env.WORKER_PASSWORD;
+  const validUsername = env.WORKER_USERNAME ? env.WORKER_USERNAME.trim() : "";
+  const validPassword = env.WORKER_PASSWORD ? env.WORKER_PASSWORD.trim() : "";
+  const inputUser = (username || "").trim();
+  const inputPass = (password || "").trim();
 
-  if (!validUsername || !validPassword || username !== validUsername || password !== validPassword) {
+  if (!validUsername || !validPassword || inputUser !== validUsername || inputPass !== validPassword) {
     return new Response(JSON.stringify({
       success: false,
       error: "用户名或密码错误"
@@ -226,7 +228,7 @@ async function handleLogout(request, corsHeaders) {
 }
 
 function checkAuth(request, env) {
-  const validUser = env.WORKER_USERNAME;
+  const validUser = env.WORKER_USERNAME ? env.WORKER_USERNAME.trim() : "";
   if (!validUser) return false;
 
   function isValidSessionToken(rawToken) {
