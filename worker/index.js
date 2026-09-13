@@ -259,7 +259,13 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
   // 2. Apply Region Filter
   let filtered = allRestaurants;
   if (region && region !== "全部 (All GTA)") {
-    filtered = filtered.filter(r => r.region.includes(region) || region.includes(r.region));
+    filtered = filtered.filter(r => {
+      // If a specific hub is chosen, preserve records matching that hub
+      if (hub && hub !== "全部" && hub !== "all") {
+        return (r.hubId === hub) || r.region.includes(region) || region.includes(r.region);
+      }
+      return r.region.includes(region) || region.includes(r.region);
+    });
   }
 
   // 3. Apply Category Filter

@@ -27,6 +27,34 @@ function getDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+// Extract canonical GTA region from authoritative Canadian address
+export function normalizeRegionFromAddress(address, existingRegion) {
+  if (!address) return existingRegion;
+  const match = address.match(/,\s*([A-Za-z\s]+),\s*ON\b/i);
+  if (match) {
+    const city = match[1].trim().toLowerCase();
+    if (city === "north york" || city === "willowdale" || city === "don mills" || city === "downsview") return "北约克 (North York)";
+    if (city === "scarborough") return "士嘉堡 (Scarborough)";
+    if (city === "markham" || city === "unionville") return "万锦 (Markham)";
+    if (city === "richmond hill") return "列治文山 (Richmond Hill)";
+    if (city === "mississauga") return "密西沙加 (Mississauga)";
+    if (city === "vaughan" || city === "woodbridge" || city === "maple" || city === "concord") return "旺市 (Vaughan)";
+    if (city === "thornhill") return existingRegion === "旺市 (Vaughan)" ? "旺市 (Vaughan)" : "万锦 (Markham)";
+    if (city === "toronto" || city === "old toronto" || city === "east york" || city === "york" || city === "etobicoke") {
+      return "多伦多市中心 (Downtown Toronto)";
+    }
+  }
+  return existingRegion;
+}
+
+// Match keyword with regex word boundary to prevent substring false positives
+export function matchesKeyword(text, kw) {
+  if (!text || !kw) return false;
+  const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+  const regex = new RegExp(`\\b${escaped}\\b`, "i");
+  return regex.test(text);
+}
+
 export const GTA_HUBS = [
   // --- MARKHAM ---
   {
@@ -102,8 +130,8 @@ export const GTA_HUBS = [
     region: "万锦 (Markham)",
     lat: 43.8540,
     lng: -79.3330,
-    radius: 650,
-    addressKeywords: ["enterprise blvd", "birchmount rd", "downtown markham"],
+    radius: 700,
+    addressKeywords: ["enterprise blvd", "8110 birchmount", "downtown markham"],
     category: "commercial_plaza",
     icon: "🏙️"
   },
@@ -211,7 +239,7 @@ export const GTA_HUBS = [
     lat: 43.7760,
     lng: -79.2580,
     radius: 700,
-    addressKeywords: ["300 borough", "town centre", "stc"],
+    addressKeywords: ["300 borough", "scarborough town centre"],
     category: "shopping_mall",
     icon: "🛍️"
   },
@@ -343,7 +371,7 @@ export const GTA_HUBS = [
     lat: 43.7350,
     lng: -79.3440,
     radius: 600,
-    addressKeywords: ["don mills", "shops at don mills"],
+    addressKeywords: ["shops at don mills", "karl fraser", "1090 don mills", "1066 don mills", "o'neill rd"],
     category: "commercial_plaza",
     icon: "⛲"
   },
@@ -524,29 +552,33 @@ export function tagAllRestaurants() {
   let taggedCount = 0;
 
   restaurants.forEach(r => {
+    // 0. Base municipality normalization from authoritative address
+    r.region = normalizeRegionFromAddress(r.address, r.region);
+
     const lat = parseFloat(r.latitude);
     const lng = parseFloat(r.longitude);
     const addr = (r.address || "").toLowerCase();
-    const name = (r.name || "").toLowerCase();
 
     let matchedHub = null;
     let minDistance = Infinity;
 
-    // 1. Direct address keyword match (Highest priority)
+    // 1. Direct address keyword match with word boundaries (Highest priority)
     for (const hub of GTA_HUBS) {
-      if (hub.addressKeywords && hub.addressKeywords.some(kw => addr.includes(kw) || name.includes(kw))) {
+      if (hub.addressKeywords && hub.addressKeywords.some(kw => matchesKeyword(addr, kw))) {
         matchedHub = hub;
         break;
       }
     }
 
-    // 2. Geodesic radius match
+    // 2. Geodesic radius match (restricted to GTA bounds)
     if (!matchedHub && !isNaN(lat) && !isNaN(lng)) {
-      for (const hub of GTA_HUBS) {
-        const d = getDistance(lat, lng, hub.lat, hub.lng);
-        if (d <= hub.radius && d < minDistance) {
-          minDistance = d;
-          matchedHub = hub;
+      if (lat >= 43.3 && lat <= 44.5 && lng >= -80.2 && lng <= -79.0) {
+        for (const hub of GTA_HUBS) {
+          const d = getDistance(lat, lng, hub.lat, hub.lng);
+          if (d <= hub.radius && d < minDistance) {
+            minDistance = d;
+            matchedHub = hub;
+          }
         }
       }
     }
@@ -558,6 +590,8 @@ export function tagAllRestaurants() {
       r.hubNameKo = matchedHub.nameKo;
       r.hubCategory = matchedHub.category;
       r.hubIcon = matchedHub.icon;
+      // Overwrite region with hub's canonical region to ensure 100% filter consistency
+      r.region = matchedHub.region;
       taggedCount++;
 
       const st = hubStats[matchedHub.id];
