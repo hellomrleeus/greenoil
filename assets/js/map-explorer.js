@@ -23,17 +23,6 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.7282, lng: -79.3832 },
     zoom: 11,
     bbox: [-79.7200, 43.5800, -79.1600, 43.9500],
-    polygonPaths: [
-      { lat: 43.6200, lng: -79.6200 }, // Mississauga South
-      { lat: 43.7200, lng: -79.7200 }, // Mississauga North
-      { lat: 43.8600, lng: -79.6000 }, // Vaughan West
-      { lat: 43.9500, lng: -79.4600 }, // Vaughan / Richmond Hill North
-      { lat: 43.9400, lng: -79.2800 }, // Markham North
-      { lat: 43.8500, lng: -79.1600 }, // Scarborough North / East
-      { lat: 43.7100, lng: -79.1800 }, // Scarborough Lake Ontario
-      { lat: 43.6300, lng: -79.3600 }, // Toronto Waterfront
-      { lat: 43.5800, lng: -79.5200 }  // Port Credit / Etobicoke
-    ],
     neighborhoods: []
   },
   {
@@ -45,15 +34,6 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.7001, lng: -79.4163 },
     zoom: 12,
     bbox: [-79.6390, 43.5810, -79.1150, 43.8550],
-    polygonPaths: [
-      { lat: 43.5810, lng: -79.5410 },
-      { lat: 43.7600, lng: -79.6390 },
-      { lat: 43.7950, lng: -79.5300 },
-      { lat: 43.8550, lng: -79.1800 },
-      { lat: 43.7800, lng: -79.1150 },
-      { lat: 43.6600, lng: -79.2800 },
-      { lat: 43.6300, lng: -79.3800 }
-    ],
     neighborhoods: []
   },
   {
@@ -65,16 +45,6 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.8561, lng: -79.3370 },
     zoom: 13,
     bbox: [-79.3790, 43.8190, -79.1760, 43.9310],
-    polygonPaths: [
-      { lat: 43.9190, lng: -79.3780 }, // 19th Ave & Bayview
-      { lat: 43.9260, lng: -79.2420 }, // 19th Ave & McCowan
-      { lat: 43.9310, lng: -79.1820 }, // 19th Ave & York-Durham Line
-      { lat: 43.8520, lng: -79.1760 }, // Steeles & York-Durham Line
-      { lat: 43.8210, lng: -79.2220 }, // Steeles & Markham Rd
-      { lat: 43.8190, lng: -79.3310 }, // Steeles & Victoria Park
-      { lat: 43.8210, lng: -79.3790 }, // Steeles & Bayview / 404
-      { lat: 43.8710, lng: -79.3770 }  // 16th Ave & 404
-    ],
     neighborhoods: []
   },
   {
@@ -86,14 +56,6 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.8828, lng: -79.4403 },
     zoom: 13,
     bbox: [-79.4670, 43.8320, -79.3700, 43.9570],
-    polygonPaths: [
-      { lat: 43.9570, lng: -79.4670 }, // Bloomington & Bathurst
-      { lat: 43.9620, lng: -79.3950 }, // Bloomington & Hwy 404
-      { lat: 43.8520, lng: -79.3800 }, // Hwy 7 & Hwy 404
-      { lat: 43.8320, lng: -79.3850 }, // Steeles & Hwy 404
-      { lat: 43.8310, lng: -79.4620 }, // Steeles & Bathurst
-      { lat: 43.8950, lng: -79.4650 }  // Major Mackenzie & Bathurst
-    ],
     neighborhoods: []
   },
   {
@@ -105,13 +67,6 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.5890, lng: -79.6441 },
     zoom: 12,
     bbox: [-79.7600, 43.4800, -79.5400, 43.7200],
-    polygonPaths: [
-      { lat: 43.7200, lng: -79.7200 }, // Derry & 10th Line
-      { lat: 43.7100, lng: -79.6100 }, // Derry & Dixie
-      { lat: 43.6200, lng: -79.5400 }, // Dundas & Etobicoke Creek
-      { lat: 43.4800, lng: -79.6100 }, // Lake Ontario / Clarkson
-      { lat: 43.5300, lng: -79.7600 }  // Winston Churchill & 403
-    ],
     neighborhoods: []
   },
   {
@@ -123,13 +78,6 @@ export const GTA_COMMUNITIES = [
     center: { lat: 43.8372, lng: -79.5083 },
     zoom: 13,
     bbox: [-79.6200, 43.7600, -79.4300, 43.9200],
-    polygonPaths: [
-      { lat: 43.9200, lng: -79.6200 }, // King-Vaughan Rd & Hwy 50
-      { lat: 43.9300, lng: -79.4600 }, // King-Vaughan Rd & Bathurst
-      { lat: 43.7900, lng: -79.4500 }, // Steeles & Bathurst
-      { lat: 43.7800, lng: -79.5900 }, // Steeles & Hwy 27
-      { lat: 43.8400, lng: -79.6200 }  // Major Mackenzie & Hwy 50
-    ],
     neighborhoods: []
   }
 ];
@@ -273,6 +221,13 @@ export const MapExplorer = {
 
   async loadNeighbourhoodsGeoJson() {
     try {
+      const municipalities = await fetch("assets/data/official_municipalities.json");
+      if (!municipalities.ok) throw new Error("Municipal boundaries unavailable");
+      const cityData = await municipalities.json();
+      cityData.features.forEach(feature => {
+        const city = GTA_COMMUNITIES.find(c => c.id === feature.id);
+        if (city) Object.assign(city, { geometry: feature.geometry, bbox: feature.bbox });
+      });
       const resp = await fetch("assets/data/gta_neighbourhoods.json");
       if (resp.ok) {
         this.neighbourhoodsGeoJson = await resp.json();
@@ -763,24 +718,7 @@ export const MapExplorer = {
     }
 
     if (isAll || selectedCities.length === 0) {
-      const allItem = GTA_COMMUNITIES.find(c => c.id === "all") || GTA_COMMUNITIES[0];
-      if (this.googleMap && !this.isFallbackMode) {
-        this.googleMap.panTo(allItem.center);
-        this.googleMap.setZoom(allItem.zoom || 11);
-      } else if (this.fallbackMap) {
-        this.fallbackMap.setView([allItem.center.lat, allItem.center.lng], allItem.zoom || 11);
-      }
-      return;
-    }
-
-    if (selectedCities.length === 1) {
-      const c = selectedCities[0];
-      if (this.googleMap && !this.isFallbackMode) {
-        this.googleMap.panTo(c.center);
-        this.googleMap.setZoom(c.zoom || 13);
-      } else if (this.fallbackMap) {
-        this.fallbackMap.setView([c.center.lat, c.center.lng], c.zoom || 13);
-      }
+      this.fitItemsToBounds(GTA_COMMUNITIES.filter(c => c.id !== "all"));
       return;
     }
 
@@ -901,23 +839,7 @@ export const MapExplorer = {
     const allNbs = this.getAllNeighborhoods();
     const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
-    // 1. Google Maps FeatureLayer Administrative Boundaries styling
-    if (this.localityFeatureLayer) {
-      try {
-        this.localityFeatureLayer.style = () => {
-          return {
-            strokeColor: "#16a34a",
-            strokeWeight: 2,
-            strokeOpacity: 0.8,
-            fillColor: "#22c55e",
-            fillOpacity: isAll ? 0.04 : 0.12
-          };
-        };
-      } catch (e) {
-        console.warn("Error setting localityFeatureLayer style:", e);
-      }
-    }
-
+    // Draw only selected official GeoJSON boundaries.
     // 2. High-precision vector Polygons for selected neighborhoods
     if (selectedNbs.length > 0) {
       if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
@@ -983,47 +905,22 @@ export const MapExplorer = {
     }
 
     // 3. Otherwise, draw selected city / all GTA boundaries
-    const itemsToDraw = [];
-    if (isAll) {
-      const allItem = GTA_COMMUNITIES.find(c => c.id === "all");
-      if (allItem && Array.isArray(allItem.polygonPaths)) {
-        itemsToDraw.push({ id: "all", paths: allItem.polygonPaths });
-      }
-    } else {
-      selectedCities.forEach(c => {
-        if (Array.isArray(c.polygonPaths)) {
-          itemsToDraw.push({ id: c.id, paths: c.polygonPaths });
-        }
-      });
-    }
-
-    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-      itemsToDraw.forEach(item => {
-        const poly = new google.maps.Polygon({
-          paths: item.paths,
-          strokeColor: "#16a34a",
-          strokeOpacity: 0.85,
-          strokeWeight: 2,
-          fillColor: "#22c55e",
-          fillOpacity: 0.10,
-          zIndex: 5
+    const cities = isAll ? GTA_COMMUNITIES.filter(c => c.id !== "all") : selectedCities;
+    cities.filter(c => c.geometry).forEach(city => {
+      if (this.googleMap && !this.isFallbackMode && window.google?.maps) {
+        this.extractGooglePolygonPaths(city.geometry).forEach((paths, index) => {
+          const poly = new google.maps.Polygon({ paths, strokeColor: "#16a34a",
+            strokeOpacity: 0.85, strokeWeight: 2, fillColor: "#22c55e", fillOpacity: 0.10, zIndex: 5 });
+          poly.setMap(this.googleMap);
+          this.polygonsMap.set(`${city.id}_${index}`, poly);
         });
-        poly.setMap(this.googleMap);
-        this.polygonsMap.set(item.id, poly);
-      });
-    } else if (this.fallbackMap && window.L) {
-      itemsToDraw.forEach(item => {
-        const latLngs = item.paths.map(pt => [pt.lat, pt.lng]);
-        const poly = L.polygon(latLngs, {
-          color: "#16a34a",
-          weight: 2,
-          opacity: 0.85,
-          fillColor: "#22c55e",
-          fillOpacity: 0.10
+      } else if (this.fallbackMap && window.L) {
+        const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: city.geometry }, {
+          style: { color: "#16a34a", weight: 2, opacity: 0.85, fillColor: "#22c55e", fillOpacity: 0.10 }
         }).addTo(this.fallbackMap);
-        this.polygonsMap.set(item.id, poly);
-      });
-    }
+        this.polygonsMap.set(city.id, layer);
+      }
+    });
   },
 
   // -------------------------------------------------------------
@@ -1603,146 +1500,26 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
-  // Restaurant Photo Resolver (Real Google Places Photos & Curated Fallbacks)
+  // Restaurant Photo Resolver (Google Places photos only)
   // -------------------------------------------------------------
   getRestaurantPhoto(r) {
-    if (!r) {
-      return {
-        url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80",
-        emoji: "🍽️",
-        isGoogle: false
-      };
-    }
-
-    // 1. Direct photoUrl on restaurant record (Google Places Photo or custom)
-    if (r.photoUrl || r.imageUrl || r.photo) {
-      let rawUrl = r.photoUrl || r.imageUrl || r.photo;
-      if (rawUrl.startsWith("/") && !rawUrl.startsWith("//")) {
-        rawUrl = `${Api.getWorkerUrl()}${rawUrl}`;
-      }
-      return { url: rawUrl, emoji: "📸", isGoogle: true };
-    }
-
-    // 2. In-memory Google Places photo cache
-    if (r.placeId && this.googlePhotosCache && this.googlePhotosCache.has(r.placeId)) {
-      return { url: this.googlePhotosCache.get(r.placeId), emoji: "📸", isGoogle: true };
-    }
-
-    // 3. Browser sessionStorage cache
-    if (r.placeId && r.placeId.startsWith("ChIJ")) {
+    if (!r) return { url: null, isGoogle: false };
+    const raw = r.photoUrl;
+    if (typeof raw === "string") {
+      const url = raw.startsWith("/api/") ? `${Api.getWorkerUrl()}${raw}` : raw;
       try {
-        const cached = sessionStorage.getItem("gphoto_" + r.placeId);
-        if (cached) {
-          if (this.googlePhotosCache) this.googlePhotosCache.set(r.placeId, cached);
-          return { url: cached, emoji: "📸", isGoogle: true };
+        const parsed = new URL(url);
+        if (parsed.protocol === "https:" && (/^(places\.googleapis\.com|maps\.googleapis\.com|[^/]+\.googleusercontent\.com|[^/]+\.ggpht\.com)$/.test(parsed.hostname) || (parsed.origin === new URL(Api.getWorkerUrl()).origin && parsed.pathname.includes("photo")))) {
+          return { url, isGoogle: true };
         }
-      } catch (e) {}
+      } catch {}
     }
-
-    // 4. Fallback cuisine-matched placeholder (while Google Photo loads asynchronously)
-    const nameLower = (r.name || "").toLowerCase();
-    const catStr = (r.categoriesRaw || (r.categories ? r.categories.join(" ") : "") + " " + (r.primaryType || "")).toLowerCase();
-
-    const pools = {
-      korean: {
-        emoji: "🍗",
-        images: [
-          "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1585238342024-78d387f4a707?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=300&h=300&q=80"
-        ]
-      },
-      chinese: {
-        emoji: "🥢",
-        images: [
-          "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=300&h=300&q=80"
-        ]
-      },
-      western: {
-        emoji: "🍔",
-        images: [
-          "https://images.unsplash.com/photo-1513639776629-7b61b0ac49cb?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=300&h=300&q=80"
-        ]
-      },
-      fish_chips: {
-        emoji: "🐟",
-        images: [
-          "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=300&h=300&q=80"
-        ]
-      },
-      japanese: {
-        emoji: "🍱",
-        images: [
-          "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=300&h=300&q=80"
-        ]
-      },
-      sweets: {
-        emoji: "🍩",
-        images: [
-          "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?auto=format&fit=crop&w=300&h=300&q=80"
-        ]
-      },
-      pizza: {
-        emoji: "🍕",
-        images: [
-          "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=300&h=300&q=80"
-        ]
-      },
-      general: {
-        emoji: "🍽️",
-        images: [
-          "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=300&h=300&q=80",
-          "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=300&h=300&q=80"
-        ]
-      }
-    };
-
-    let targetGroup = pools.general;
-    if (catStr.includes("韩式") || catStr.includes("korean") || nameLower.includes("bb.q") || nameLower.includes("korean")) {
-      targetGroup = pools.korean;
-    } else if (catStr.includes("中式") || catStr.includes("台式") || catStr.includes("chinese") || catStr.includes("taiwanese")) {
-      targetGroup = pools.chinese;
-    } else if (catStr.includes("炸鱼") || catStr.includes("薯条") || catStr.includes("fish") || catStr.includes("chips")) {
-      targetGroup = pools.fish_chips;
-    } else if (catStr.includes("日式") || catStr.includes("japanese") || catStr.includes("katsu") || catStr.includes("tempura") || nameLower.includes("katsu")) {
-      targetGroup = pools.japanese;
-    } else if (catStr.includes("甜甜圈") || catStr.includes("吉事果") || catStr.includes("热狗") || catStr.includes("donut") || catStr.includes("churro")) {
-      targetGroup = pools.sweets;
-    } else if (catStr.includes("披萨") || catStr.includes("pizza")) {
-      targetGroup = pools.pizza;
-    } else if (catStr.includes("西式") || catStr.includes("快餐") || catStr.includes("炸鸡翅") || catStr.includes("burger") || catStr.includes("wings") || catStr.includes("fried chicken") || nameLower.includes("popeyes") || nameLower.includes("church") || nameLower.includes("kfc")) {
-      targetGroup = pools.western;
+    let cached = this.googlePhotosCache.get(r.placeId);
+    if (!cached && r.placeId) {
+      try { cached = sessionStorage.getItem("gphoto_" + r.placeId); } catch {}
+      if (cached) this.googlePhotosCache.set(r.placeId, cached);
     }
-
-    const seed = r.placeId || r.name || "greenoil";
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) {
-      hash = ((hash << 5) - hash) + seed.charCodeAt(i);
-      hash |= 0;
-    }
-    const idx = Math.abs(hash) % targetGroup.images.length;
-    return {
-      url: targetGroup.images[idx],
-      emoji: targetGroup.emoji,
-      isGoogle: false
-    };
+    return { url: cached || null, isGoogle: !!cached };
   },
 
   /**
@@ -1799,7 +1576,7 @@ export const MapExplorer = {
 
     const itemsToFetch = pageItems.filter(r => {
       if (!r || !r.placeId || !r.placeId.startsWith("ChIJ")) return false;
-      if (r.photoUrl) return false;
+      if (this.getRestaurantPhoto(r).isGoogle) return false;
       if (this.googlePhotosCache && this.googlePhotosCache.has(r.placeId)) return false;
       try {
         if (sessionStorage.getItem("gphoto_" + r.placeId)) return false;
@@ -1823,11 +1600,7 @@ export const MapExplorer = {
             const imgEl = cardEl.querySelector(".card-thumb img");
             if (imgEl) {
               imgEl.src = photoUrl;
-              const badgeEl = cardEl.querySelector(".card-thumb-badge");
-              if (badgeEl) {
-                badgeEl.textContent = "📸";
-                badgeEl.title = "Google 实景照片";
-              }
+
             }
           }
         }
@@ -1852,7 +1625,6 @@ export const MapExplorer = {
                        "尝试切换分类或搜索其它商圈";
       container.innerHTML = `
         <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
           <div style="font-weight: 600; font-size: 0.95rem;">${emptyTitle}</div>
           <div style="font-size: 0.8rem; margin-top: 0.35rem;">${emptySub}</div>
         </div>
@@ -1885,7 +1657,6 @@ export const MapExplorer = {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
       const photoInfo = this.getRestaurantPhoto(r);
-      const fallbackUrl = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80";
 
       const kvBadge = r.inKV
         ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:600;">${txtInKv}</span>`
@@ -1913,15 +1684,8 @@ export const MapExplorer = {
 
       return `
         <div class="map-place-card" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
-          <div class="card-thumb">
-            <img 
-              src="${photoInfo.url}" 
-              alt="${this.escapeHtml(r.name)}" 
-              loading="lazy" 
-              class="card-img" 
-              onerror="this.onerror=null; this.src='${fallbackUrl}';" 
-            />
-            <span class="card-thumb-badge">${photoInfo.emoji}</span>
+          <div class="card-thumb" style="${photoInfo.url ? '' : 'display:none'}">
+            <img ${photoInfo.url ? `src="${this.escapeHtml(photoInfo.url)}"` : ''} alt="${this.escapeHtml(r.name)}" loading="lazy" class="card-img" onload="this.parentElement.style.display=''" onerror="this.parentElement.style.display='none'" />
           </div>
           <div class="card-main">
             <div class="card-title-row">
@@ -2017,7 +1781,6 @@ export const MapExplorer = {
     const key = r.placeId || r.name;
     const lang = this.getCurrentLanguage();
     const photoInfo = this.getRestaurantPhoto(r);
-    const fallbackUrl = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80";
 
     const kvBadge = r.inKV 
       ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:600;">✓ ${lang === "en" ? "In KV" : (lang === "ko" ? "KV 등록" : "已在KV")}</span>`
@@ -2036,10 +1799,7 @@ export const MapExplorer = {
     return `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2px; max-width: 260px;">
         <div style="display:flex; gap: 8px; align-items: center; margin-bottom: 6px;">
-          <div style="width: 48px; height: 48px; border-radius: 6px; overflow: hidden; position: relative; flex-shrink: 0; background: #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">
-            <img src="${photoInfo.url}" alt="${this.escapeHtml(r.name)}" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.src='${fallbackUrl}';" />
-            <span style="position: absolute; bottom: 2px; right: 2px; font-size: 10px; line-height: 1;">${photoInfo.emoji}</span>
-          </div>
+          ${photoInfo.url ? `<div style="width:48px;height:48px;flex-shrink:0;overflow:hidden;border-radius:6px"><img src="${this.escapeHtml(photoInfo.url)}" alt="${this.escapeHtml(r.name)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()" /></div>` : ''}
           <div style="min-width: 0; flex: 1;">
             <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(r.name)}">${this.escapeHtml(r.name)}</h4>
             <div style="margin-top: 3px;">${kvBadge}</div>

@@ -10,6 +10,7 @@
 
 import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
+import { Restaurants } from "./restaurants.js";
 import { Auth } from "./auth.js";
 
 const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc, Toronto, ON";
@@ -44,6 +45,7 @@ export const FieldSales = {
 
     // Listen for language change to update dynamic views
     i18n.onLanguageChange(() => {
+      this.populateRestaurantDatalist();
       this.renderRouteWaypoints();
       this.renderSalesRecords();
       if (this.recordsViewMode === "calendar") {
@@ -276,7 +278,7 @@ export const FieldSales = {
     const listEl = document.getElementById("fsRestaurantsDatalist");
     if (!listEl) return;
     listEl.innerHTML = this.cachedRestaurants.slice(0, 150).map(r => {
-      return `<option value="${r.name}">${r.region || ""} · ${r.address || ""}</option>`;
+      return `<option value="${r.name}">${Restaurants.escapeHtml(Restaurants.formatRegion(r.region))} · ${r.address || ""}</option>`;
     }).join("");
   },
 
@@ -459,7 +461,7 @@ export const FieldSales = {
             <div class="fs-wp-header">
               <span class="fs-wp-name">${w.name}</span>
               ${visitedBadge}
-              <span class="fs-wp-region">${(window.restaurants ? window.restaurants.formatRegion(w.region) : w.region) || "GTA"}</span>
+              <span class="fs-wp-region">${Restaurants.formatRegion(w.region) || "GTA"}</span>
             </div>
             <div class="fs-wp-address">${w.address || i18n.t("no_address")}</div>
             <div class="fs-wp-meta">${phoneStr}</div>
@@ -659,7 +661,7 @@ export const FieldSales = {
         );
         const statusStr = w.visited ? `✓ ${i18n.t("visited_yes")}` : i18n.t("visited_pending");
         const val = w.placeId || w.name;
-        const optLabel = i18n.t("fs_opt_stop_format", { stop: idx + 1, status: statusStr, name: w.name, region: w.address || w.region || "GTA" });
+        const optLabel = i18n.t("fs_opt_stop_format", { stop: idx + 1, status: statusStr, name: w.name, region: w.address || Restaurants.formatRegion(w.region) || "GTA" });
         html += `<option value="${val}" ${isSelected ? "selected" : ""}>${optLabel}</option>`;
       });
       html += `</optgroup>`;
@@ -677,7 +679,7 @@ export const FieldSales = {
           (selectedRest.name && r.name && selectedRest.name === r.name)
         );
         const val = r.placeId || r.name;
-        html += `<option value="${val}" ${isSelected ? "selected" : ""}>${r.name} (${(window.restaurants ? window.restaurants.formatRegion(r.region) : r.region) || "GTA"})</option>`;
+        html += `<option value="${val}" ${isSelected ? "selected" : ""}>${r.name} (${Restaurants.formatRegion(r.region) || "GTA"})</option>`;
       });
       html += `</optgroup>`;
     }
@@ -937,7 +939,7 @@ export const FieldSales = {
         <div class="fs-rec-header">
           <div class="fs-rec-rest-info">
             <h4 class="fs-rec-name">${r.restaurantName}</h4>
-            <span class="fs-rec-region">${r.region || "GTA"}</span>
+            <span class="fs-rec-region">${Restaurants.escapeHtml(Restaurants.formatRegion(r.region)) || "GTA"}</span>
           </div>
           <div class="fs-rec-badges">
             ${methodBadge}
@@ -1298,8 +1300,8 @@ export const FieldSales = {
     // 4. Render Regional Distribution Bar Chart
     const regionCounts = {};
     this.salesRecords.forEach(r => {
-      const rawReg = (r.region || "").split(" ")[0].replace("(", "");
-      const reg = (window.restaurants ? window.restaurants.formatRegion(rawReg) : rawReg) || i18n.t("unspecified");
+      const rawReg = r.region || "";
+      const reg = Restaurants.formatRegion(rawReg) || i18n.t("unspecified");
       regionCounts[reg] = (regionCounts[reg] || 0) + 1;
     });
 
@@ -1471,7 +1473,7 @@ export const FieldSales = {
     const exportRows = this.salesRecords.map(r => ({
       [i18n.t("fs_col_visit_time")]: r.visitTime,
       [i18n.t("fs_col_rest_name")]: r.restaurantName,
-      [i18n.t("fs_col_region")]: (window.restaurants ? window.restaurants.formatRegion(r.region) : r.region) || r.region,
+      [i18n.t("fs_col_region")]: Restaurants.formatRegion(r.region) || r.region,
       [i18n.t("fs_col_address")]: r.restaurantAddress,
       [i18n.t("fs_col_phone")]: r.restaurantPhone,
       [i18n.t("fs_col_contact")]: r.contactPerson || "",

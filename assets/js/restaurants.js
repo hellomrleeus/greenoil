@@ -725,7 +725,7 @@ export const Restaurants = {
               <span class="hub-stat-val">★ ${h.avgRating}</span>
             </div>
             <div class="hub-stat-item">
-              <span class="hub-stat-label">${i18n.t("th_name")}</span>
+              <span class="hub-stat-label">${i18n.t("hub_restaurant_count")}</span>
               <span class="hub-stat-val">${i18n.t("hub_count_unit", { count: h.count })}</span>
             </div>
             <div class="hub-stat-item" style="grid-column: 1/-1;">
@@ -930,30 +930,21 @@ export const Restaurants = {
     if (modalImage && modalImageWrap) {
       const photoInfo = (window.MapExplorer && typeof window.MapExplorer.getRestaurantPhoto === "function")
         ? window.MapExplorer.getRestaurantPhoto(r)
-        : { url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&h=300&q=80", emoji: "🍽️" };
-
-      modalImage.src = photoInfo.url;
+        : { url: null, isGoogle: false };
+      modalImageWrap.style.display = photoInfo.url ? "" : "none";
+      modalImage.removeAttribute("src");
+      if (photoInfo.url) modalImage.src = photoInfo.url;
       modalImage.alt = r.name || "Restaurant";
-      modalImage.onerror = () => {
-        modalImage.src = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&h=300&q=80";
-      };
-      if (modalImageBadge) {
-        modalImageBadge.textContent = photoInfo.emoji || "🍽️";
-      }
-
-      // If restaurant has Google Place ID, resolve authentic Google photo for modal
-      if (r.placeId && r.placeId.startsWith("ChIJ") && (!photoInfo.isGoogle || !r.photoUrl)) {
-        if (window.MapExplorer && typeof window.MapExplorer.fetchGooglePhotoForPlace === "function") {
-          window.MapExplorer.fetchGooglePhotoForPlace(r.placeId).then(gUrl => {
-            if (gUrl && modalImage) {
-              modalImage.src = gUrl;
-              if (modalImageBadge) {
-                modalImageBadge.textContent = "📸";
-                modalImageBadge.title = "Google 实景照片";
-              }
-            }
-          });
-        }
+      modalImage.onerror = () => { modalImageWrap.style.display = "none"; };
+      if (modalImageBadge) modalImageBadge.style.display = "none";
+      modalImage.dataset.place = r.placeId || r.name;
+      if (!photoInfo.url && r.placeId && window.MapExplorer) {
+        window.MapExplorer.fetchGooglePhotoForPlace(r.placeId).then(url => {
+          if (url && modalImage.dataset.place === r.placeId) {
+            modalImage.src = url;
+            modalImageWrap.style.display = "";
+          }
+        });
       }
     }
 

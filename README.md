@@ -77,3 +77,9 @@ python3 -m http.server 8080
 
 ### 3. Cloudflare Worker 部署
 参见 [worker/README.md](worker/README.md)。执行 `npx wrangler deploy` 即可部署后端服务。
+
+### 地图区划数据
+
+- 城市边界：Statistics Canada 2021 Census subdivisions，经 Esri Canada 公共镜像读取；来源与版本保存在 `assets/data/official_municipalities.json`。运行 `python3 scripts/build_gta_municipalities.py` 可重建。
+- 社区边界：City of Toronto Open Data 的 158 个官方社区，运行 `python3 scripts/build_gta_neighbourhoods.py` 可重建。
+- 其他城市目前仅展示官方城市边界，不再使用手绘商圈代替行政区划。全部区域显示各城市真实边界。
