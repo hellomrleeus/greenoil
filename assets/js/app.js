@@ -85,9 +85,11 @@ function setupAuth() {
       if (res.success) {
         if (loginAlert) loginAlert.style.display = "none";
         checkAndRenderAuth();
+        await checkApiStatus();
+        Restaurants.fetchData();
       } else {
         if (loginAlert) {
-          loginAlert.textContent = "账号或密码错误";
+          loginAlert.textContent = res.error || "账号或密码错误";
           loginAlert.style.display = "block";
         }
       }

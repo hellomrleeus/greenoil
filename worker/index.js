@@ -69,21 +69,35 @@ export default {
         return await handleLogout(request, corsHeaders);
       }
 
-      // 2. Cached restaurant query with server-side pagination & filter
+      // 2. Cached restaurant query with server-side pagination & filter (Protected)
       if (url.pathname === "/api/restaurants" && request.method === "GET") {
+        const isAuthed = checkAuth(request, env);
+        if (!isAuthed) {
+          return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
         return await handleGetCachedRestaurants(request, env, corsHeaders);
       }
 
-      // 3. Cache status
+      // 3. Cache status (Protected)
       if (url.pathname === "/api/cache/status" && request.method === "GET") {
+        const isAuthed = checkAuth(request, env);
+        if (!isAuthed) {
+          return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
         return await handleCacheStatus(env, corsHeaders);
       }
 
-      // 4. Manual sync trigger (runs full background sync to KV)
+      // 4. Manual sync trigger (runs full background sync to KV, Protected)
       if (url.pathname === "/api/sync" && request.method === "POST") {
         const isAuthed = checkAuth(request, env);
         if (!isAuthed) {
-          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
             status: 401,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
           });
@@ -215,15 +229,24 @@ function checkAuth(request, env) {
   const validUser = env.WORKER_USERNAME;
   if (!validUser) return false;
 
+  function isValidSessionToken(rawToken) {
+    if (!rawToken) return false;
+    try {
+      const decoded = JSON.parse(atob(rawToken));
+      if (!decoded || decoded.user !== validUser) return false;
+      // Expire session after SESSION_TTL (7 days)
+      if (decoded.timestamp && (Date.now() - decoded.timestamp > SESSION_TTL * 1000)) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   const authHeader = request.headers.get("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
-    try {
-      const decoded = JSON.parse(atob(token));
-      if (decoded && decoded.user === validUser) {
-        return true;
-      }
-    } catch {}
+    if (isValidSessionToken(authHeader.substring(7))) return true;
   }
 
   const cookieHeader = request.headers.get("Cookie");
@@ -234,15 +257,7 @@ function checkAuth(request, env) {
         return [k, v.join("=")];
       })
     );
-    const token = cookies[COOKIE_NAME];
-    if (token) {
-      try {
-        const decoded = JSON.parse(atob(token));
-        if (decoded && decoded.user === validUser) {
-          return true;
-        }
-      } catch {}
-    }
+    if (isValidSessionToken(cookies[COOKIE_NAME])) return true;
   }
 
   return false;

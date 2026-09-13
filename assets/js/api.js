@@ -152,8 +152,15 @@ export const Api = {
    */
   async getCacheStatus() {
     const workerUrl = this.getWorkerUrl();
+    const token = localStorage.getItem("greenoil_session_token") || "";
     try {
-      const resp = await fetch(`${workerUrl}/api/cache/status`, { method: "GET" });
+      const resp = await fetch(`${workerUrl}/api/cache/status`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+        credentials: "include"
+      });
       if (resp.ok) return await resp.json();
       return null;
     } catch {
