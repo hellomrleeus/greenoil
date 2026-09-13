@@ -3,6 +3,9 @@
  * Embedded Google Maps with GTA Communities & Street Filters,
  * Interactive Marker Sync, Viewport Filtering, KV Matching, and Multi-select Export.
  *
+ * Includes automatic resilient fallback to Leaflet / OpenStreetMap if Google Maps JS API
+ * is not yet activated on the user's Google Cloud project (ApiNotActivatedMapError).
+ *
  * Terms of Service: Subject to Google Maps Platform Terms of Service:
  * https://cloud.google.com/maps-platform/terms?utm_campaign=gmp_git_agentskills_v1
  */
@@ -148,11 +151,16 @@ export const MapExplorer = {
   isInitialized: false,
   googleMap: null,
   placesService: null,
-  markersMap: new Map(), // key -> Marker
+  markersMap: new Map(), // key -> Google Marker or Leaflet Marker
   infoWindow: null,
   allRestaurants: [],
   filteredRestaurants: [],
   selectedMap: new Map(), // key -> Restaurant
+
+  // Fallback map state
+  isFallbackMode: false,
+  fallbackMap: null,
+  fallbackLayerGroup: null,
 
   // KV Identification Tracking Sets
   kvPlaceIdsSet: new Set(),
@@ -176,6 +184,7 @@ export const MapExplorer = {
     if (this.isInitialized) return;
     this.isInitialized = true;
 
+    this.setupAuthFailureHandler();
     this.populateSelects();
     this.bindEvents();
 
@@ -184,6 +193,31 @@ export const MapExplorer = {
 
     // 2. Load all restaurants data from KV
     await this.loadAllRestaurants();
+  },
+
+  setupAuthFailureHandler() {
+    window.gm_authFailure = () => {
+      console.warn("Google Maps JavaScript API error (ApiNotActivatedMapError / authFailure). Switching to resilient fallback interactive map.");
+      this.triggerFallbackMode();
+    };
+  },
+
+  triggerFallbackMode() {
+    if (this.isFallbackMode) return;
+    this.isFallbackMode = true;
+
+    const noticeEl = document.getElementById("mapApiNotice");
+    if (noticeEl) {
+      noticeEl.style.display = "block";
+    }
+
+    const badge = document.getElementById("mapMarkerCountBadge");
+    if (badge) {
+      badge.style.background = "#fef3c7";
+      badge.style.color = "#b45309";
+    }
+
+    this.initFallbackMap();
   },
 
   populateSelects() {
@@ -225,76 +259,143 @@ export const MapExplorer = {
 
     const apiKey = await Api.getGoogleMapsApiKey();
     if (!apiKey) {
-      canvas.innerHTML = `
-        <div style="display:flex; height:100%; align-items:center; justify-content:center; color:#ef4444; font-weight:600;">
-          Google Maps API Key 未配置，无法加载内嵌地图
-        </div>`;
+      this.triggerFallbackMode();
       return;
     }
 
-    await new Promise((resolve, reject) => {
-      const existingScript = document.getElementById("googleMapsJsScript");
-      if (existingScript) {
-        existingScript.addEventListener("load", resolve);
-        return;
-      }
+    try {
+      await new Promise((resolve, reject) => {
+        const existingScript = document.getElementById("googleMapsJsScript");
+        if (existingScript) {
+          existingScript.addEventListener("load", resolve);
+          existingScript.addEventListener("error", reject);
+          return;
+        }
 
-      const script = document.createElement("script");
-      script.id = "googleMapsJsScript";
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&v=weekly`;
-      script.async = true;
-      script.defer = true;
-      script.onload = resolve;
-      script.onerror = (err) => {
-        console.error("Google Maps API script load error:", err);
-        reject(err);
-      };
-      document.head.appendChild(script);
-    });
+        const script = document.createElement("script");
+        script.id = "googleMapsJsScript";
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&v=weekly`;
+        script.async = true;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = (err) => {
+          console.error("Google Maps API script load error:", err);
+          reject(err);
+        };
+        document.head.appendChild(script);
+      });
 
-    this.createMapInstance();
+      this.createMapInstance();
+    } catch (e) {
+      console.warn("Failed to load Google Maps script, enabling fallback interactive map:", e);
+      this.triggerFallbackMode();
+    }
   },
 
   createMapInstance() {
     const canvas = document.getElementById("mapExplorerCanvas");
-    if (!canvas || !window.google || !window.google.maps) return;
-
-    const defaultCenter = { lat: 43.7282, lng: -79.3832 }; // Central GTA
-    this.googleMap = new google.maps.Map(canvas, {
-      center: defaultCenter,
-      zoom: 11,
-      mapId: "DEMO_MAP_ID",
-      mapTypeControl: true,
-      mapTypeControlOptions: {
-        position: google.maps.ControlPosition.TOP_RIGHT
-      },
-      streetViewControl: true,
-      fullscreenControl: true,
-      zoomControl: true
-    });
-
-    if (google.maps.places) {
-      this.placesService = new google.maps.places.PlacesService(this.googleMap);
+    if (!canvas || !window.google || !window.google.maps) {
+      this.triggerFallbackMode();
+      return;
     }
 
-    this.infoWindow = new google.maps.InfoWindow();
+    try {
+      const defaultCenter = { lat: 43.7282, lng: -79.3832 }; // Central GTA
+      this.googleMap = new google.maps.Map(canvas, {
+        center: defaultCenter,
+        zoom: 11,
+        mapId: "DEMO_MAP_ID",
+        mapTypeControl: true,
+        mapTypeControlOptions: {
+          position: google.maps.ControlPosition.TOP_RIGHT
+        },
+        streetViewControl: true,
+        fullscreenControl: true,
+        zoomControl: true
+      });
 
-    this.googleMap.addListener("idle", () => {
-      if (this.followBounds) {
-        clearTimeout(this.boundsDebounceTimer);
-        this.boundsDebounceTimer = setTimeout(() => {
-          this.applyFilters(false);
-        }, 250);
+      if (google.maps.places) {
+        this.placesService = new google.maps.places.PlacesService(this.googleMap);
       }
-    });
 
-    // Support clicking directly on Google Map POI restaurants
-    this.googleMap.addListener("click", (e) => {
-      if (e.placeId) {
-        e.stop();
-        this.handlePoiClick(e.placeId, e.latLng);
+      this.infoWindow = new google.maps.InfoWindow();
+
+      this.googleMap.addListener("idle", () => {
+        if (this.followBounds) {
+          clearTimeout(this.boundsDebounceTimer);
+          this.boundsDebounceTimer = setTimeout(() => {
+            this.applyFilters(false);
+          }, 250);
+        }
+      });
+
+      this.googleMap.addListener("click", (e) => {
+        if (e.placeId) {
+          e.stop();
+          this.handlePoiClick(e.placeId, e.latLng);
+        }
+      });
+    } catch (err) {
+      console.warn("Google Maps instantiation failed:", err);
+      this.triggerFallbackMode();
+    }
+  },
+
+  // -------------------------------------------------------------
+  // Resilient Fallback Map (Leaflet / OpenStreetMap)
+  // -------------------------------------------------------------
+  async initFallbackMap() {
+    const canvas = document.getElementById("mapExplorerCanvas");
+    if (!canvas) return;
+
+    // Load Leaflet CSS
+    if (!document.getElementById("leafletCss")) {
+      const link = document.createElement("link");
+      link.id = "leafletCss";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+
+    // Load Leaflet JS
+    if (!window.L) {
+      try {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.id = "leafletJs";
+          script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+      } catch (e) {
+        console.error("Leaflet load error:", e);
+        return;
       }
-    });
+    }
+
+    if (!window.L) return;
+
+    // Reset canvas container
+    canvas.innerHTML = "";
+    if (this.fallbackMap) {
+      this.fallbackMap.remove();
+      this.fallbackMap = null;
+    }
+
+    const defaultCenter = [43.7282, -79.3832];
+    this.fallbackMap = L.map(canvas).setView(defaultCenter, 11);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors | Green Oil'
+    }).addTo(this.fallbackMap);
+
+    this.fallbackLayerGroup = L.layerGroup().addTo(this.fallbackMap);
+
+    if (this.filteredRestaurants.length > 0) {
+      this.renderMarkers();
+    }
   },
 
   checkIsInKv(r) {
@@ -463,23 +564,25 @@ export const MapExplorer = {
   },
 
   panToSelectedArea() {
-    if (!this.googleMap) return;
-
     const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
     if (!city) return;
+
+    let center = city.center;
+    let zoom = city.zoom || 12;
 
     if (this.activeNeighborhoodId && this.activeNeighborhoodId !== "all" && city.neighborhoods) {
       const nh = city.neighborhoods.find(n => n.id === this.activeNeighborhoodId);
       if (nh && nh.center) {
-        this.googleMap.panTo(nh.center);
-        this.googleMap.setZoom(nh.zoom || 15);
-        return;
+        center = nh.center;
+        zoom = nh.zoom || 15;
       }
     }
 
-    if (city.center) {
-      this.googleMap.panTo(city.center);
-      this.googleMap.setZoom(city.zoom || 12);
+    if (this.googleMap && !this.isFallbackMode) {
+      this.googleMap.panTo(center);
+      this.googleMap.setZoom(zoom);
+    } else if (this.fallbackMap) {
+      this.fallbackMap.setView([center.lat, center.lng], zoom);
     }
   },
 
@@ -513,6 +616,10 @@ export const MapExplorer = {
           lat: this.googleMap.getCenter().lat(),
           lng: this.googleMap.getCenter().lng()
         };
+        radius = 4000;
+      } else if (this.fallbackMap) {
+        const c = this.fallbackMap.getCenter();
+        center = { lat: c.lat, lng: c.lng };
         radius = 4000;
       }
 
@@ -597,9 +704,14 @@ export const MapExplorer = {
 
         // Pan to first found item
         const first = res.places[0];
-        if (first && first.latitude && first.longitude && this.googleMap) {
-          this.googleMap.panTo({ lat: parseFloat(first.latitude), lng: parseFloat(first.longitude) });
-          this.googleMap.setZoom(16);
+        if (first && first.latitude && first.longitude) {
+          const pos = [parseFloat(first.latitude), parseFloat(first.longitude)];
+          if (this.googleMap && !this.isFallbackMode) {
+            this.googleMap.panTo({ lat: pos[0], lng: pos[1] });
+            this.googleMap.setZoom(16);
+          } else if (this.fallbackMap) {
+            this.fallbackMap.setView(pos, 16);
+          }
         }
 
         alert(`Google 地图检索完成：检索到 ${res.places.length} 家餐馆 (其中 ${newCount} 家为未入库新店)`);
@@ -649,14 +761,6 @@ export const MapExplorer = {
         const marker = this.markersMap.get(placeId);
         if (marker) {
           this.showInfoWindow(norm, marker);
-        } else {
-          // Temporary marker
-          const tempMarker = new google.maps.Marker({
-            position: latLng,
-            map: this.googleMap,
-            icon: this.getPinIcon(norm, false)
-          });
-          this.showInfoWindow(norm, tempMarker);
         }
       }
     });
@@ -742,14 +846,24 @@ export const MapExplorer = {
     }
 
     // 7. Viewport Bounds Filter (if enabled)
-    if (this.followBounds && this.googleMap && this.googleMap.getBounds()) {
-      const bounds = this.googleMap.getBounds();
-      result = result.filter(r => {
-        const lat = parseFloat(r.latitude);
-        const lng = parseFloat(r.longitude);
-        if (isNaN(lat) || isNaN(lng)) return false;
-        return bounds.contains(new google.maps.LatLng(lat, lng));
-      });
+    if (this.followBounds) {
+      if (this.googleMap && !this.isFallbackMode && this.googleMap.getBounds()) {
+        const bounds = this.googleMap.getBounds();
+        result = result.filter(r => {
+          const lat = parseFloat(r.latitude);
+          const lng = parseFloat(r.longitude);
+          if (isNaN(lat) || isNaN(lng)) return false;
+          return bounds.contains(new google.maps.LatLng(lat, lng));
+        });
+      } else if (this.fallbackMap && this.fallbackMap.getBounds()) {
+        const bounds = this.fallbackMap.getBounds();
+        result = result.filter(r => {
+          const lat = parseFloat(r.latitude);
+          const lng = parseFloat(r.longitude);
+          if (isNaN(lat) || isNaN(lng)) return false;
+          return bounds.contains([lat, lng]);
+        });
+      }
     }
 
     this.filteredRestaurants = result;
@@ -786,24 +900,34 @@ export const MapExplorer = {
     if (countEl) countEl.textContent = totalCount.toLocaleString();
     if (unsavedCountEl) unsavedCountEl.textContent = unsavedCount.toLocaleString();
     if (badgeEl) {
-      badgeEl.textContent = `📍 展示: ${totalCount.toLocaleString()} 家 (未入库: ${unsavedCount} 家)`;
+      const modeLabel = this.isFallbackMode ? " (备用地图模式)" : "";
+      badgeEl.textContent = `📍 展示: ${totalCount.toLocaleString()} 家 (未入库: ${unsavedCount} 家)${modeLabel}`;
     }
   },
 
   // -------------------------------------------------------------
-  // Map Markers Management
+  // Map Markers Management (Google Maps & Leaflet)
   // -------------------------------------------------------------
   clearMarkers() {
-    this.markersMap.forEach(marker => {
-      marker.setMap(null);
-    });
+    if (this.isFallbackMode && this.fallbackLayerGroup) {
+      this.fallbackLayerGroup.clearLayers();
+    } else {
+      this.markersMap.forEach(marker => {
+        if (marker.setMap) marker.setMap(null);
+      });
+    }
     this.markersMap.clear();
   },
 
   renderMarkers() {
-    if (!this.googleMap || !window.google || !window.google.maps) return;
-
     this.clearMarkers();
+
+    if (this.isFallbackMode && this.fallbackMap && window.L) {
+      this.renderLeafletMarkers();
+      return;
+    }
+
+    if (!this.googleMap || !window.google || !window.google.maps) return;
 
     const bounds = new google.maps.LatLngBounds();
     const pinsToRender = this.filteredRestaurants.slice(0, 1500);
@@ -832,6 +956,42 @@ export const MapExplorer = {
         this.highlightTableRow(r);
       });
 
+      this.markersMap.set(key, marker);
+    });
+  },
+
+  renderLeafletMarkers() {
+    if (!this.fallbackMap || !this.fallbackLayerGroup || !window.L) return;
+
+    const pinsToRender = this.filteredRestaurants.slice(0, 1500);
+
+    pinsToRender.forEach(r => {
+      const lat = parseFloat(r.latitude);
+      const lng = parseFloat(r.longitude);
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      const key = r.placeId || r.name;
+      const isSelected = this.selectedMap.has(key);
+
+      const color = isSelected ? "#2563eb" : (!r.inKV ? "#f59e0b" : "#10b981");
+
+      const marker = L.circleMarker([lat, lng], {
+        radius: isSelected ? 9 : (!r.inKV ? 7.5 : 6.5),
+        fillColor: color,
+        color: "#ffffff",
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.95
+      });
+
+      const popupHtml = this.getPopupHtml(r);
+      marker.bindPopup(popupHtml, { maxWidth: 300 });
+
+      marker.on("click", () => {
+        this.highlightTableRow(r);
+      });
+
+      this.fallbackLayerGroup.addLayer(marker);
       this.markersMap.set(key, marker);
     });
   },
@@ -872,9 +1032,7 @@ export const MapExplorer = {
     };
   },
 
-  showInfoWindow(r, marker) {
-    if (!this.infoWindow || !this.googleMap) return;
-
+  getPopupHtml(r) {
     const key = r.placeId || r.name;
     const phoneStr = r.phone && r.phone !== "无" ? `<a href="tel:${r.phone}" style="color:#2563eb; text-decoration:none;">📞 ${r.phone}</a>` : "";
     const ratingStr = r.rating ? `★ <b>${parseFloat(r.rating).toFixed(1)}</b> (${r.reviews})` : "-";
@@ -892,8 +1050,8 @@ export const MapExplorer = {
       </button>
     ` : "";
 
-    const contentString = `
-      <div style="max-width: 290px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 4px;">
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 4px; gap:6px;">
           <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.3;">${r.name}</h4>
           <div style="display:flex; gap:4px; flex-shrink:0;">${kvBadge} ${statusBadge}</div>
@@ -922,8 +1080,17 @@ export const MapExplorer = {
         </div>
       </div>
     `;
+  },
 
-    this.infoWindow.setContent(contentString);
+  showInfoWindow(r, marker) {
+    if (this.isFallbackMode && marker && marker.openPopup) {
+      marker.openPopup();
+      return;
+    }
+
+    if (!this.infoWindow || !this.googleMap) return;
+
+    this.infoWindow.setContent(this.getPopupHtml(r));
     this.infoWindow.open(this.googleMap, marker);
   },
 
@@ -941,21 +1108,26 @@ export const MapExplorer = {
   },
 
   focusRestaurantOnMap(r) {
-    if (!this.googleMap) return;
     const lat = parseFloat(r.latitude);
     const lng = parseFloat(r.longitude);
     if (isNaN(lat) || isNaN(lng)) return;
 
-    const pos = { lat, lng };
-    this.googleMap.panTo(pos);
-    if (this.googleMap.getZoom() < 15) {
-      this.googleMap.setZoom(15);
-    }
-
     const key = r.placeId || r.name;
     const marker = this.markersMap.get(key);
-    if (marker) {
-      this.showInfoWindow(r, marker);
+
+    if (this.isFallbackMode && this.fallbackMap) {
+      this.fallbackMap.setView([lat, lng], 16);
+      if (marker && marker.openPopup) {
+        marker.openPopup();
+      }
+    } else if (this.googleMap) {
+      this.googleMap.panTo({ lat, lng });
+      if (this.googleMap.getZoom() < 15) {
+        this.googleMap.setZoom(15);
+      }
+      if (marker) {
+        this.showInfoWindow(r, marker);
+      }
     }
   },
 
@@ -1141,7 +1313,16 @@ export const MapExplorer = {
     if (!marker) return;
     const isSelected = this.selectedMap.has(key);
     const rest = this.allRestaurants.find(r => (r.placeId || r.name) === key);
-    marker.setIcon(this.getPinIcon(rest || {}, isSelected));
+
+    if (this.isFallbackMode && marker.setStyle) {
+      const color = isSelected ? "#2563eb" : (!rest?.inKV ? "#f59e0b" : "#10b981");
+      marker.setStyle({
+        fillColor: color,
+        radius: isSelected ? 9 : (!rest?.inKV ? 7.5 : 6.5)
+      });
+    } else if (marker.setIcon) {
+      marker.setIcon(this.getPinIcon(rest || {}, isSelected));
+    }
   },
 
   updateSelectionUI() {

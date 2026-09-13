@@ -797,6 +797,28 @@
                 <span><span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#2563eb; margin-right:4px;"></span>已选中</span>
               </div>
             </div>
+            <!-- Google Maps API Not Activated Notice Banner -->
+            <div id="mapApiNotice" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                <div>
+                  <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;">
+                    ⚠️ Google Maps JavaScript API 尚未激活 (ApiNotActivatedMapError)
+                  </div>
+                  <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;">
+                    检测到您的 Google Cloud 项目尚未启用 <b>Maps JavaScript API</b>。已自动无缝切换至备用交互地图模式（餐馆标绘、社区筛选、导出与外勤路线功能正常可用）。
+                  </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                  <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;">
+                    🚀 前往 Google Cloud 一键启用
+                  </a>
+                  <a href="https://console.cloud.google.com/google/maps-apis/credentials" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; text-decoration: none;">
+                    🔑 检查 Key 权限
+                  </a>
+                </div>
+              </div>
+            </div>
+
             <!-- Google Map canvas container (Explicit height 500px to satisfy CF2) -->
             <div id="mapExplorerCanvas" style="width: 100%; height: 500px; min-height: 420px; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid var(--border);"></div>
           </div>
