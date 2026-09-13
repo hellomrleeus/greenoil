@@ -1065,6 +1065,7 @@ export const MapExplorer = {
   // Area Google Places Fetching & KV Joining
   // -------------------------------------------------------------
   async loadPlacesForCurrentArea() {
+    this.cancelMarkerBatches();
     this.selectedMap.clear();
     this.filteredPlaces = this.filteredPlaces || [];
     this.updateSelectionUI();
@@ -1319,7 +1320,17 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   // Map Markers Rendering (Google Maps & Leaflet)
   // -------------------------------------------------------------
+  markerRenderGeneration: 0,
+  markerBatchTimer: null,
+
+  cancelMarkerBatches() {
+    this.markerRenderGeneration++;
+    if (this.markerBatchTimer !== null) clearTimeout(this.markerBatchTimer);
+    this.markerBatchTimer = null;
+  },
+
   clearMarkers() {
+    this.cancelMarkerBatches();
     if (this.isFallbackMode && this.fallbackLayerGroup) {
       this.fallbackLayerGroup.clearLayers();
     } else {
@@ -1383,7 +1394,7 @@ export const MapExplorer = {
       }
     }
 
-    markerPlaces.forEach(r => {
+    const createMarker = r => {
       const lat = parseFloat(r.latitude);
       const lng = parseFloat(r.longitude);
       if (isNaN(lat) || isNaN(lng)) return;
@@ -1425,7 +1436,26 @@ export const MapExplorer = {
         this.fallbackLayerGroup.addLayer(marker);
         this.markersMap.set(key, marker);
       }
-    });
+    };
+
+    const generation = this.markerRenderGeneration;
+    let next = 0;
+    const renderBatch = () => {
+      if (generation !== this.markerRenderGeneration) return;
+      this.markerBatchTimer = null;
+      const started = performance.now();
+      let count = 0;
+      // Bound both work count and elapsed JS time, then yield for interaction/paint.
+      while (next < markerPlaces.length && count < 20 && (count === 0 || performance.now() - started < 6)) {
+        const place = markerPlaces[next++];
+        const key = place.placeId || place.name;
+        // Hovering a card can already have created this marker between batches.
+        if (!this.markersMap.has(key)) createMarker(place);
+        count++;
+      }
+      if (next < markerPlaces.length) this.markerBatchTimer = setTimeout(renderBatch, 16);
+    };
+    renderBatch();
   },
 
   pinIconCache: new Map(),
