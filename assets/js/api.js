@@ -372,32 +372,23 @@ export const Api = {
   },
 
   /**
-   * Get all restaurants for map explorer (lightweight format, up to 3500 items)
+   * Get one bounded, paginated restaurant page for the map explorer.
    */
-  async getMapRestaurants({ region = "全部 (All GTA)", category = "全部", keyword = "" } = {}) {
-    const workerUrl = this.getWorkerUrl();
-    const token = localStorage.getItem("greenoil_session_token") || "";
-
-    const url = new URL(`${workerUrl}/api/restaurants`);
-    url.searchParams.set("page", "1");
-    url.searchParams.set("pageSize", "3500");
+  async getMapRestaurants({ bbox, page = 1, category = "全部", keyword = "", visited = "all", outcome = "all", signal } = {}) {
+    const url = new URL(`${this.getWorkerUrl()}/api/restaurants`);
+    url.searchParams.set("page", page);
+    url.searchParams.set("pageSize", "200");
     url.searchParams.set("format", "map");
-    if (region && region !== "全部 (All GTA)") url.searchParams.set("region", region);
-    if (category && category !== "全部") url.searchParams.set("category", category);
-    if (keyword) url.searchParams.set("keyword", keyword);
-
-    try {
-      const resp = await fetch(url.toString(), {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      if (resp.ok) {
-        const res = await resp.json();
-        if (res && res.data) return res.data;
-      }
-    } catch (e) {
-      console.error("Failed to load map restaurants:", e);
-    }
-    return [];
+    if (!Array.isArray(bbox) || bbox.length !== 4) throw new Error("Map bounds required");
+    url.searchParams.set("bbox", bbox.join(","));
+    url.searchParams.set("category", category);
+    url.searchParams.set("keyword", keyword);
+    url.searchParams.set("visited", visited);
+    url.searchParams.set("outcome", outcome);
+    const response = await fetch(url, { headers: this.getAuthHeaders(), signal });
+    if (!response.ok) throw new Error(`Map query failed (${response.status})`);
+    const result = await response.json();
+    if (!result.success) throw new Error(result.error || "Map query failed");
+    return result;
   }
 };

@@ -9,7 +9,8 @@
 
 import fs from "fs";
 import path from "path";
-import { execSync } from "child_process";
+import { execSync, execFileSync } from "child_process";
+import os from "os";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -664,21 +665,27 @@ export function tagAllRestaurants() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { restaurants, summaryList } = tagAllRestaurants();
 
-  // Now upload to Cloudflare KV
-  console.log("Uploading tagged dataset to Cloudflare KV (gta_fried_food_restaurants)...");
+  // D1 is authoritative for restaurants; KV retains the static hub summary.
+  console.log("Updating restaurant hub tags in D1...");
   try {
-    const jsonPath = path.join(__dirname, "output/restaurants_full.json");
-    execSync(`npx wrangler kv key put --config=worker/wrangler.toml --binding=RESTAURANTS_KV --remote "gta_fried_food_restaurants" --path="${jsonPath}"`, {
-      stdio: "inherit",
-      cwd: path.join(__dirname, "..")
-    });
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "greenoil-hubs-"));
+    const sqlPath = path.join(temporary, "hubs.sql");
+    const quote = value => "'" + value.replace(/'/g, "''") + "'";
+    const sql = restaurants.map(r => {
+      const tags = Object.fromEntries(["hubId","hubName","hubNameEn","hubNameKo","hubCategory","hubIcon","region"].filter(k=>r[k]!==undefined).map(k=>[k,r[k]]));
+      return `INSERT INTO restaurants(id,data) VALUES(${quote(r.placeId || r.name)},${quote(JSON.stringify(r))}) ON CONFLICT(id) DO UPDATE SET data=json_patch(restaurants.data,${quote(JSON.stringify(tags))});`;
+    }).join("\n");
+    try {
+      fs.writeFileSync(sqlPath, sql, {mode:0o600});
+      execFileSync("npx", ["wrangler","d1","execute","greenoil-restaurants","--config=worker/wrangler.toml","--remote",`--file=${sqlPath}`], {stdio:"inherit",cwd:path.join(__dirname,"..")});
+    } finally { fs.rmSync(temporary,{recursive:true,force:true}); }
 
     const hubsJsonPath = path.join(__dirname, "output/hubs_summary.json");
     execSync(`npx wrangler kv key put --config=worker/wrangler.toml --binding=RESTAURANTS_KV --remote "gta_hubs_summary" --path="${hubsJsonPath}"`, {
       stdio: "inherit",
       cwd: path.join(__dirname, "..")
     });
-    console.log("Successfully updated Cloudflare KV with tagged restaurant data and hubs summary!");
+    console.log("Successfully updated D1 restaurant tags and KV hub summary!");
   } catch (err) {
     console.error("Failed to upload to Cloudflare KV:", err.message);
   }

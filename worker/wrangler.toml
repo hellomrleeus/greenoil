@@ -6,3 +6,9 @@ compatibility_date = "2024-09-01"
 [[kv_namespaces]]
 binding = "RESTAURANTS_KV"
 id = "36694f8d5c90424a8ad84d4812812d56"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "greenoil-restaurants"
+database_id = "ee902a4b-feef-4be8-9b45-eba8774aec26"
+migrations_dir = "migrations"

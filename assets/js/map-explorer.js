@@ -162,8 +162,6 @@ export const MapExplorer = {
     // 1. Fetch Google Maps API Key and initialize map
     await this.initGoogleMap();
 
-    // 2. Load all restaurants data from KV
-    await this.loadAllRestaurants();
 
     // 3. Pan to initial locality and load places
     this.panToSelectedArea();
@@ -198,27 +196,65 @@ export const MapExplorer = {
     return false;
   },
 
-  async loadAllRestaurants() {
+  areaLoadId: 0,
+  areaAbort: null,
+  mapQueryTimer: null,
+  mapQueryPage: 0,
+  mapQueryTotal: 0,
+  mapQueryHasMore: false,
+  mapQueryLoading: false,
+  mapQueryBbox: null,
+  googleAreaPlaces: [],
+  googleSearchId: 0,
+
+  getQueryBounds() {
+    const bounds = this.googleMap?.getBounds?.();
+    const leaflet = this.fallbackMap?.getBounds?.();
+    let box = bounds ? [bounds.getSouthWest().lng(), bounds.getSouthWest().lat(), bounds.getNorthEast().lng(), bounds.getNorthEast().lat()] :
+      leaflet ? [leaflet.getWest(),leaflet.getSouth(),leaflet.getEast(),leaflet.getNorth()] : null;
+    const subareas = this.getAllNeighborhoods().filter(n => this.activeNeighborhoodIds.has(n.id));
+    const areas = subareas.length ? subareas : GTA_COMMUNITIES.filter(c => c.id !== "all" && (this.activeCityIds.has("all") || this.activeCityIds.has(c.id)));
+    const boxes = areas.map(a => a.bbox).filter(b => Array.isArray(b) && b.length === 4);
+    if (boxes.length) {
+      const area = [Math.min(...boxes.map(b=>b[0])),Math.min(...boxes.map(b=>b[1])),Math.max(...boxes.map(b=>b[2])),Math.max(...boxes.map(b=>b[3]))];
+      box = box ? [Math.max(box[0],area[0]),Math.max(box[1],area[1]),Math.min(box[2],area[2]),Math.min(box[3],area[3])] : area;
+    }
+    return box || [-79.72,43.58,-79.16,43.95];
+  },
+
+  scheduleViewportQuery() {
+    if (!this.isInitialized) return;
+    clearTimeout(this.mapQueryTimer);
+    this.mapQueryTimer = setTimeout(() => {
+      const box = this.getQueryBounds();
+      if (!this.mapQueryBbox || box.some((v,i)=>Math.abs(v-this.mapQueryBbox[i]) > 0.00005)) this.loadPlacesForCurrentArea(false);
+    }, 300);
+  },
+
+  async loadMoreMapRestaurants() {
+    if (this.mapQueryLoading || !this.mapQueryHasMore) return;
+    const requestId = this.areaLoadId;
+    this.mapQueryLoading = true;
     try {
-      const data = await Api.getMapRestaurants({ pageSize: 3500, format: "map" });
-      if (Array.isArray(data) && data.length > 0) {
-        this.allRestaurants = data.map(r => {
-          r.inKV = true;
-          if (r.placeId) this.kvPlaceIdsSet.add(r.placeId);
-          if (r.name) this.kvNormalizedNamesSet.add(r.name.trim().toLowerCase());
-          return r;
-        });
-      } else {
-        const res = await Api.queryRestaurants({ page: 1, pageSize: 300 });
-        this.allRestaurants = (res.data || []).map(r => {
-          r.inKV = true;
-          if (r.placeId) this.kvPlaceIdsSet.add(r.placeId);
-          if (r.name) this.kvNormalizedNamesSet.add(r.name.trim().toLowerCase());
-          return r;
-        });
+      const result = await Api.getMapRestaurants({bbox:this.mapQueryBbox,page:this.mapQueryPage+1,category:this.activeCategory,keyword:this.searchKeyword,visited:this.activeVisited,outcome:this.activeOutcome,signal:this.areaAbort?.signal});
+      if (requestId !== this.areaLoadId) return;
+      this.mapQueryPage = result.page;
+      this.mapQueryTotal = result.total;
+      this.mapQueryHasMore = result.page < result.totalPages;
+      result.data.forEach(r => {
+        r.inKV = true;
+        if (r.placeId) this.kvPlaceIdsSet.add(r.placeId);
+        if (r.name) this.kvNormalizedNamesSet.add(r.name.trim().toLowerCase());
+      });
+      this.allRestaurants.push(...result.data);
+      this.mergeAreaPlaces();
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.warn(error);
+        if (window.showToast) window.showToast("餐馆加载失败，请重试");
       }
-    } catch (e) {
-      console.warn("Failed to load KV restaurants dataset:", e);
+    } finally {
+      if (requestId === this.areaLoadId) this.mapQueryLoading = false;
     }
   },
 
@@ -1000,6 +1036,7 @@ export const MapExplorer = {
 
       this.pinZoomScale = this.getPinZoomScale(this.googleMap.getZoom());
       this.googleMap.addListener("zoom_changed", () => this.animatePinZoom());
+      this.googleMap.addListener("idle", () => this.scheduleViewportQuery());
       this.infoWindow = new google.maps.InfoWindow();
       this.infoWindow.addListener("closeclick", () => { this.activePopupKey = null; this.poiRequestId++; });
       this.googleMap.addListener("click", event => {
@@ -1058,6 +1095,7 @@ export const MapExplorer = {
       attribution: '© OpenStreetMap contributors | Green Oil'
     }).addTo(this.fallbackMap);
 
+    this.fallbackMap.on("moveend", () => this.scheduleViewportQuery());
     this.fallbackLayerGroup = L.layerGroup().addTo(this.fallbackMap);
     this.drawSelectedBoundaries();
     this.renderMarkers();
@@ -1066,7 +1104,21 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   // Area Google Places Fetching & KV Joining
   // -------------------------------------------------------------
-  async loadPlacesForCurrentArea() {
+  async loadPlacesForCurrentArea(searchGoogle = true) {
+    const requestId = ++this.areaLoadId;
+    this.areaAbort?.abort();
+    this.areaAbort = new AbortController();
+    this.mapQueryLoading = false;
+    this.mapQueryPage = 0;
+    this.currentPage = 1;
+    this.mapQueryTotal = 0;
+    this.mapQueryBbox = this.getQueryBounds();
+    this.mapQueryHasMore = this.mapQueryBbox[0] <= this.mapQueryBbox[2] && this.mapQueryBbox[1] <= this.mapQueryBbox[3];
+    this.allRestaurants = [];
+    this.kvPlaceIdsSet.clear();
+    this.kvNormalizedNamesSet.clear();
+    const searchId = searchGoogle ? ++this.googleSearchId : this.googleSearchId;
+    if (searchGoogle) this.googleAreaPlaces = [];
     this.cancelMarkerBatches();
     this.selectedMap.clear();
     this.filteredPlaces = this.filteredPlaces || [];
@@ -1086,7 +1138,7 @@ export const MapExplorer = {
       `;
     }
 
-    this.drawSelectedBoundaries();
+    if (searchGoogle) this.drawSelectedBoundaries();
 
     const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
@@ -1107,27 +1159,36 @@ export const MapExplorer = {
       areaQuery = "restaurants in Toronto Ontario";
     }
 
-    let rawPlaces = [];
-    try {
-      const res = await Api.searchGooglePlaces(areaQuery);
-      if (res && res.success && Array.isArray(res.places) && res.places.length > 0) {
-        rawPlaces = res.places;
-      }
-    } catch (err) {
-      console.warn("Google Places proxy query error:", err);
+    // Start the bounded database page independently of Google discovery.
+    this.displayedPlaces = [];
+    this.filterAndRenderPlaces();
+    const databaseLoad = this.loadMoreMapRestaurants();
+    if (searchGoogle) {
+      try {
+        const result = await Api.searchGooglePlaces(areaQuery);
+        if (searchId === this.googleSearchId) {
+          this.googleAreaPlaces = result?.success ? (result.places || []) : [];
+          this.mergeAreaPlaces();
+        }
+      } catch (error) { console.warn("Google discovery failed:", error); }
     }
+    await databaseLoad;
+    if (requestId !== this.areaLoadId) return;
+  },
 
+  mergeAreaPlaces() {
+    const rawPlaces = this.googleAreaPlaces;
     // Geographic filtering is applied after merging both sources.
     const localMatches = this.allRestaurants;
 
-    // Merge Google places with local KV items, prioritizing Google places for discovery
+    // Merge Google places with locally loaded database items, prioritizing Google discovery.
     const combinedMap = new Map();
     rawPlaces.forEach(p => {
       const key = p.placeId || p.name;
       combinedMap.set(key, p);
     });
 
-    // Merge ALL matching local KV restaurants WITHOUT slicing
+    // Merge all locally loaded database restaurants for this viewport.
     localMatches.forEach(r => {
       const key = r.placeId || r.name;
       if (!combinedMap.has(key)) {
@@ -1135,7 +1196,7 @@ export const MapExplorer = {
       }
     });
 
-    // Check KV status and visit records for each place with fast O(1) hash maps
+    // Check saved status and visit records for each place with fast O(1) hash maps
     const kvByPlaceId = new Map();
     const kvByName = new Map();
     this.allRestaurants.forEach(r => {
@@ -1164,8 +1225,7 @@ export const MapExplorer = {
       return place;
     });
 
-    this.currentPage = 1;
-    this.filterAndRenderPlaces();
+    this.filterAndRenderPlaces(true);
   },
 
   isPlaceInGeometry(place, geometry) {
@@ -1200,7 +1260,7 @@ export const MapExplorer = {
     });
   },
 
-  filterAndRenderPlaces() {
+  filterAndRenderPlaces(preservePage = false) {
     // Apply the same exact boundary to both Google discovery and saved places.
     // Selected subareas take precedence over their parent city tags.
     const selectedSubareas = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
@@ -1208,6 +1268,11 @@ export const MapExplorer = {
       this.activeCityIds.has("all") ? [] : GTA_COMMUNITIES.filter(city => this.activeCityIds.has(city.id));
     let result = this.displayedPlaces.filter(place => selectedAreas.length === 0 ||
       selectedAreas.some(area => this.isPlaceInGeometry(place, area.geometry)));
+
+    if (this.mapQueryBbox) {
+      const [west,south,east,north] = this.mapQueryBbox;
+      result = result.filter(r => Number(r.longitude) >= west && Number(r.longitude) <= east && Number(r.latitude) >= south && Number(r.latitude) <= north);
+    }
 
     // 1. Category Filter
     if (this.activeCategory !== "全部") {
@@ -1239,7 +1304,7 @@ export const MapExplorer = {
     }
 
     this.filteredPlaces = result;
-    this.currentPage = 1;
+    this.currentPage = preservePage ? Math.min(this.currentPage, Math.ceil(result.length / this.pageSize) || 1) : 1;
 
     // Prune selections that no longer match current filtered results
     const validKeys = new Set(result.map(r => r.placeId || r.name));
@@ -1801,8 +1866,8 @@ export const MapExplorer = {
     const startIdx = (this.currentPage - 1) * this.pageSize;
     const pageItems = list.slice(startIdx, startIdx + this.pageSize);
 
-    const txtInKv = lang === "en" ? "✓ In KV" : (lang === "ko" ? "✓ KV 등록" : "✓ 已在KV库");
-    const txtNewPlace = lang === "en" ? "Not in KV" : (lang === "ko" ? "KV 미등록" : "未在KV库");
+    const txtInKv = lang === "en" ? "✓ In database" : (lang === "ko" ? "✓ 데이터베이스 등록" : "✓ 已入库");
+    const txtNewPlace = lang === "en" ? "Not saved" : (lang === "ko" ? "미등록" : "未入库");
     const txtVisited = lang === "en" ? "Visited" : (lang === "ko" ? "방문 완료" : "已拜访");
     const txtUnvisited = lang === "en" ? "Unvisited" : (lang === "ko" ? "미방문" : "未拜访");
     const txtLogged = lang === "en" ? "Logged" : (lang === "ko" ? "기록됨" : "已记录");
@@ -1900,6 +1965,23 @@ export const MapExplorer = {
   },
 
   renderPagination(total) {
+    let more = document.getElementById("mapLoadMoreResults");
+    if (!more) {
+      const cards = document.getElementById("mapPlacesCardsContainer");
+      if (cards) {
+        more = document.createElement("button");
+        more.id = "mapLoadMoreResults";
+        more.className = "btn btn-secondary";
+        more.style.margin = "12px";
+        more.addEventListener("click", () => this.loadMoreMapRestaurants());
+        cards.after(more);
+      }
+    }
+    if (more) {
+      more.hidden = !this.mapQueryHasMore;
+      const lang = this.getCurrentLanguage();
+      more.textContent = lang === "en" ? "Load more restaurants in this view" : lang === "ko" ? "현재 지도에서 음식점 더 불러오기" : "加载当前范围内更多餐馆";
+    }
     const infoEl = document.getElementById("mapPaginationInfo");
     const controlsEl = document.getElementById("mapPaginationControls");
     if (!infoEl || !controlsEl) return;
@@ -2343,7 +2425,7 @@ export const MapExplorer = {
     if (catSelect) {
       catSelect.addEventListener("change", (e) => {
         this.activeCategory = e.target.value;
-        this.filterAndRenderPlaces();
+        this.loadPlacesForCurrentArea(false);
       });
     }
 
@@ -2352,7 +2434,7 @@ export const MapExplorer = {
     if (visitedSelect) {
       visitedSelect.addEventListener("change", (e) => {
         this.activeVisited = e.target.value;
-        this.filterAndRenderPlaces();
+        this.loadPlacesForCurrentArea(false);
       });
     }
 
@@ -2361,7 +2443,7 @@ export const MapExplorer = {
     if (outcomeSelect) {
       outcomeSelect.addEventListener("change", (e) => {
         this.activeOutcome = e.target.value;
-        this.filterAndRenderPlaces();
+        this.loadPlacesForCurrentArea(false);
       });
     }
 

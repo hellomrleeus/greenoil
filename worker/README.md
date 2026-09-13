@@ -4,22 +4,22 @@
 
 ## 核心功能与架构升级
 
-1. **外勤销售 (Field Sale) 业务支撑与 KV 持久化**：
-   - `GET /api/sales`：获取团队全部拜访记录（KV 键名 `field_sales_records`）。
+1. **外勤销售 (Field Sale) 业务支撑与 D1 持久化**：
+   - `GET /api/sales`：获取团队全部拜访记录（D1 `sales` 表；无 D1 时回退到 KV 键 `field_sales_records`）。
    - `POST /api/sales`：创建销售拜访记录（支持记录拜访方式、精确到小时的时间、意向/签约/拒绝/已签其他结果、二级原因及竞品报价）。
    - `PUT /api/sales`：修改拜访记录。
    - `DELETE /api/sales?id=...`：删除拜访记录。
 
-2. **餐馆现场修改与新增同步至 KV**：
-   - `POST /api/restaurants/update`：现场修改餐馆电话、地址、负责人等，直接补丁合并至 Cloudflare KV，全局即时生效。
-   - `POST /api/restaurants/add`：通过 Google Maps 检索或现场新增餐馆，自动格式化并置顶收录至 KV 数据库中。
+2. **餐馆现场修改与新增同步至 D1**：
+   - `POST /api/restaurants/update`：现场修改餐馆电话、地址、负责人等，更新 Cloudflare D1，全局即时生效。
+   - `POST /api/restaurants/add`：通过 Google Maps 检索或现场新增餐馆，自动格式化并收录至 D1；无 D1 时回退到 KV。
 
 3. **Google Maps API 代理恢复**：
    - `GET /api/places/search?query=...`：代理 Google Maps Places API (New) Text Search，带大多伦多地域偏好，自动转换为标准 17 字段结构。
    - `POST /api/routes/plan`：代理 Google Routes API / 经纬度拓扑估算，生成预计里程、行车时间及官方 Google Maps App 导航直链。
 
 4. **服务端高性能分页与多条件检索**：
-   - `GET /api/restaurants`：支持分页、区域、商圈、分类、关键词检索与多维度排序。
+   - `GET /api/restaurants`：D1 使用索引支持分页、区域、商圈、分类、关键词检索与多维度排序；地图请求额外支持 `bbox=west,south,east,north`，只返回当前视口范围的数据。
    - `GET /api/hubs`：大多伦多核心商圈与商业综合体聚合汇总。
 
 5. **安全登录与 Cookie 认证**：
@@ -41,4 +41,3 @@ npx wrangler secret put GOOGLE_MAPS_API_KEY
 ```bash
 npx wrangler deploy
 ```
-

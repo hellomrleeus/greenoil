@@ -1,8 +1,10 @@
+import * as Database from "./database.js";
+
 /**
  * Cloudflare Worker for Green Oil Workbench
  * 
  * Features:
- * 1. High-Performance KV Storage for GTA Fried Food Restaurants
+ * 1. High-Performance D1 Storage for GTA Fried Food Restaurants (KV fallback)
  * 2. Field Sales Visit Records (CRUD in Cloudflare KV)
  * 3. Restaurant Modification & Custom Addition Sync to KV
  * 4. Google Maps Places API (New) & Routes API Proxies
@@ -146,7 +148,7 @@ export default {
         return new Response(JSON.stringify({
           status: "healthy",
           service: "Green Oil Workbench API",
-          storage: "Cloudflare KV",
+          storage: env.DB ? "Cloudflare D1" : "Cloudflare KV",
           hasGoogleApiKey: !!env.GOOGLE_MAPS_API_KEY,
           timestamp: new Date().toISOString()
         }), {
@@ -365,6 +367,7 @@ async function getConsolidatedRestaurants(env) {
  * Get cached restaurants with server-side pagination, search, and filtering
  */
 async function handleGetCachedRestaurants(request, env, corsHeaders) {
+  if (env.DB) return Database.queryRestaurants(env.DB, new URL(request.url).searchParams, corsHeaders);
   const url = new URL(request.url);
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
   const pageSize = Math.min(4000, Math.max(5, parseInt(url.searchParams.get("pageSize") || "20", 10)));
@@ -376,12 +379,23 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
   const outcome = (url.searchParams.get("outcome") || "all").trim();
   const sortBy = (url.searchParams.get("sort") || "rating").trim();
   const isMapFormat = url.searchParams.get("format") === "map";
+  const bboxParam = url.searchParams.get("bbox");
 
   // 1. Retrieve dataset from KV with patches applied
   const { allRestaurants, lastUpdated } = await getConsolidatedRestaurants(env);
 
   // 2. Apply Region Filter
   let filtered = allRestaurants;
+  if (bboxParam) {
+    const bbox = bboxParam.split(",").map(Number);
+    if (bbox.length !== 4 || bbox.some(Number.isNaN) || bbox[0] < -180 || bbox[2] > 180 || bbox[1] < -90 || bbox[3] > 90 || bbox[0] > bbox[2] || bbox[1] > bbox[3]) {
+      return new Response(JSON.stringify({ success: false, error: "Invalid bbox" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    filtered = filtered.filter(r => {
+      const lat = Number(r.latitude), lng = Number(r.longitude);
+      return Number.isFinite(lat) && Number.isFinite(lng) && lat >= bbox[1] && lat <= bbox[3] && lng >= bbox[0] && lng <= bbox[2];
+    });
+  }
   if (region && region !== "全部 (All GTA)") {
     filtered = filtered.filter(r => {
       if (hub && hub !== "全部" && hub !== "all") {
@@ -522,6 +536,8 @@ async function handleUpdateRestaurant(request, env, corsHeaders) {
     });
   }
 
+  if (env.DB) return Database.updateRestaurant(env.DB, key, updates, corsHeaders);
+
   if (env.RESTAURANTS_KV) {
     try {
       let patches = await env.RESTAURANTS_KV.get(KV_CUSTOM_REST_KEY, { type: "json" }) || { added: [], updated: {} };
@@ -613,6 +629,8 @@ async function handleAddRestaurant(request, env, corsHeaders) {
     });
   }
 
+  if (env.DB) return Database.saveRestaurants(env.DB, normalizedList, corsHeaders);
+
   if (env.RESTAURANTS_KV) {
     try {
       let patches = await env.RESTAURANTS_KV.get(KV_CUSTOM_REST_KEY, { type: "json" }) || { added: [], updated: {} };
@@ -691,6 +709,7 @@ async function handleGetHubs(env, corsHeaders) {
  * Field Sales: Get all visit records from KV
  */
 async function handleGetSales(request, env, corsHeaders) {
+  if (env.DB) return Database.getSales(env.DB, corsHeaders);
   let records = [];
   if (env.RESTAURANTS_KV) {
     try {
@@ -758,6 +777,8 @@ async function handleCreateSale(request, env, corsHeaders) {
     updatedAt: now
   };
 
+  if (env.DB) return Database.createSale(env.DB, newRecord, corsHeaders);
+
   if (env.RESTAURANTS_KV) {
     try {
       let records = await env.RESTAURANTS_KV.get(KV_SALES_KEY, { type: "json" }) || [];
@@ -807,6 +828,8 @@ async function handleUpdateSale(request, env, corsHeaders) {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
+
+  if (env.DB) return Database.updateSale(env.DB, id, updates, corsHeaders);
 
   if (env.RESTAURANTS_KV) {
     try {
@@ -862,6 +885,8 @@ async function handleDeleteSale(request, env, corsHeaders) {
       headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
   }
+
+  if (env.DB) return Database.deleteSale(env.DB, id, corsHeaders);
 
   if (env.RESTAURANTS_KV) {
     try {
@@ -993,6 +1018,7 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
     const rawPlaces = data.places || [];
 
     const normalizedPlaces = rawPlaces.map(p => transformGooglePlace(p, "全部 (All GTA)", query, apiKey));
+    if (env.DB) await Database.markSavedPlaces(env.DB, normalizedPlaces);
 
     return new Response(JSON.stringify({
       success: true,
@@ -1450,4 +1476,3 @@ async function handleSaveRouteWaypoints(request, env, corsHeaders) {
     headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 }
-

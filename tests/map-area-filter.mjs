@@ -20,6 +20,10 @@ assert(map.isPlaceInGeometry({lat: '2', lng: '0.5'}, polygon));
 const second = {type: 'Polygon', coordinates: [[[10,10],[12,10],[12,12],[10,12],[10,10]]]};
 assert(map.isPlaceInGeometry(point(11,11), {type:'MultiPolygon', coordinates:[polygon.coordinates,second.coordinates]}));
 
+let fixtures = [];
+Api.getMapRestaurants = async () => ({success:true,data:fixtures.map(r=>({...r})),page:1,total:fixtures.length,totalPages:1});
+map.getQueryBounds = () => [-180,-90,180,90];
+
 // Exercise discovery + saved-place merging and the shared map/card result list.
 globalThis.document = { getElementById: () => null };
 map.getCurrentLanguage = () => 'en';
@@ -32,7 +36,7 @@ map.activeCityIds = new Set(['markham']);
 map.activeNeighborhoodIds = new Set(['one']);
 map.activeCategory = '全部'; map.activeVisited = 'all'; map.activeOutcome = 'all'; map.searchKeyword = '';
 const place = (placeId, lng, lat) => ({placeId, name:placeId, address:'Ward 7 Markham', ...point(lng,lat)});
-map.allRestaurants = [place('saved-inside',0.5,2),place('saved-outside',2,2),place('missing',null,null)];
+fixtures = [place('saved-inside',0.5,2),place('saved-outside',2,2),place('missing',null,null)];
 Api.searchGooglePlaces = async () => ({success:true,places:[place('google-inside',0.5,3),place('google-outside',2,2),place('second',11,11)]});
 await map.loadPlacesForCurrentArea();
 assert.deepEqual(markerIds, ['google-inside','saved-inside']);
@@ -70,7 +74,7 @@ markham.address = 'No city label';
 const aurora = place('aurora', -79.466, 44.006);
 const scarborough = place('scarborough', -79.25, 43.77);
 const richmondHill = place('richmond-hill', -79.438, 43.884);
-map.allRestaurants = [markham, aurora];
+fixtures = [markham, aurora];
 Api.searchGooglePlaces = async () => ({success:true,places:[scarborough,richmondHill]});
 await map.loadPlacesForCurrentArea();
 assert.deepEqual(markerIds, ['markham'], 'Keep city-inside point without text; reject outside points with matching text');

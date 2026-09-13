@@ -2,7 +2,7 @@
 
 支持 **PC 和手机移动端自适应** 的业务工作台应用。
 - **前端部署**：GitHub Pages (`https://hellomrleeus.github.io/greenoil/`)
-- **后端服务**：Cloudflare Workers (Google Maps API 代理 & 认证)
+- **后端服务**：Cloudflare Workers + D1 (Google Maps API 代理、认证、餐馆分页查询)
 - **安全认证**：由 Cloudflare Worker 存储 Secrets 并进行鉴权验证
 
 ---
@@ -15,8 +15,9 @@
 
 ### 2. 多伦多油炸餐饮商家查询系统
 - **区域筛选**：支持万锦 (Markham)、士嘉堡 (Scarborough)、北约克 (North York)、列治文山 (Richmond Hill)、多伦多市中心 (Downtown Toronto)、密西沙加 (Mississauga)、旺市 (Vaughan) 及全部 GTA 区域选择。
-- **实时 API 与云端 KV 缓存**：
-  - 调用 Cloudflare Worker 代理 Google Maps Places API (New) 全面检索大多伦多油炸餐饮商家，云端 KV 持久化缓存并支持定时更新。
+- **实时 API 与云端数据**：
+  - 调用 Cloudflare Worker 代理 Google Maps Places API (New) 检索大多伦多油炸餐饮商家。
+  - 餐馆数据使用 Cloudflare D1 按条件、分页和地图经纬度范围查询；KV 保留作兼容回退及配置数据。
 - **Excel 17 项全维度对齐**：
   - 餐馆名称 (Name)、所属区域 (Region)、油炸分类 (Categories)、评分 (Rating)、评价总数 (Reviews)、当前营业状态 (Status)、营业时间 (Opening Hours)、消费档次 (Price)、详细地址 (Address)、联系电话 (Phone)、官方网站 (Website)、Google 地图链接 (Maps URL)、主营类型 (Primary Type)、匹配关键词 (Keywords)、纬度 (Latitude)、经度 (Longitude)、Place ID。
 - **多模式交互**：支持卡片视图、Excel 表格视图、电话直拨、地图导航、一键复制、一键导入用油计算器、以及导出为 CSV/Excel。
@@ -76,7 +77,7 @@ python3 -m http.server 8080
 本仓库直接托管在 GitHub Pages。打开仓库设置中 **Settings -> Pages**，将 Source 选为 `Deploy from a branch`，Branch 选为 `main` / `root` 即可。
 
 ### 3. Cloudflare Worker 部署
-参见 [worker/README.md](worker/README.md)。执行 `npx wrangler deploy` 即可部署后端服务。
+参见 [worker/README.md](worker/README.md)。执行 `npx wrangler d1 migrations apply greenoil-restaurants --remote` 后，再执行 `npx wrangler deploy` 部署后端服务。
 
 ### 地图区划数据
 
