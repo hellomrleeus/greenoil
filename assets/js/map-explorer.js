@@ -208,27 +208,20 @@ export const MapExplorer = {
   googleSearchId: 0,
 
   getQueryBounds() {
-    const bounds = this.googleMap?.getBounds?.();
-    const leaflet = this.fallbackMap?.getBounds?.();
-    let box = bounds ? [bounds.getSouthWest().lng(), bounds.getSouthWest().lat(), bounds.getNorthEast().lng(), bounds.getNorthEast().lat()] :
-      leaflet ? [leaflet.getWest(),leaflet.getSouth(),leaflet.getEast(),leaflet.getNorth()] : null;
+    // The selected city/subarea defines the result set. Map panning only changes
+    // the camera and must not trigger a second query for the same fixed area.
     const subareas = this.getAllNeighborhoods().filter(n => this.activeNeighborhoodIds.has(n.id));
     const areas = subareas.length ? subareas : GTA_COMMUNITIES.filter(c => c.id !== "all" && (this.activeCityIds.has("all") || this.activeCityIds.has(c.id)));
     const boxes = areas.map(a => a.bbox).filter(b => Array.isArray(b) && b.length === 4);
     if (boxes.length) {
-      const area = [Math.min(...boxes.map(b=>b[0])),Math.min(...boxes.map(b=>b[1])),Math.max(...boxes.map(b=>b[2])),Math.max(...boxes.map(b=>b[3]))];
-      box = box ? [Math.max(box[0],area[0]),Math.max(box[1],area[1]),Math.min(box[2],area[2]),Math.min(box[3],area[3])] : area;
+      return [Math.min(...boxes.map(b=>b[0])),Math.min(...boxes.map(b=>b[1])),Math.max(...boxes.map(b=>b[2])),Math.max(...boxes.map(b=>b[3]))];
     }
-    return box || [-79.72,43.58,-79.16,43.95];
+    return [-79.72,43.58,-79.16,43.95];
   },
 
   scheduleViewportQuery() {
-    if (!this.isInitialized) return;
-    clearTimeout(this.mapQueryTimer);
-    this.mapQueryTimer = setTimeout(() => {
-      const box = this.getQueryBounds();
-      if (!this.mapQueryBbox || box.some((v,i)=>Math.abs(v-this.mapQueryBbox[i]) > 0.00005)) this.loadPlacesForCurrentArea(false);
-    }, 300);
+    // Kept as a no-op for callers from older cached bundles. Viewport changes
+    // intentionally never reload the selected-area result set.
   },
 
   async loadMoreMapRestaurants() {
@@ -1036,7 +1029,6 @@ export const MapExplorer = {
 
       this.pinZoomScale = this.getPinZoomScale(this.googleMap.getZoom());
       this.googleMap.addListener("zoom_changed", () => this.animatePinZoom());
-      this.googleMap.addListener("idle", () => this.scheduleViewportQuery());
       this.infoWindow = new google.maps.InfoWindow();
       this.infoWindow.addListener("closeclick", () => { this.activePopupKey = null; this.poiRequestId++; });
       this.googleMap.addListener("click", event => {
@@ -1095,7 +1087,6 @@ export const MapExplorer = {
       attribution: '© OpenStreetMap contributors | Green Oil'
     }).addTo(this.fallbackMap);
 
-    this.fallbackMap.on("moveend", () => this.scheduleViewportQuery());
     this.fallbackLayerGroup = L.layerGroup().addTo(this.fallbackMap);
     this.drawSelectedBoundaries();
     this.renderMarkers();
@@ -1965,23 +1956,8 @@ export const MapExplorer = {
   },
 
   renderPagination(total) {
-    let more = document.getElementById("mapLoadMoreResults");
-    if (!more) {
-      const cards = document.getElementById("mapPlacesCardsContainer");
-      if (cards) {
-        more = document.createElement("button");
-        more.id = "mapLoadMoreResults";
-        more.className = "btn btn-secondary";
-        more.style.margin = "12px";
-        more.addEventListener("click", () => this.loadMoreMapRestaurants());
-        cards.after(more);
-      }
-    }
-    if (more) {
-        more.hidden = !this.mapQueryHasMore;
-      const lang = this.getCurrentLanguage();
-      more.textContent = lang === "en" ? "Load more restaurants in this view" : lang === "ko" ? "현재 지도에서 음식점 더 불러오기" : "加载当前范围内更多餐馆";
-    }
+    const obsoleteLoadMore = document.getElementById("mapLoadMoreResults");
+    if (obsoleteLoadMore) obsoleteLoadMore.remove();
     const infoEl = document.getElementById("mapPaginationInfo");
     const controlsEl = document.getElementById("mapPaginationControls");
     if (!infoEl || !controlsEl) return;
