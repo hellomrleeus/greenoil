@@ -12,7 +12,7 @@
 import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
 
-// GTA Community Hierarchy with Exact Polygon Boundaries (reference municipal GIS boundaries)
+/// GTA Region / City Hierarchy
 export const GTA_COMMUNITIES = [
   {
     id: "all",
@@ -22,6 +22,7 @@ export const GTA_COMMUNITIES = [
     nameKo: "광역 토론토 전체",
     center: { lat: 43.7282, lng: -79.3832 },
     zoom: 11,
+    bbox: [-79.7200, 43.5800, -79.1600, 43.9500],
     polygonPaths: [
       { lat: 43.6200, lng: -79.6200 }, // Mississauga South
       { lat: 43.7200, lng: -79.7200 }, // Mississauga North
@@ -36,255 +37,24 @@ export const GTA_COMMUNITIES = [
     neighborhoods: []
   },
   {
-    id: "downtown",
-    name: "多伦多市中心 (Downtown Toronto)",
-    nameZh: "多伦多市中心",
-    nameEn: "Downtown Toronto",
-    nameKo: "다운타운 토론토",
-    center: { lat: 43.6532, lng: -79.3832 },
-    zoom: 14,
+    id: "toronto",
+    name: "多伦多 (Toronto)",
+    nameZh: "多伦多",
+    nameEn: "Toronto",
+    nameKo: "토론토",
+    center: { lat: 43.7001, lng: -79.4163 },
+    zoom: 12,
+    bbox: [-79.6390, 43.5810, -79.1150, 43.8550],
     polygonPaths: [
-      { lat: 43.6730, lng: -79.4180 }, // Dupont & Bathurst
-      { lat: 43.6760, lng: -79.3850 }, // Rosedale / Yonge
-      { lat: 43.6750, lng: -79.3580 }, // Bayview / DVP
-      { lat: 43.6550, lng: -79.3450 }, // Don River mouth
-      { lat: 43.6350, lng: -79.3550 }, // Port Lands
-      { lat: 43.6320, lng: -79.3900 }, // Waterfront / Harbourfront
-      { lat: 43.6330, lng: -79.4250 }, // Exhibition Place
-      { lat: 43.6480, lng: -79.4300 }, // Dufferin & Queen
-      { lat: 43.6650, lng: -79.4240 }  // Bloor & Ossington
+      { lat: 43.5810, lng: -79.5410 },
+      { lat: 43.7600, lng: -79.6390 },
+      { lat: 43.7950, lng: -79.5300 },
+      { lat: 43.8550, lng: -79.1800 },
+      { lat: 43.7800, lng: -79.1150 },
+      { lat: 43.6600, lng: -79.2800 },
+      { lat: 43.6300, lng: -79.3800 }
     ],
-    neighborhoods: [
-      {
-        id: "dt_chinatown",
-        name: "唐人街 / 肯辛顿 (Chinatown & Kensington)",
-        nameZh: "唐人街 / 肯辛顿",
-        nameEn: "Chinatown & Kensington",
-        nameKo: "차이나타운 & 켄싱턴",
-        keywords: ["spadina", "kensington", "dundas w", "college", "chinatown"],
-        center: { lat: 43.6535, lng: -79.3985 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.6590, lng: -79.4050 },
-          { lat: 43.6595, lng: -79.3940 },
-          { lat: 43.6495, lng: -79.3920 },
-          { lat: 43.6490, lng: -79.4030 }
-        ]
-      },
-      {
-        id: "dt_bay_financial",
-        name: "金融区 / 湾街 (Financial District & Bay St)",
-        nameZh: "金融区 / 湾街",
-        nameEn: "Financial District & Bay St",
-        nameKo: "금융 지구 & 베이",
-        keywords: ["bay st", "king st w", "front st w", "financial", "university"],
-        center: { lat: 43.6485, lng: -79.3817 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.6540, lng: -79.3880 },
-          { lat: 43.6545, lng: -79.3760 },
-          { lat: 43.6435, lng: -79.3750 },
-          { lat: 43.6430, lng: -79.3870 }
-        ]
-      },
-      {
-        id: "dt_yonge_dundas",
-        name: "央街登打士 (Yonge-Dundas & Eaton Centre)",
-        nameZh: "央街登打士",
-        nameEn: "Yonge-Dundas",
-        nameKo: "영-던다스",
-        keywords: ["dundas", "yonge", "gould", "church", "victoria", "eaton"],
-        center: { lat: 43.6560, lng: -79.3802 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.6620, lng: -79.3860 },
-          { lat: 43.6625, lng: -79.3750 },
-          { lat: 43.6515, lng: -79.3740 },
-          { lat: 43.6510, lng: -79.3850 }
-        ]
-      },
-      {
-        id: "dt_entertainment",
-        name: "娱乐时尚区 (Entertainment District & King W)",
-        nameZh: "娱乐时尚区",
-        nameEn: "Entertainment District",
-        nameKo: "엔터테인먼트 지구",
-        keywords: ["king w", "peter", "john st", "mercer", "wellington", "blue jays"],
-        center: { lat: 43.6465, lng: -79.3905 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.6510, lng: -79.3970 },
-          { lat: 43.6515, lng: -79.3850 },
-          { lat: 43.6415, lng: -79.3830 },
-          { lat: 43.6410, lng: -79.3960 }
-        ]
-      },
-      {
-        id: "dt_queen_west",
-        name: "西皇后街 / 艺术区 (Queen West & Trinity)",
-        nameZh: "西皇后街 / 艺术区",
-        nameEn: "Queen West",
-        nameKo: "퀸 웨스트",
-        keywords: ["queen w", "ossington", "augusta", "bellwoods"],
-        center: { lat: 43.6480, lng: -79.4100 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.6520, lng: -79.4220 },
-          { lat: 43.6525, lng: -79.4010 },
-          { lat: 43.6440, lng: -79.4000 },
-          { lat: 43.6435, lng: -79.4210 }
-        ]
-      },
-      {
-        id: "dt_koreatown",
-        name: "布鲁尔韩国城 (Koreatown Bloor)",
-        nameZh: "布鲁尔韩国城",
-        nameEn: "Koreatown Bloor",
-        nameKo: "블루어 코리아타운",
-        keywords: ["bloor w", "christie", "manning", "bathurst", "markham st"],
-        center: { lat: 43.6645, lng: -79.4180 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.6680, lng: -79.4260 },
-          { lat: 43.6685, lng: -79.4080 },
-          { lat: 43.6610, lng: -79.4070 },
-          { lat: 43.6605, lng: -79.4250 }
-        ]
-      },
-      {
-        id: "dt_yorkville",
-        name: "约克维尔 (Bloor-Yorkville & Annex)",
-        nameZh: "约克维尔",
-        nameEn: "Yorkville & Annex",
-        nameKo: "요크빌 & 아넥스",
-        keywords: ["yorkville", "cumberland", "bloor e", "avenue rd", "hazelton"],
-        center: { lat: 43.6702, lng: -79.3905 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.6760, lng: -79.4050 },
-          { lat: 43.6765, lng: -79.3820 },
-          { lat: 43.6660, lng: -79.3810 },
-          { lat: 43.6655, lng: -79.4040 }
-        ]
-      },
-      {
-        id: "dt_waterfront",
-        name: "湖滨港口区 (Waterfront & CityPlace)",
-        nameZh: "湖滨港口区",
-        nameEn: "Waterfront & CityPlace",
-        nameKo: "하버프론트 & 시티플레이스",
-        keywords: ["queens quay", "fort york", "harbour", "lake shore", "cityplace"],
-        center: { lat: 43.6390, lng: -79.3870 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.6430, lng: -79.4050 },
-          { lat: 43.6440, lng: -79.3720 },
-          { lat: 43.6330, lng: -79.3710 },
-          { lat: 43.6320, lng: -79.4040 }
-        ]
-      }
-    ]
-  },
-  {
-    id: "north_york",
-    name: "北约克 (North York)",
-    nameZh: "北约克",
-    nameEn: "North York",
-    nameKo: "노스욕",
-    center: { lat: 43.7615, lng: -79.4111 },
-    zoom: 13,
-    polygonPaths: [
-      { lat: 43.8010, lng: -79.5350 }, // Steeles & Hwy 400
-      { lat: 43.8060, lng: -79.4220 }, // Steeles & Yonge
-      { lat: 43.8110, lng: -79.3320 }, // Steeles & Victoria Park
-      { lat: 43.7520, lng: -79.3280 }, // Victoria Park & 401
-      { lat: 43.7160, lng: -79.3520 }, // Eglinton & Leslie
-      { lat: 43.7120, lng: -79.4420 }, // Eglinton & Dufferin
-      { lat: 43.7290, lng: -79.5210 }, // Lawrence & Jane
-      { lat: 43.7680, lng: -79.5420 }  // Finch & Weston
-    ],
-    neighborhoods: [
-      {
-        id: "ny_yonge_finch",
-        name: "央街芬治韩国城 (Yonge & Finch / Koreatown North)",
-        nameZh: "央街芬奇韩国城",
-        nameEn: "Yonge & Finch Koreatown",
-        nameKo: "영 & 핀치 코리아타운",
-        keywords: ["finch", "koreatown", "olive", "byng", "drewry", "cummer", "northtown"],
-        center: { lat: 43.7795, lng: -79.4155 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.7920, lng: -79.4250 },
-          { lat: 43.7925, lng: -79.4060 },
-          { lat: 43.7700, lng: -79.4050 },
-          { lat: 43.7695, lng: -79.4240 }
-        ]
-      },
-      {
-        id: "ny_city_centre",
-        name: "北约克城市中心 (Willowdale & NYCC)",
-        nameZh: "北约克城市中心",
-        nameEn: "Willowdale & NYCC",
-        nameKo: "노스욕 시티 센터",
-        keywords: ["sheppard", "empress", "park home", "mel lastman", "doris", "beecroft"],
-        center: { lat: 43.7675, lng: -79.4125 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.7740, lng: -79.4220 },
-          { lat: 43.7745, lng: -79.4040 },
-          { lat: 43.7580, lng: -79.4030 },
-          { lat: 43.7575, lng: -79.4210 }
-        ]
-      },
-      {
-        id: "ny_fairview",
-        name: "锦绣商圈 / 唐米尔斯 (Don Mills & Fairview Mall)",
-        nameZh: "锦绣商圈 / 唐米尔斯",
-        nameEn: "Fairview Mall & Don Mills",
-        nameKo: "페어뷰 몰 & 돈 밀스",
-        keywords: ["fairview", "don mills", "sheppard e", "godstone"],
-        center: { lat: 43.7780, lng: -79.3440 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.7880, lng: -79.3560 },
-          { lat: 43.7885, lng: -79.3330 },
-          { lat: 43.7680, lng: -79.3320 },
-          { lat: 43.7675, lng: -79.3550 }
-        ]
-      },
-      {
-        id: "ny_bayview",
-        name: "湾景村社区 (Bayview Village)",
-        nameZh: "湾景村社区",
-        nameEn: "Bayview Village",
-        nameKo: "베이뷰 빌리지",
-        keywords: ["bayview", "sheppard e", "rector", "mallingham"],
-        center: { lat: 43.7690, lng: -79.3870 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.7780, lng: -79.3980 },
-          { lat: 43.7785, lng: -79.3750 },
-          { lat: 43.7610, lng: -79.3740 },
-          { lat: 43.7605, lng: -79.3970 }
-        ]
-      },
-      {
-        id: "ny_york_u",
-        name: "约克大学高地 (York University Heights & Downsview)",
-        nameZh: "约克大学高地",
-        nameEn: "York University Heights",
-        nameKo: "요크 대학교",
-        keywords: ["keele", "finch w", "steeles w", "allen", "chesswood", "dufferin"],
-        center: { lat: 43.7730, lng: -79.4950 },
-        zoom: 14,
-        polygonPaths: [
-          { lat: 43.7850, lng: -79.5150 },
-          { lat: 43.7860, lng: -79.4750 },
-          { lat: 43.7600, lng: -79.4740 },
-          { lat: 43.7590, lng: -79.5140 }
-        ]
-      }
-    ]
+    neighborhoods: []
   },
   {
     id: "markham",
@@ -294,6 +64,7 @@ export const GTA_COMMUNITIES = [
     nameKo: "마컴",
     center: { lat: 43.8561, lng: -79.3370 },
     zoom: 13,
+    bbox: [-79.3790, 43.8190, -79.1760, 43.9310],
     polygonPaths: [
       { lat: 43.9190, lng: -79.3780 }, // 19th Ave & Bayview
       { lat: 43.9260, lng: -79.2420 }, // 19th Ave & McCowan
@@ -304,189 +75,7 @@ export const GTA_COMMUNITIES = [
       { lat: 43.8210, lng: -79.3790 }, // Steeles & Bayview / 404
       { lat: 43.8710, lng: -79.3770 }  // 16th Ave & 404
     ],
-    neighborhoods: [
-      {
-        id: "mk_unionville",
-        name: "于家村历史老街 (Historic Main St Unionville)",
-        nameZh: "于家村历史老街",
-        nameEn: "Unionville & Main St",
-        nameKo: "유니온빌 & 메인 스트리트",
-        keywords: ["main st", "unionville", "carlton", "fred varley", "kennedy"],
-        center: { lat: 43.8670, lng: -79.3135 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.8790, lng: -79.3260 },
-          { lat: 43.8795, lng: -79.3010 },
-          { lat: 43.8550, lng: -79.3000 },
-          { lat: 43.8545, lng: -79.3250 }
-        ]
-      },
-      {
-        id: "mk_pacific_mall",
-        name: "太古商圈 / 太子中心 (Pacific Mall & Milliken)",
-        nameZh: "太古商圈 / 太子中心",
-        nameEn: "Pacific Mall & Milliken",
-        nameKo: "퍼시픽 몰 & 밀리켄",
-        keywords: ["pacific mall", "steeles", "silver star", "redlea", "milliken"],
-        center: { lat: 43.8258, lng: -79.3060 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.8340, lng: -79.3170 },
-          { lat: 43.8345, lng: -79.2950 },
-          { lat: 43.8180, lng: -79.2940 },
-          { lat: 43.8175, lng: -79.3160 }
-        ]
-      },
-      {
-        id: "mk_fmp",
-        name: "万锦广场 / 寰宇角 (First Markham Place & Commerce Gate)",
-        nameZh: "万锦广场 / 寰宇角",
-        nameEn: "First Markham Place & Commerce Gate",
-        nameKo: "퍼스트 마컴 플레이스",
-        keywords: ["first markham", "commerce gate", "hwy 7", "woodbine", "montgomery"],
-        center: { lat: 43.8485, lng: -79.3490 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.8570, lng: -79.3620 },
-          { lat: 43.8575, lng: -79.3360 },
-          { lat: 43.8400, lng: -79.3350 },
-          { lat: 43.8395, lng: -79.3610 }
-        ]
-      },
-      {
-        id: "mk_village_cornell",
-        name: "万锦村 / 康奈尔 (Markham Village & Cornell)",
-        nameZh: "万锦村 / 康奈尔",
-        nameEn: "Markham Village & Cornell",
-        nameKo: "마컴 빌리지 & 코넬",
-        keywords: ["cornell", "bur oak", "markham rd", "16th ave", "9th line", "box grove"],
-        center: { lat: 43.8820, lng: -79.2550 },
-        zoom: 14,
-        polygonPaths: [
-          { lat: 43.8960, lng: -79.2750 },
-          { lat: 43.8970, lng: -79.2350 },
-          { lat: 43.8670, lng: -79.2340 },
-          { lat: 43.8660, lng: -79.2740 }
-        ]
-      },
-      {
-        id: "mk_cachet",
-        name: "凯旋豪宅商圈 (Cachet & Woodbine)",
-        nameZh: "凯旋豪宅商圈",
-        nameEn: "Cachet & Woodbine",
-        nameKo: "카셰 & 우드바인",
-        keywords: ["cachet", "woodbine", "16th", "apple creek", "angus glen"],
-        center: { lat: 43.8620, lng: -79.3620 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.8740, lng: -79.3750 },
-          { lat: 43.8745, lng: -79.3490 },
-          { lat: 43.8500, lng: -79.3480 },
-          { lat: 43.8495, lng: -79.3740 }
-        ]
-      }
-    ]
-  },
-  {
-    id: "scarborough",
-    name: "士嘉堡 (Scarborough)",
-    nameZh: "士嘉堡",
-    nameEn: "Scarborough",
-    nameKo: "스카버러",
-    center: { lat: 43.7764, lng: -79.2318 },
-    zoom: 13,
-    polygonPaths: [
-      { lat: 43.8160, lng: -79.3320 }, // Steeles & Victoria Park
-      { lat: 43.8360, lng: -79.2220 }, // Steeles & Markham Rd
-      { lat: 43.8410, lng: -79.1320 }, // Steeles & Meadowvale (Rouge)
-      { lat: 43.7860, lng: -79.1120 }, // Lake Ontario / Rouge mouth
-      { lat: 43.7420, lng: -79.1920 }, // Scarborough Bluffs (Guildwood)
-      { lat: 43.7020, lng: -79.2620 }, // Bluffs / Victoria Park
-      { lat: 43.7160, lng: -79.2970 }, // Victoria Park & Danforth
-      { lat: 43.7660, lng: -79.3120 }  // Victoria Park & 401
-    ],
-    neighborhoods: [
-      {
-        id: "sc_agincourt",
-        name: "爱静阁美食商圈 (Agincourt / Midland & Sheppard)",
-        nameZh: "爱静阁美食商圈",
-        nameEn: "Agincourt / Midland & Sheppard",
-        nameKo: "애진코트 & 미들랜드",
-        keywords: ["agincourt", "midland", "glen watford", "rural", "dragon centre"],
-        center: { lat: 43.7885, lng: -79.2780 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.7990, lng: -79.2920 },
-          { lat: 43.7995, lng: -79.2640 },
-          { lat: 43.7780, lng: -79.2630 },
-          { lat: 43.7775, lng: -79.2910 }
-        ]
-      },
-      {
-        id: "sc_stc",
-        name: "士嘉堡市中心 (Scarborough Town Centre)",
-        nameZh: "士嘉堡市中心",
-        nameEn: "Scarborough Town Centre",
-        nameKo: "스카버러 타운 센터",
-        keywords: ["borough", "mccowan", "ellesmere", "town centre"],
-        center: { lat: 43.7745, lng: -79.2575 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.7840, lng: -79.2710 },
-          { lat: 43.7845, lng: -79.2440 },
-          { lat: 43.7650, lng: -79.2430 },
-          { lat: 43.7645, lng: -79.2700 }
-        ]
-      },
-      {
-        id: "sc_silverstar",
-        name: "东方广场 / 锦绣中华 (Steeles & Silver Star)",
-        nameZh: "东方广场 / 锦绣中华",
-        nameEn: "Steeles & Silver Star",
-        nameKo: "실버스타 & 스틸스",
-        keywords: ["silver star", "steeles e", "splendid china", "redlea", "milliken"],
-        center: { lat: 43.8235, lng: -79.2980 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.8320, lng: -79.3110 },
-          { lat: 43.8325, lng: -79.2850 },
-          { lat: 43.8150, lng: -79.2840 },
-          { lat: 43.8145, lng: -79.3100 }
-        ]
-      },
-      {
-        id: "sc_warden_finch",
-        name: "丰泰商圈 / 华登 (Warden & Finch / Bridlewood)",
-        nameZh: "丰泰商圈 / 华登",
-        nameEn: "Warden & Finch / Bridlewood",
-        nameKo: "워든 & 핀치",
-        keywords: ["warden", "bridlewood", "finch e", "bamburgh"],
-        center: { lat: 43.7990, lng: -79.3190 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.8090, lng: -79.3330 },
-          { lat: 43.8095, lng: -79.3050 },
-          { lat: 43.7890, lng: -79.3040 },
-          { lat: 43.7885, lng: -79.3320 }
-        ]
-      },
-      {
-        id: "sc_kingston",
-        name: "悬崖公园湖滨走廊 (Guildwood & Kingston Rd)",
-        nameZh: "悬崖公园湖滨走廊",
-        nameEn: "Guildwood & Kingston Rd",
-        nameKo: "길드우드 & 킹스턴 로드",
-        keywords: ["kingston", "guildwood", "lawrence e", "eglinton e", "scarborough golf"],
-        center: { lat: 43.7420, lng: -79.2150 },
-        zoom: 14,
-        polygonPaths: [
-          { lat: 43.7580, lng: -79.2380 },
-          { lat: 43.7590, lng: -79.1920 },
-          { lat: 43.7260, lng: -79.1910 },
-          { lat: 43.7250, lng: -79.2370 }
-        ]
-      }
-    ]
+    neighborhoods: []
   },
   {
     id: "richmond_hill",
@@ -496,80 +85,16 @@ export const GTA_COMMUNITIES = [
     nameKo: "리치몬드 힐",
     center: { lat: 43.8828, lng: -79.4403 },
     zoom: 13,
+    bbox: [-79.4670, 43.8320, -79.3700, 43.9570],
     polygonPaths: [
       { lat: 43.9570, lng: -79.4670 }, // Bloomington & Bathurst
-      { lat: 43.9620, lng: -79.3770 }, // Bloomington & Hwy 404
-      { lat: 43.8810, lng: -79.3800 }, // Major Mackenzie & 404
-      { lat: 43.8410, lng: -79.3820 }, // Hwy 7 & 404
-      { lat: 43.8390, lng: -79.4620 }, // Hwy 7 & Bathurst
-      { lat: 43.9010, lng: -79.4640 }  // Elgin Mills & Bathurst
+      { lat: 43.9620, lng: -79.3950 }, // Bloomington & Hwy 404
+      { lat: 43.8520, lng: -79.3800 }, // Hwy 7 & Hwy 404
+      { lat: 43.8320, lng: -79.3850 }, // Steeles & Hwy 404
+      { lat: 43.8310, lng: -79.4620 }, // Steeles & Bathurst
+      { lat: 43.8950, lng: -79.4650 }  // Major Mackenzie & Bathurst
     ],
-    neighborhoods: [
-      {
-        id: "rh_times_square",
-        name: "时代广场 / 黄金商场 (Times Square & Beaver Creek)",
-        nameZh: "时代广场 / 黄金商场",
-        nameEn: "Times Square & Beaver Creek",
-        nameKo: "타임스퀘어 & 비버 크릭",
-        keywords: ["times square", "beaver creek", "leslie", "hwy 7", "highway 7"],
-        center: { lat: 43.8430, lng: -79.3875 },
-        zoom: 16,
-        polygonPaths: [
-          { lat: 43.8520, lng: -79.4000 },
-          { lat: 43.8525, lng: -79.3750 },
-          { lat: 43.8340, lng: -79.3740 },
-          { lat: 43.8335, lng: -79.3990 }
-        ]
-      },
-      {
-        id: "rh_centre",
-        name: "央街老街市中心 (Richmond Hill Centre & Yonge)",
-        nameZh: "央街老街市中心",
-        nameEn: "Richmond Hill Centre & Yonge",
-        nameKo: "리치몬드 힐 센터 & 영",
-        keywords: ["yonge", "major mackenzie", "crosby", "wright"],
-        center: { lat: 43.8765, lng: -79.4385 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.8880, lng: -79.4520 },
-          { lat: 43.8885, lng: -79.4250 },
-          { lat: 43.8650, lng: -79.4240 },
-          { lat: 43.8645, lng: -79.4510 }
-        ]
-      },
-      {
-        id: "rh_hillcrest",
-        name: "喜尔客 / 富豪山庄 (Hillcrest Mall & South Richvale)",
-        nameZh: "喜尔客 / 富豪山庄",
-        nameEn: "Hillcrest Mall & South Richvale",
-        nameKo: "힐크레스트 몰 & 사우스 리치베일",
-        keywords: ["hillcrest", "16th ave", "carrville", "weldrick"],
-        center: { lat: 43.8580, lng: -79.4350 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.8690, lng: -79.4480 },
-          { lat: 43.8695, lng: -79.4220 },
-          { lat: 43.8470, lng: -79.4210 },
-          { lat: 43.8465, lng: -79.4470 }
-        ]
-      },
-      {
-        id: "rh_elgin_mills",
-        name: "爱尔金湖畔社区 (Elgin Mills & Jefferson)",
-        nameZh: "爱尔金湖畔社区",
-        nameEn: "Elgin Mills & Jefferson",
-        nameKo: "엘진 밀스 & 제퍼슨",
-        keywords: ["elgin mills", "jefferson", "tower hill", "gamble"],
-        center: { lat: 43.9050, lng: -79.4450 },
-        zoom: 14,
-        polygonPaths: [
-          { lat: 43.9220, lng: -79.4620 },
-          { lat: 43.9225, lng: -79.4280 },
-          { lat: 43.8880, lng: -79.4270 },
-          { lat: 43.8875, lng: -79.4610 }
-        ]
-      }
-    ]
+    neighborhoods: []
   },
   {
     id: "mississauga",
@@ -578,99 +103,16 @@ export const GTA_COMMUNITIES = [
     nameEn: "Mississauga",
     nameKo: "미시사가",
     center: { lat: 43.5890, lng: -79.6441 },
-    zoom: 13,
+    zoom: 12,
+    bbox: [-79.7600, 43.4800, -79.5400, 43.7200],
     polygonPaths: [
-      { lat: 43.6680, lng: -79.7420 }, // Derry & Winston Churchill
-      { lat: 43.6820, lng: -79.6220 }, // Derry & Airport / 427
-      { lat: 43.6420, lng: -79.5470 }, // 401 & Etobicoke Creek
-      { lat: 43.5920, lng: -79.5520 }, // Dundas & Etobicoke Creek
-      { lat: 43.5420, lng: -79.5720 }, // Lake Ontario / Port Credit
-      { lat: 43.5120, lng: -79.6420 }, // Lake Ontario / Clarkson
-      { lat: 43.5520, lng: -79.7420 }, // Dundas & Winston Churchill
-      { lat: 43.6120, lng: -79.7520 }  // Eglinton & Winston Churchill
+      { lat: 43.7200, lng: -79.7200 }, // Derry & 10th Line
+      { lat: 43.7100, lng: -79.6100 }, // Derry & Dixie
+      { lat: 43.6200, lng: -79.5400 }, // Dundas & Etobicoke Creek
+      { lat: 43.4800, lng: -79.6100 }, // Lake Ontario / Clarkson
+      { lat: 43.5300, lng: -79.7600 }  // Winston Churchill & 403
     ],
-    neighborhoods: [
-      {
-        id: "ms_square_one",
-        name: "第一广场市中心 (Square One & City Centre)",
-        nameZh: "第一广场市中心",
-        nameEn: "Square One & City Centre",
-        nameKo: "스퀘어 원 시티 센터",
-        keywords: ["square one", "burnhamthorpe", "duke of york", "hurontario", "rathburn"],
-        center: { lat: 43.5930, lng: -79.6425 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.6050, lng: -79.6580 },
-          { lat: 43.6055, lng: -79.6270 },
-          { lat: 43.5810, lng: -79.6260 },
-          { lat: 43.5805, lng: -79.6570 }
-        ]
-      },
-      {
-        id: "ms_chinatown",
-        name: "密市中国城 (Chinatown Mississauga & Cooksville)",
-        nameZh: "密市中国城",
-        nameEn: "Chinatown Mississauga & Cooksville",
-        nameKo: "미시사가 차이나타운",
-        keywords: ["cawthra", "dundas e", "cooksville", "golden square", "central pkwy"],
-        center: { lat: 43.5840, lng: -79.6050 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.5940, lng: -79.6200 },
-          { lat: 43.5945, lng: -79.5900 },
-          { lat: 43.5740, lng: -79.5890 },
-          { lat: 43.5735, lng: -79.6190 }
-        ]
-      },
-      {
-        id: "ms_dixie",
-        name: "迪克西餐饮长廊 (Dixie & Dundas Commercial)",
-        nameZh: "迪克西餐饮长廊",
-        nameEn: "Dixie & Dundas Commercial",
-        nameKo: "딕시 & 던다스 상권",
-        keywords: ["dixie", "matheson", "tomken", "aimco"],
-        center: { lat: 43.6050, lng: -79.5780 },
-        zoom: 14,
-        polygonPaths: [
-          { lat: 43.6200, lng: -79.5950 },
-          { lat: 43.6205, lng: -79.5610 },
-          { lat: 43.5900, lng: -79.5600 },
-          { lat: 43.5895, lng: -79.5940 }
-        ]
-      },
-      {
-        id: "ms_streetsville",
-        name: "斯特里茨维尔历史小镇 (Streetsville Village)",
-        nameZh: "斯特里茨维尔历史小镇",
-        nameEn: "Streetsville Village",
-        nameKo: "스트리츠빌 빌리지",
-        keywords: ["streetsville", "queen st s", "britannia"],
-        center: { lat: 43.5820, lng: -79.7130 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.5930, lng: -79.7280 },
-          { lat: 43.5935, lng: -79.6980 },
-          { lat: 43.5710, lng: -79.6970 },
-          { lat: 43.5705, lng: -79.7270 }
-        ]
-      },
-      {
-        id: "ms_port_credit",
-        name: "湖滨游艇港镇 (Port Credit Waterfront)",
-        nameZh: "湖滨游艇港镇",
-        nameEn: "Port Credit Waterfront",
-        nameKo: "포트 크레디트 워터프론트",
-        keywords: ["port credit", "lakeshore", "stavebank"],
-        center: { lat: 43.5510, lng: -79.5850 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.5620, lng: -79.6010 },
-          { lat: 43.5625, lng: -79.5690 },
-          { lat: 43.5390, lng: -79.5680 },
-          { lat: 43.5385, lng: -79.6000 }
-        ]
-      }
-    ]
+    neighborhoods: []
   },
   {
     id: "vaughan",
@@ -678,82 +120,17 @@ export const GTA_COMMUNITIES = [
     nameZh: "旺市",
     nameEn: "Vaughan",
     nameKo: "본",
-    center: { lat: 43.8563, lng: -79.5085 },
+    center: { lat: 43.8372, lng: -79.5083 },
     zoom: 13,
+    bbox: [-79.6200, 43.7600, -79.4300, 43.9200],
     polygonPaths: [
-      { lat: 43.9230, lng: -79.6320 }, // King-Vaughan & Hwy 50
-      { lat: 43.9280, lng: -79.4670 }, // King-Vaughan & Bathurst
-      { lat: 43.8420, lng: -79.4620 }, // Hwy 7 & Bathurst
-      { lat: 43.7870, lng: -79.4620 }, // Steeles & Bathurst
-      { lat: 43.7770, lng: -79.6120 }, // Steeles & Hwy 50
-      { lat: 43.8320, lng: -79.6220 }  // Hwy 7 & Hwy 50
+      { lat: 43.9200, lng: -79.6200 }, // King-Vaughan Rd & Hwy 50
+      { lat: 43.9300, lng: -79.4600 }, // King-Vaughan Rd & Bathurst
+      { lat: 43.7900, lng: -79.4500 }, // Steeles & Bathurst
+      { lat: 43.7800, lng: -79.5900 }, // Steeles & Hwy 27
+      { lat: 43.8400, lng: -79.6200 }  // Major Mackenzie & Hwy 50
     ],
-    neighborhoods: [
-      {
-        id: "vg_vmc",
-        name: "旺市大都会中心 (VMC & Jane St)",
-        nameZh: "旺市大都会中心",
-        nameEn: "VMC & Jane St",
-        nameKo: "본 메트로폴리탄 센터",
-        keywords: ["vmc", "metropolitan", "portage", "jane", "edgeley"],
-        center: { lat: 43.7940, lng: -79.5280 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.8050, lng: -79.5420 },
-          { lat: 43.8055, lng: -79.5140 },
-          { lat: 43.7830, lng: -79.5130 },
-          { lat: 43.7825, lng: -79.5410 }
-        ]
-      },
-      {
-        id: "vg_promenade",
-        name: "康山商业走廊 (Thornhill & Promenade Mall)",
-        nameZh: "康山商业走廊",
-        nameEn: "Thornhill & Promenade Mall",
-        nameKo: "쏜힐 & 프로머나드 몰",
-        keywords: ["promenade", "bathurst", "centre st", "clark"],
-        center: { lat: 43.8060, lng: -79.4520 },
-        zoom: 15,
-        polygonPaths: [
-          { lat: 43.8170, lng: -79.4660 },
-          { lat: 43.8175, lng: -79.4380 },
-          { lat: 43.7950, lng: -79.4370 },
-          { lat: 43.7945, lng: -79.4650 }
-        ]
-      },
-      {
-        id: "vg_woodbridge",
-        name: "伍德布里奇意大利街区 (Woodbridge & Weston Rd)",
-        nameZh: "伍德布里奇意大利街区",
-        nameEn: "Woodbridge & Weston Rd",
-        nameKo: "우드브리지 & 웨스턴 로드",
-        keywords: ["woodbridge", "weston rd", "hwy 7", "islington"],
-        center: { lat: 43.7870, lng: -79.5950 },
-        zoom: 14,
-        polygonPaths: [
-          { lat: 43.8020, lng: -79.6150 },
-          { lat: 43.8025, lng: -79.5750 },
-          { lat: 43.7720, lng: -79.5740 },
-          { lat: 43.7715, lng: -79.6140 }
-        ]
-      },
-      {
-        id: "vg_mills_maple",
-        name: "枫树镇 / 旺市购物中心 (Maple & Vaughan Mills)",
-        nameZh: "枫树镇 / 旺市购物中心",
-        nameEn: "Maple & Vaughan Mills",
-        nameKo: "메이플 & 본 밀스",
-        keywords: ["vaughan mills", "rutherford", "bass pro", "major mackenzie w"],
-        center: { lat: 43.8260, lng: -79.5390 },
-        zoom: 14,
-        polygonPaths: [
-          { lat: 43.8420, lng: -79.5580 },
-          { lat: 43.8425, lng: -79.5200 },
-          { lat: 43.8100, lng: -79.5190 },
-          { lat: 43.8095, lng: -79.5570 }
-        ]
-      }
-    ]
+    neighborhoods: []
   }
 ];
 
@@ -766,6 +143,10 @@ export const MapExplorer = {
   allRestaurants: [],
   displayedPlaces: [],
   selectedMap: new Map(), // key -> Restaurant
+
+  // GeoJSON Municipal Boundaries Dataset & Hash Map Index
+  neighbourhoodsGeoJson: null,
+  neighbourhoodsMap: new Map(),
 
   // Fallback map state
   isFallbackMode: false,
@@ -797,6 +178,9 @@ export const MapExplorer = {
   async init() {
     if (this.isInitialized) return;
     this.isInitialized = true;
+
+    // 1. Load official GTA municipal GeoJSON boundaries dataset
+    await this.loadNeighbourhoodsGeoJson();
 
     this.setupAuthFailureHandler();
     this.bindEvents();
@@ -883,6 +267,24 @@ export const MapExplorer = {
     }
   },
 
+  async loadNeighbourhoodsGeoJson() {
+    try {
+      const resp = await fetch("assets/data/gta_neighbourhoods.json");
+      if (resp.ok) {
+        this.neighbourhoodsGeoJson = await resp.json();
+        if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
+          this.neighbourhoodsMap.clear();
+          this.neighbourhoodsGeoJson.features.forEach(ft => {
+            this.neighbourhoodsMap.set(ft.id, ft);
+            if (ft.code) this.neighbourhoodsMap.set(ft.code, ft);
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load gta_neighbourhoods.json dataset:", e);
+    }
+  },
+
   // -------------------------------------------------------------
   // Popover Panel UI Management (Apartments.com inspired)
   // -------------------------------------------------------------
@@ -925,6 +327,26 @@ export const MapExplorer = {
   },
 
   getAllNeighborhoods() {
+    if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
+      return this.neighbourhoodsGeoJson.features.map(ft => ({
+        id: ft.id,
+        code: ft.code,
+        name: ft.name,
+        nameZh: ft.nameZh || ft.name,
+        nameEn: ft.nameEn || ft.name,
+        nameKo: ft.nameKo || ft.name,
+        cityId: ft.cityId,
+        cityName: ft.cityName,
+        cityNameZh: ft.cityNameZh,
+        cityNameKo: ft.cityNameKo,
+        center: ft.center,
+        bbox: ft.bbox,
+        geometry: ft.geometry,
+        neighbors: ft.neighbors || [],
+        parentCityId: ft.cityId,
+        parentCityName: ft.cityName
+      }));
+    }
     const list = [];
     GTA_COMMUNITIES.forEach(c => {
       if (Array.isArray(c.neighborhoods)) {
@@ -937,6 +359,27 @@ export const MapExplorer = {
   },
 
   getNeighborhoodById(nbId) {
+    if (this.neighbourhoodsMap && this.neighbourhoodsMap.has(nbId)) {
+      const ft = this.neighbourhoodsMap.get(nbId);
+      return {
+        id: ft.id,
+        code: ft.code,
+        name: ft.name,
+        nameZh: ft.nameZh || ft.name,
+        nameEn: ft.nameEn || ft.name,
+        nameKo: ft.nameKo || ft.name,
+        cityId: ft.cityId,
+        cityName: ft.cityName,
+        cityNameZh: ft.cityNameZh,
+        cityNameKo: ft.cityNameKo,
+        center: ft.center,
+        bbox: ft.bbox,
+        geometry: ft.geometry,
+        neighbors: ft.neighbors || [],
+        parentCityId: ft.cityId,
+        parentCityName: ft.cityName
+      };
+    }
     for (const c of GTA_COMMUNITIES) {
       if (Array.isArray(c.neighborhoods)) {
         const found = c.neighborhoods.find(n => n.id === nbId);
@@ -986,15 +429,14 @@ export const MapExplorer = {
 
   renderPopover() {
     const lang = this.getCurrentLanguage();
+    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const allNbs = this.getAllNeighborhoods();
+    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
     // 1. Render Active Tags Row
     const tagsRow = document.getElementById("popoverActiveTagsRow");
     if (tagsRow) {
-      const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
-      const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
-      const allNbs = this.getAllNeighborhoods();
-      const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
-
       let html = "";
       if (isAll || (selectedCities.length === 0 && selectedNbs.length === 0)) {
         html = `<span class="area-tag-pill active">${this.escapeHtml(this.getLocalizedAllGta())}</span>`;
@@ -1011,26 +453,73 @@ export const MapExplorer = {
         `).join("");
 
         // Render neighborhood tags
-        const nbTags = selectedNbs.map(nb => `
-          <span class="area-tag-pill active" style="background:#2563eb; color:#ffffff; border-color:#1d4ed8;" data-nb-id="${nb.id}">
-            ${this.escapeHtml(this.getLocalizedName(nb))}
-            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}');" title="${removeNbTitle}">✕</span>
-          </span>
-        `).join("");
+        const nbTags = selectedNbs.map(nb => {
+          const localizedName = this.getLocalizedName(nb);
+          const tagLabel = `${localizedName}, ON`;
+          return `
+            <span class="area-tag-pill active" data-nb-id="${nb.id}">
+              ${this.escapeHtml(tagLabel)}
+              <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}');" title="${removeNbTitle}">✕</span>
+            </span>
+          `;
+        }).join("");
 
         html = cityTags + nbTags;
       }
       tagsRow.innerHTML = html;
     }
 
+    // 2. Render Nearby Neighborhoods Section (Apartments.com style)
+    const nearbySection = document.getElementById("popoverNearbySection");
+    const nearbyTitle = document.getElementById("popoverNearbyTitle");
+    const nearbyPills = document.getElementById("popoverNearbyPills");
+    if (nearbySection && nearbyTitle && nearbyPills) {
+      if (selectedNbs.length > 0) {
+        const currentNb = selectedNbs[selectedNbs.length - 1];
+        const neighbors = currentNb.neighbors || [];
+        const unselectedNeighbors = neighbors.filter(nid => !this.activeNeighborhoodIds.has(nid));
+        if (unselectedNeighbors.length > 0) {
+          nearbySection.style.display = "block";
+          const baseName = this.getLocalizedName(currentNb);
+          const cityName = lang === "en" ? (currentNb.cityName || "Toronto") :
+                           lang === "ko" ? (currentNb.cityNameKo || currentNb.cityName || "토론토") :
+                           (currentNb.cityNameZh || currentNb.cityName || "多伦多");
+          if (lang === "en") {
+            nearbyTitle.textContent = `NEARBY ${baseName.toUpperCase()} - ${cityName.toUpperCase()}, ON`;
+          } else if (lang === "ko") {
+            nearbyTitle.textContent = `인근 추천 지역: ${baseName} - ${cityName}, ON`;
+          } else {
+            nearbyTitle.textContent = `周边推荐社区: ${baseName} - ${cityName}, ON`;
+          }
+
+          let nearbyHtml = "";
+          unselectedNeighbors.slice(0, 8).forEach(nid => {
+            const nFt = this.getNeighborhoodById(nid);
+            if (!nFt) return;
+            const label = `${this.getLocalizedName(nFt)}, ON`;
+            nearbyHtml += `
+              <button type="button" class="popover-pill-btn nearby-pill" data-neighborhood="${nFt.id}">
+                + ${this.escapeHtml(label)}
+              </button>
+            `;
+          });
+          nearbyPills.innerHTML = nearbyHtml;
+        } else {
+          nearbySection.style.display = "none";
+        }
+      } else {
+        nearbySection.style.display = "none";
+      }
+    }
+
     const q = (this.popoverSearchQuery || "").toLowerCase();
 
-    // 2. Render Cities Pills (Administrative Locality)
+    // 3. Render Cities Pills (Administrative Locality)
     const cityPillsRow = document.getElementById("popoverCityPills");
     if (cityPillsRow) {
       let html = "";
       GTA_COMMUNITIES.forEach(c => {
-        const titleZh = c.name || "";
+        const titleZh = c.nameZh || c.name || "";
         const titleEn = c.nameEn || "";
         const titleKo = c.nameKo || "";
         if (q && !titleZh.toLowerCase().includes(q) && !titleEn.toLowerCase().includes(q) && !titleKo.toLowerCase().includes(q)) return;
@@ -1045,24 +534,23 @@ export const MapExplorer = {
       cityPillsRow.innerHTML = html;
     }
 
-    // 3. Render Neighborhoods Pills (Sub-districts / Commercial Hubs)
+    // 4. Render Neighborhoods Pills (Sub-districts / Official Municipal Boundaries)
     const nbPillsRow = document.getElementById("popoverNeighborhoodPills");
     const nbSection = document.getElementById("popoverNeighborhoodSection");
     if (nbPillsRow) {
-      const allNbs = this.getAllNeighborhoods();
-      const isAll = this.activeCityIds.has("all");
-      const candidateNbs = isAll ? allNbs : allNbs.filter(nb => this.activeCityIds.has(nb.parentCityId));
+      const isAllCity = this.activeCityIds.has("all");
+      const candidateNbs = isAllCity ? allNbs : allNbs.filter(nb => this.activeCityIds.has(nb.parentCityId));
 
       let html = "";
       candidateNbs.forEach(nb => {
-        const titleZh = nb.name || "";
+        const titleZh = nb.nameZh || nb.name || "";
         const titleEn = nb.nameEn || "";
         const titleKo = nb.nameKo || "";
         const kwMatch = Array.isArray(nb.keywords) && nb.keywords.some(k => k.toLowerCase().includes(q));
         if (q && !titleZh.toLowerCase().includes(q) && !titleEn.toLowerCase().includes(q) && !titleKo.toLowerCase().includes(q) && !kwMatch) return;
 
         const isActive = this.activeNeighborhoodIds.has(nb.id);
-        const localizedLabel = this.getLocalizedName(nb);
+        const localizedLabel = `${this.getLocalizedName(nb)}, ON`;
         html += `
           <button type="button" class="popover-pill-btn ${isActive ? 'active' : ''}" data-neighborhood="${nb.id}">
             ${isActive ? '✓ ' : '+ '}${this.escapeHtml(localizedLabel)}
@@ -1266,16 +754,6 @@ export const MapExplorer = {
 
     // If specific neighborhood(s) are selected, prioritize them
     if (selectedNbs.length > 0) {
-      if (selectedNbs.length === 1) {
-        const nb = selectedNbs[0];
-        if (this.googleMap && !this.isFallbackMode) {
-          this.googleMap.panTo(nb.center);
-          this.googleMap.setZoom(nb.zoom || 15);
-        } else if (this.fallbackMap) {
-          this.fallbackMap.setView([nb.center.lat, nb.center.lng], nb.zoom || 15);
-        }
-        return;
-      }
       this.fitItemsToBounds(selectedNbs);
       return;
     }
@@ -1310,22 +788,36 @@ export const MapExplorer = {
     if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
       const bounds = new google.maps.LatLngBounds();
       items.forEach(it => {
-        if (it.center) bounds.extend(it.center);
-        if (Array.isArray(it.polygonPaths)) {
-          it.polygonPaths.forEach(pt => bounds.extend(pt));
+        const ft = this.neighbourhoodsMap?.get(it.id) || it;
+        if (ft.bbox && Array.isArray(ft.bbox) && ft.bbox.length === 4) {
+          bounds.extend({ lat: ft.bbox[1], lng: ft.bbox[0] });
+          bounds.extend({ lat: ft.bbox[3], lng: ft.bbox[2] });
+        } else if (ft.center) {
+          bounds.extend(ft.center);
+        }
+        if (Array.isArray(ft.polygonPaths)) {
+          ft.polygonPaths.forEach(pt => bounds.extend(pt));
         }
       });
-      this.googleMap.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+      if (!bounds.isEmpty()) {
+        this.googleMap.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+      }
     } else if (this.fallbackMap && window.L) {
-      const latLngs = [];
+      const boundsArr = [];
       items.forEach(it => {
-        if (it.center) latLngs.push([it.center.lat, it.center.lng]);
-        if (Array.isArray(it.polygonPaths)) {
-          it.polygonPaths.forEach(pt => latLngs.push([pt.lat, pt.lng]));
+        const ft = this.neighbourhoodsMap?.get(it.id) || it;
+        if (ft.bbox && Array.isArray(ft.bbox) && ft.bbox.length === 4) {
+          boundsArr.push([ft.bbox[1], ft.bbox[0]]);
+          boundsArr.push([ft.bbox[3], ft.bbox[2]]);
+        } else if (ft.center) {
+          boundsArr.push([ft.center.lat, ft.center.lng]);
+        }
+        if (Array.isArray(ft.polygonPaths)) {
+          ft.polygonPaths.forEach(pt => boundsArr.push([pt.lat, pt.lng]));
         }
       });
-      if (latLngs.length > 0) {
-        this.fallbackMap.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
+      if (boundsArr.length > 0) {
+        this.fallbackMap.fitBounds(boundsArr, { padding: [50, 50] });
       }
     }
   },
@@ -1385,6 +877,18 @@ export const MapExplorer = {
     }
   },
 
+  extractGooglePolygonPaths(geometry) {
+    if (!geometry || !geometry.coordinates) return [];
+    if (geometry.type === "Polygon") {
+      return [geometry.coordinates.map(ring => ring.map(([lng, lat]) => ({ lat, lng })))];
+    } else if (geometry.type === "MultiPolygon") {
+      return geometry.coordinates.map(poly =>
+        poly.map(ring => ring.map(([lng, lat]) => ({ lat, lng })))
+      );
+    }
+    return [];
+  },
+
   drawSelectedBoundaries() {
     this.clearBoundaries();
 
@@ -1398,11 +902,11 @@ export const MapExplorer = {
       try {
         this.localityFeatureLayer.style = () => {
           return {
-            strokeColor: "#059669",
+            strokeColor: "#16a34a",
             strokeWeight: 2,
             strokeOpacity: 0.8,
-            fillColor: "#10b981",
-            fillOpacity: isAll ? 0.05 : 0.12
+            fillColor: "#22c55e",
+            fillOpacity: isAll ? 0.04 : 0.12
           };
         };
       } catch (e) {
@@ -1410,37 +914,95 @@ export const MapExplorer = {
       }
     }
 
-    // 2. High-precision vector Polygons for selected cities & neighborhoods
+    // 2. High-precision vector Polygons for selected neighborhoods
+    if (selectedNbs.length > 0) {
+      if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+        selectedNbs.forEach(nb => {
+          const ft = this.neighbourhoodsMap?.get(nb.id) || nb;
+          if (ft && ft.geometry) {
+            const polygonRingsList = this.extractGooglePolygonPaths(ft.geometry);
+            polygonRingsList.forEach((polyRings, idx) => {
+              const poly = new google.maps.Polygon({
+                paths: polyRings,
+                strokeColor: "#16a34a",
+                strokeOpacity: 1.0,
+                strokeWeight: 2.5,
+                fillColor: "#22c55e",
+                fillOpacity: 0.16,
+                zIndex: 10
+              });
+              poly.setMap(this.googleMap);
+              this.polygonsMap.set(`${nb.id}_${idx}`, poly);
+            });
+          } else if (Array.isArray(nb.polygonPaths)) {
+            const poly = new google.maps.Polygon({
+              paths: nb.polygonPaths,
+              strokeColor: "#16a34a",
+              strokeOpacity: 1.0,
+              strokeWeight: 2.5,
+              fillColor: "#22c55e",
+              fillOpacity: 0.16,
+              zIndex: 10
+            });
+            poly.setMap(this.googleMap);
+            this.polygonsMap.set(nb.id, poly);
+          }
+        });
+      } else if (this.fallbackMap && window.L) {
+        selectedNbs.forEach(nb => {
+          const ft = this.neighbourhoodsMap?.get(nb.id) || nb;
+          if (ft && ft.geometry) {
+            const layer = L.geoJSON(ft, {
+              style: {
+                color: "#16a34a",
+                weight: 2.5,
+                opacity: 1.0,
+                fillColor: "#22c55e",
+                fillOpacity: 0.16
+              }
+            }).addTo(this.fallbackMap);
+            this.polygonsMap.set(nb.id, layer);
+          } else if (Array.isArray(nb.polygonPaths)) {
+            const latLngs = nb.polygonPaths.map(pt => [pt.lat, pt.lng]);
+            const poly = L.polygon(latLngs, {
+              color: "#16a34a",
+              weight: 2.5,
+              opacity: 1.0,
+              fillColor: "#22c55e",
+              fillOpacity: 0.16
+            }).addTo(this.fallbackMap);
+            this.polygonsMap.set(nb.id, poly);
+          }
+        });
+      }
+      return;
+    }
+
+    // 3. Otherwise, draw selected city / all GTA boundaries
     const itemsToDraw = [];
     if (isAll) {
       const allItem = GTA_COMMUNITIES.find(c => c.id === "all");
       if (allItem && Array.isArray(allItem.polygonPaths)) {
-        itemsToDraw.push({ id: "all", paths: allItem.polygonPaths, isNb: false });
+        itemsToDraw.push({ id: "all", paths: allItem.polygonPaths });
       }
     } else {
       selectedCities.forEach(c => {
         if (Array.isArray(c.polygonPaths)) {
-          itemsToDraw.push({ id: c.id, paths: c.polygonPaths, isNb: false });
+          itemsToDraw.push({ id: c.id, paths: c.polygonPaths });
         }
       });
     }
-
-    selectedNbs.forEach(nb => {
-      if (Array.isArray(nb.polygonPaths)) {
-        itemsToDraw.push({ id: nb.id, paths: nb.polygonPaths, isNb: true });
-      }
-    });
 
     if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
       itemsToDraw.forEach(item => {
         const poly = new google.maps.Polygon({
           paths: item.paths,
-          strokeColor: item.isNb ? "#2563eb" : "#059669",
-          strokeOpacity: item.isNb ? 0.95 : 0.85,
-          strokeWeight: item.isNb ? 2.5 : 2,
-          fillColor: item.isNb ? "#3b82f6" : "#10b981",
-          fillOpacity: item.isNb ? 0.22 : 0.12,
-          zIndex: item.isNb ? 10 : 5
+          strokeColor: "#16a34a",
+          strokeOpacity: 0.85,
+          strokeWeight: 2,
+          fillColor: "#22c55e",
+          fillOpacity: 0.10,
+          zIndex: 5
         });
         poly.setMap(this.googleMap);
         this.polygonsMap.set(item.id, poly);
@@ -1449,11 +1011,11 @@ export const MapExplorer = {
       itemsToDraw.forEach(item => {
         const latLngs = item.paths.map(pt => [pt.lat, pt.lng]);
         const poly = L.polygon(latLngs, {
-          color: item.isNb ? "#2563eb" : "#059669",
-          weight: item.isNb ? 2.5 : 2,
-          opacity: item.isNb ? 0.95 : 0.85,
-          fillColor: item.isNb ? "#3b82f6" : "#10b981",
-          fillOpacity: item.isNb ? 0.22 : 0.12
+          color: "#16a34a",
+          weight: 2,
+          opacity: 0.85,
+          fillColor: "#22c55e",
+          fillOpacity: 0.10
         }).addTo(this.fallbackMap);
         this.polygonsMap.set(item.id, poly);
       });
@@ -1626,7 +1188,8 @@ export const MapExplorer = {
       areaQuery = this.searchKeyword;
     } else if (selectedNbs.length > 0) {
       const nbNames = selectedNbs.map(nb => nb.nameEn || nb.name.split(" (")[0]).join(" ");
-      areaQuery = `restaurants in ${nbNames} Toronto Ontario`;
+      const cityName = selectedNbs[0].cityName || "Toronto";
+      areaQuery = `restaurants in ${nbNames} ${cityName} Ontario`;
     } else if (!isAll && selectedCities.length > 0) {
       const cityNames = selectedCities.map(c => c.nameEn || c.name.split(" (")[0]).join(" ");
       areaQuery = `restaurants in ${cityNames} Ontario`;
@@ -1653,11 +1216,26 @@ export const MapExplorer = {
           nb.keywords.forEach(kw => keywords.push(kw.toLowerCase()));
         }
         if (nb.nameEn) keywords.push(nb.nameEn.toLowerCase());
-        const cn = nb.name.split(" (")[0];
+        const cn = (nb.nameZh || nb.name || "").split(" (")[0];
         if (cn) keywords.push(cn.toLowerCase());
       });
 
       localMatches = localMatches.filter(r => {
+        // 1. Spatial bbox check if coordinates exist
+        const rLat = parseFloat(r.latitude || r.lat);
+        const rLng = parseFloat(r.longitude || r.lng);
+        if (!isNaN(rLat) && !isNaN(rLng)) {
+          const inAnyBbox = selectedNbs.some(nb => {
+            const ft = this.neighbourhoodsMap?.get(nb.id) || nb;
+            if (ft.bbox && Array.isArray(ft.bbox) && ft.bbox.length === 4) {
+              return rLng >= ft.bbox[0] && rLng <= ft.bbox[2] && rLat >= ft.bbox[1] && rLat <= ft.bbox[3];
+            }
+            return false;
+          });
+          if (inAnyBbox) return true;
+        }
+
+        // 2. Fallback text search on region and address
         const reg = (r.region || "").toLowerCase();
         const addr = (r.address || "").toLowerCase();
         return keywords.some(kw => reg.includes(kw) || addr.includes(kw));
@@ -2397,6 +1975,19 @@ export const MapExplorer = {
     const neighborhoodPillsRow = document.getElementById("popoverNeighborhoodPills");
     if (neighborhoodPillsRow) {
       neighborhoodPillsRow.addEventListener("click", (e) => {
+        const btn = e.target.closest(".popover-pill-btn");
+        if (!btn) return;
+        const nbId = btn.dataset.neighborhood;
+        if (!nbId) return;
+
+        this.toggleNeighborhood(nbId);
+      });
+    }
+
+    // Popover Nearby Recommended Neighborhood Pills Click Handler
+    const nearbyPillsRow = document.getElementById("popoverNearbyPills");
+    if (nearbyPillsRow) {
+      nearbyPillsRow.addEventListener("click", (e) => {
         const btn = e.target.closest(".popover-pill-btn");
         if (!btn) return;
         const nbId = btn.dataset.neighborhood;
