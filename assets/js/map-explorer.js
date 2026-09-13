@@ -1462,6 +1462,7 @@ export const MapExplorer = {
           this.scrollCardIntoView(key);
         });
 
+        marker.restaurant = r;
         this.markersMap.set(key, marker);
         this.growMarker(marker, this.getPinIcon(r, false));
       } else if (this.fallbackMap && this.fallbackLayerGroup && window.L) {
@@ -1481,6 +1482,7 @@ export const MapExplorer = {
         });
 
         this.fallbackLayerGroup.addLayer(marker);
+        marker.restaurant = r;
         this.markersMap.set(key, marker);
       }
     };
@@ -1506,9 +1508,9 @@ export const MapExplorer = {
   },
 
   pinIconCache: new Map(),
-  zoomedPinIconCache: new WeakMap(),
   pinZoomScale: 1,
   pinZoomFrame: null,
+  pinZoomTransition: null,
   highlightedPinKey: null,
 
   getPinZoomScale(zoom) {
@@ -1517,18 +1519,28 @@ export const MapExplorer = {
 
   animatePinZoom() {
     this.stopMarkerGrowth();
-    if (this.pinZoomFrame !== null) cancelAnimationFrame(this.pinZoomFrame);
-    const from = this.pinZoomScale;
-    const target = this.getPinZoomScale(this.googleMap.getZoom());
-    const started = performance.now();
-    const duration = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 180;
+    this.pinZoomTransition = {
+      from: this.pinZoomScale,
+      target: this.getPinZoomScale(this.googleMap.getZoom()),
+      started: performance.now(),
+      duration: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 240
+    };
+    // Retarget the existing loop during continuous scrolling; do not cancel it
+    // on every zoom event, which can starve animation frames.
+    if (this.pinZoomFrame !== null) return;
     const tick = now => {
-      const progress = duration ? Math.min(1, (now - started) / duration) : 1;
+      const { from, target, started, duration } = this.pinZoomTransition;
+      const progress = duration ? Math.min(1, Math.max(0, (now - started) / duration)) : 1;
       this.pinZoomScale = from + (target - from) * progress;
-      const places = new Map(this.filteredPlaces.map(place => [place.placeId || place.name, place]));
+      // Share each exact-size icon within this frame, without rounding its size.
+      const icons = new Map();
       this.markersMap.forEach((marker, key) => {
-        const place = places.get(key);
-        if (place && marker.setIcon) marker.setIcon(this.getPinIcon(place, this.highlightedPinKey === key));
+        const place = marker.restaurant;
+        if (!place || !marker.setIcon) return;
+        const highlighted = this.highlightedPinKey === key;
+        const style = `${!!place.inKV}:${this.selectedMap.has(key)}:${highlighted}`;
+        if (!icons.has(style)) icons.set(style, this.getPinIcon(place, highlighted));
+        marker.setIcon(icons.get(style));
       });
       this.pinZoomFrame = progress < 1 ? requestAnimationFrame(tick) : null;
     };
@@ -1578,18 +1590,11 @@ export const MapExplorer = {
       });
     }
     const icon = this.pinIconCache.get(cacheKey);
-    // Quantize to 1% steps so all pins share a bounded set of scaled icons.
-    const step = Math.round(this.pinZoomScale * 100);
-    let sizes = this.zoomedPinIconCache.get(icon);
-    if (!sizes) { sizes = new Map(); this.zoomedPinIconCache.set(icon, sizes); }
-    if (!sizes.has(step)) {
-      const factor = step / 100;
-      sizes.set(step, { ...icon,
-        scaledSize: new google.maps.Size(icon.scaledSize.width * factor, icon.scaledSize.height * factor),
-        anchor: new google.maps.Point(icon.anchor.x * factor, icon.anchor.y * factor)
-      });
-    }
-    return sizes.get(step);
+    const factor = this.pinZoomScale;
+    return { ...icon,
+      scaledSize: new google.maps.Size(icon.scaledSize.width * factor, icon.scaledSize.height * factor),
+      anchor: new google.maps.Point(icon.anchor.x * factor, icon.anchor.y * factor)
+    };
   },
 
   highlightMarker(key, highlight) {
@@ -1615,7 +1620,8 @@ export const MapExplorer = {
             this.showInfoWindow(r, marker);
             this.scrollCardIntoView(key);
           });
-          this.markersMap.set(key, marker);
+          marker.restaurant = r;
+        this.markersMap.set(key, marker);
         }
       }
     }
@@ -2502,6 +2508,7 @@ if (typeof window !== "undefined") {
             MapExplorer.showInfoWindow(r, marker);
             MapExplorer.scrollCardIntoView(key);
           });
+          marker.restaurant = r;
           MapExplorer.markersMap.set(key, marker);
         }
         if (marker) MapExplorer.showInfoWindow(r, marker);
