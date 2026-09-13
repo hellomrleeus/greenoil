@@ -96,10 +96,14 @@
                   </select>
                 </div>
 
-                <div class="search-input-wrap">
+                <div>
                   <label class="form-label" for="restaurantSearch">搜索</label>
-                  <span class="search-icon">🔍</span>
-                  <input type="text" class="form-input" id="restaurantSearch" placeholder="搜索餐馆名、地址或关键词...">
+                  <div class="search-input-wrap">
+                    <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                    </svg>
+                    <input type="text" class="form-input" id="restaurantSearch" placeholder="搜索餐馆名、地址或关键词...">
+                  </div>
                 </div>
 
                 <div>
@@ -111,11 +115,11 @@
                   </select>
                 </div>
 
-                <div style="display: flex; gap: 0.5rem; align-self: flex-end;">
-                  <button class="btn btn-secondary" id="btnSelectAllPage">
+                <div style="display: flex; gap: 0.5rem;">
+                  <button class="btn btn-secondary" id="btnSelectAllPage" style="white-space: nowrap;">
                     <span>全选本页</span>
                   </button>
-                  <button class="btn btn-primary" id="btnExportCsv">
+                  <button class="btn btn-primary" id="btnExportCsv" style="white-space: nowrap;">
                     <span>导出所选</span>
                   </button>
                 </div>
