@@ -1751,9 +1751,24 @@ body {
   gap: 1rem;
 }
 
+.fs-origin-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 24px;
+}
+
 @media (max-width: 768px) {
   .fs-route-config-grid {
     grid-template-columns: 1fr;
+  }
+  .fs-origin-label-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
   }
 }
 
@@ -1767,8 +1782,55 @@ body {
 }
 
 .fs-route-toolbar {
-  padding-top: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border);
+}
+
+.fs-route-toolbar-left {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.fs-route-toolbar-right {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .fs-route-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .fs-route-toolbar-left {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+  }
+  .fs-route-toolbar-left .btn {
+    flex: 1;
+    justify-content: center;
+  }
+  .fs-route-toolbar-right {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .fs-route-toolbar-right .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* Waypoints List */

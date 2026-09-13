@@ -498,7 +498,7 @@
               <div class="fs-route-config-grid">
                 <!-- Origin Config -->
                 <div class="form-group" style="margin-bottom: 0;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap;">
+                  <div class="fs-origin-label-row">
                     <label class="form-label" style="margin-bottom: 0;" data-i18n="fs_route_origin">起点地址 (Green Oil Inc)</label>
                     <label class="fs-checkbox-label">
                       <input type="checkbox" id="fsRouteUseGps" class="custom-checkbox">
@@ -510,17 +510,19 @@
 
                 <!-- Add Restaurant Search -->
                 <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" data-i18n="fs_route_add_restaurant">添加餐馆到路线</label>
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; min-height: 24px;">
+                    <label class="form-label" style="margin-bottom: 0;" data-i18n="fs_route_add_restaurant">添加餐馆到路线</label>
+                  </div>
                   <div style="display: flex; gap: 0.5rem;">
-                    <input type="text" class="form-input" id="fsRouteAddRestInput" list="fsRestaurantsDatalist" data-i18n-placeholder="fs_route_search_placeholder" placeholder="搜索餐馆名称或地址加入路线...">
-                    <button class="btn btn-primary" id="fsRouteBtnAddRest" style="white-space: nowrap;">+ 添加</button>
+                    <input type="text" class="form-input" id="fsRouteAddRestInput" list="fsRestaurantsDatalist" style="flex: 1; min-width: 0;" data-i18n-placeholder="fs_route_search_placeholder" placeholder="搜索餐馆名称或地址加入路线...">
+                    <button class="btn btn-primary" id="fsRouteBtnAddRest" style="white-space: nowrap; flex-shrink: 0;">+ 添加</button>
                   </div>
                 </div>
               </div>
 
               <!-- Action Bar -->
               <div class="fs-route-toolbar">
-                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <div class="fs-route-toolbar-left">
                   <button class="btn btn-secondary btn-sm" id="fsRouteBtnOptimize">
                     <span>⚡</span> <span data-i18n="fs_route_btn_optimize">智能最短路径排序</span>
                   </button>
@@ -529,7 +531,7 @@
                   </button>
                 </div>
 
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <div class="fs-route-toolbar-right">
                   <button class="btn btn-primary" id="fsRouteBtnCalc">
                     <span>🚀</span> <span data-i18n="fs_route_btn_calc">生成路线规划</span>
                   </button>
