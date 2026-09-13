@@ -9,7 +9,7 @@ const icon={url:'fixture',scaledSize:{width:48,height:48},anchor:{x:24,y:44}};
 const marker={setIcon(value){this.icon=value}};
 map.growMarker(marker,icon);
 assert(marker.icon.scaledSize.height<48);
-assert.equal(marker.icon.anchor.y/marker.icon.scaledSize.height,44/48);
+assert(Math.abs(marker.icon.anchor.y/marker.icon.scaledSize.height - 44/48) < 1e-12);
 callback(performance.now()+400);
 assert.equal(marker.icon,icon);
 assert.equal(map.growingMarkers.size,0);
