@@ -904,7 +904,8 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": fieldMask
+        "X-Goog-FieldMask": fieldMask,
+        "Referer": "https://hellomrleeus.github.io/greenoil/"
       },
       body: JSON.stringify(gmpBody)
     });
@@ -1003,7 +1004,8 @@ async function handlePlanRoute(request, env, corsHeaders) {
         headers: {
           "Content-Type": "application/json",
           "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs"
+          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs",
+          "Referer": "https://hellomrleeus.github.io/greenoil/"
         },
         body: JSON.stringify(routesBody)
       });
