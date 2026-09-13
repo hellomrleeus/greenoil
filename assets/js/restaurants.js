@@ -212,19 +212,18 @@ export const Restaurants = {
       const selectedList = Array.from(this.selectedMap.values());
       if (selectedList.length > 0) {
         import("./field-sales.js").then(({ FieldSales }) => {
-          FieldSales.addMultipleToRoute(selectedList);
+          FieldSales.addMultipleToRoute(selectedList, false);
         });
       } else {
         if (this.currentPageData && this.currentPageData.length > 0) {
-          const confirmAll = confirm(`当前未勾选餐馆。是否将本页显示的 ${this.currentPageData.length} 家餐馆全部加入路线规划？`);
-          if (confirmAll) {
-            this.setSelectCurrentPage(true);
-            import("./field-sales.js").then(({ FieldSales }) => {
-              FieldSales.addMultipleToRoute(this.currentPageData);
-            });
-          }
+          this.setSelectCurrentPage(true);
+          import("./field-sales.js").then(({ FieldSales }) => {
+            FieldSales.addMultipleToRoute(this.currentPageData, false);
+          });
         } else {
-          alert("请先在列表中勾选要规划路线的餐馆！");
+          const msg = "请先在列表中勾选要规划路线的餐馆";
+          if (window.showToast) window.showToast(msg);
+          else alert(msg);
         }
       }
     };
@@ -279,9 +278,7 @@ export const Restaurants = {
         if (this.selectedRestaurant) {
           const r = this.selectedRestaurant;
           this.closeDetailModal();
-          window.switchTab("tab-fieldsale");
           import("./field-sales.js").then(({ FieldSales }) => {
-            FieldSales.switchSubTab("records");
             FieldSales.openSalesRecordModal(null, r);
           });
         }
@@ -295,7 +292,7 @@ export const Restaurants = {
           const r = this.selectedRestaurant;
           this.closeDetailModal();
           import("./field-sales.js").then(({ FieldSales }) => {
-            FieldSales.addMultipleToRoute([r]);
+            FieldSales.addMultipleToRoute([r], false);
           });
         }
       });
@@ -513,7 +510,7 @@ export const Restaurants = {
             </div>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
               <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
-              ${r.isVisited ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 5px; border-radius:3px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">🏷️ ${this.escapeHtml(r.lastOutcome || '已拜访')}</span>` : ''}
+              ${r.isVisited ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 5px; border-radius:3px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">${this.escapeHtml(r.lastOutcome || '已拜访')}</span>` : ''}
             </div>
           </div>
 
@@ -551,7 +548,7 @@ export const Restaurants = {
             <span style="font-size: 0.75rem; color: var(--text-light);">${i18n.t("btn_details")} &gt;</span>
             <div style="display: flex; gap: 0.35rem; align-items: center;">
               <button class="btn-calc-oil" style="background: rgba(37,99,235,0.08); color: #2563eb; border: 1px solid rgba(37,99,235,0.25);" onclick="event.stopPropagation(); window.addRestaurantToRouteByIndex(${idx});" title="${i18n.t("btn_add_to_route")}">
-                🗺️ ${i18n.t("btn_add_to_route")}
+                ${i18n.t("btn_add_to_route")}
               </button>
             </div>
           </div>
@@ -614,7 +611,7 @@ export const Restaurants = {
           <td><b>★ ${r.rating ? r.rating.toFixed(1) : '-'}</b> (${r.reviews})</td>
           <td>
             <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
-            ${r.isVisited ? `<div style="margin-top: 3px;"><span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 4px; border-radius:3px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">🏷️ ${this.escapeHtml(r.lastOutcome || '已拜访')}</span></div>` : ''}
+            ${r.isVisited ? `<div style="margin-top: 3px;"><span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 4px; border-radius:3px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">${this.escapeHtml(r.lastOutcome || '已拜访')}</span></div>` : ''}
           </td>
           <td>${this.escapeHtml(r.price)}</td>
           <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(r.address)}</td>
@@ -622,7 +619,7 @@ export const Restaurants = {
           <td>
             <div style="display: flex; gap: 0.35rem; align-items: center;">
               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.addRestaurantToRouteByIndex(${idx});" style="color: #2563eb; border-color: rgba(37,99,235,0.3); padding: 0.25rem 0.5rem; font-size: 0.78rem;" title="${i18n.t("btn_add_to_route")}">
-                🗺️ ${i18n.t("btn_add_to_route")}
+                ${i18n.t("btn_add_to_route")}
               </button>
             </div>
           </td>
@@ -699,7 +696,7 @@ export const Restaurants = {
               ${i18n.t("hub_card_btn")} (${h.count}) &rarr;
             </button>
             <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.addHubToRoute('${h.id}', '${this.escapeHtml(hubName)}')" title="将本商圈所有餐馆批量加入路线规划" style="color: #2563eb; border-color: rgba(37,99,235,0.3); white-space: nowrap; font-size: 0.78rem; padding: 0.4rem 0.6rem;">
-              🗺️ +路线
+              +路线
             </button>
           </div>
         </div>
@@ -963,18 +960,26 @@ export const Restaurants = {
       });
       if (res && res.data && res.data.length > 0) {
         import("./field-sales.js").then(({ FieldSales }) => {
-          FieldSales.addMultipleToRoute(res.data);
+          FieldSales.addMultipleToRoute(res.data, false);
         });
       } else {
-        alert("未找到该商圈下的餐馆数据");
+        const msg = "未找到该商圈下的餐馆数据";
+        if (window.showToast) window.showToast(msg);
+        else alert(msg);
       }
     } catch (e) {
       console.error("Error fetching hub restaurants for route:", e);
-      alert("获取商圈餐馆数据失败");
+      const msg = "获取商圈餐馆数据失败";
+      if (window.showToast) window.showToast(msg);
+      else alert(msg);
     }
   },
 
   showToast(msg) {
+    if (window.showToast) {
+      window.showToast(msg);
+      return;
+    }
     let toast = document.getElementById("appToast");
     if (!toast) {
       toast = document.createElement("div");
@@ -1011,7 +1016,7 @@ if (typeof window !== "undefined") {
     const rest = Restaurants.currentPageData[idx];
     if (rest) {
       import("./field-sales.js").then(({ FieldSales }) => {
-        FieldSales.addMultipleToRoute([rest]);
+        FieldSales.addMultipleToRoute([rest], false);
       });
     }
   };

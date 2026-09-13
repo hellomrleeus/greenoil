@@ -696,10 +696,8 @@ export const MapExplorer = {
   kvPlaceIdsSet: new Set(),
   kvNormalizedNamesSet: new Set(),
   
-  // Filter States
+  // Filter States (Locality / Cities only)
   activeCityId: "north_york",
-  activeNeighborhoodIds: new Set(["all"]),
-  boundaryOverlays: [],
   activeCategory: "全部",
   activeVisited: "all", // "all", "visited", "unvisited"
   activeOutcome: "all",
@@ -707,6 +705,7 @@ export const MapExplorer = {
   popoverSearchQuery: "",
   followBounds: false,
   boundsDebounceTimer: null,
+  resizeObserver: null,
 
   // Pagination for right list
   currentPage: 1,
@@ -718,6 +717,7 @@ export const MapExplorer = {
 
     this.setupAuthFailureHandler();
     this.bindEvents();
+    this.setupResizeObserver();
     this.renderPopover();
     this.updateAreaSummaryBtn();
 
@@ -727,8 +727,8 @@ export const MapExplorer = {
     // 2. Load all restaurants data from KV
     await this.loadAllRestaurants();
 
-    // 3. Load initial area places & draw boundary
-    this.drawSelectedBoundaries();
+    // 3. Pan to initial locality and load places
+    this.panToSelectedArea();
     await this.loadPlacesForCurrentArea();
   },
 
@@ -807,34 +807,11 @@ export const MapExplorer = {
     const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
     const cityName = city ? city.name.split(" (")[0] : "全部大区";
 
-    if (this.activeNeighborhoodIds.has("all") || this.activeNeighborhoodIds.size === 0) {
-      summaryEl.innerHTML = `
-        <span class="area-tag-pill active">
-          📍 ${this.escapeHtml(cityName)}
-        </span>
-      `;
-    } else {
-      const nhIds = Array.from(this.activeNeighborhoodIds);
-      const nhNames = nhIds.map(id => {
-        let n = null;
-        GTA_COMMUNITIES.forEach(c => (c.neighborhoods || []).forEach(item => { if (item.id === id) n = item; }));
-        return n ? n.name.split(" (")[0] : id;
-      });
-
-      if (nhNames.length === 1) {
-        summaryEl.innerHTML = `
-          <span class="area-tag-pill active">
-            📍 ${this.escapeHtml(cityName)} · ${this.escapeHtml(nhNames[0])}
-          </span>
-        `;
-      } else {
-        summaryEl.innerHTML = `
-          <span class="area-tag-pill active">
-            📍 ${this.escapeHtml(cityName)} (${nhNames.length}个商圈)
-          </span>
-        `;
-      }
-    }
+    summaryEl.innerHTML = `
+      <span class="area-tag-pill active">
+        ${this.escapeHtml(cityName)}
+      </span>
+    `;
   },
 
   renderPopover() {
@@ -855,25 +832,10 @@ export const MapExplorer = {
           </span>
         `;
       }
-
-      if (!this.activeNeighborhoodIds.has("all")) {
-        this.activeNeighborhoodIds.forEach(nhId => {
-          let found = null;
-          GTA_COMMUNITIES.forEach(c => (c.neighborhoods || []).forEach(n => { if (n.id === nhId) found = n; }));
-          if (found) {
-            html += `
-              <span class="area-tag-pill" data-nh-id="${found.id}">
-                ${this.escapeHtml(found.name.split(" (")[0])}
-                <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerToggleNh('${found.id}');">✕</span>
-              </span>
-            `;
-          }
-        });
-      }
       tagsRow.innerHTML = html;
     }
 
-    // 2. Render Cities Pills
+    // 2. Render Cities Pills (Administrative Locality)
     const cityPillsRow = document.getElementById("popoverCityPills");
     if (cityPillsRow) {
       const q = (this.popoverSearchQuery || "").toLowerCase();
@@ -891,128 +853,56 @@ export const MapExplorer = {
       });
       cityPillsRow.innerHTML = html;
     }
-
-    // 3. Render Neighborhoods Pills
-    const nhSection = document.getElementById("popoverNeighborhoodSection");
-    const nhPillsRow = document.getElementById("popoverNeighborhoodPills");
-    if (nhSection && nhPillsRow) {
-      const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
-      let neighborhoods = [];
-      if (city && city.neighborhoods && city.neighborhoods.length > 0) {
-        neighborhoods = city.neighborhoods;
-      } else {
-        GTA_COMMUNITIES.forEach(c => {
-          if (c.neighborhoods) neighborhoods.push(...c.neighborhoods);
-        });
-      }
-
-      const q = (this.popoverSearchQuery || "").toLowerCase();
-      if (q) {
-        neighborhoods = neighborhoods.filter(n => n.name.toLowerCase().includes(q));
-      }
-
-      const isAll = this.activeNeighborhoodIds.has("all");
-      let html = `
-        <button type="button" class="popover-pill-btn ${isAll ? 'active' : ''}" data-nh="all">
-          ${isAll ? '✓ ' : '+ '}全部社区商圈
-        </button>
-      `;
-
-      neighborhoods.forEach(n => {
-        const isActive = !isAll && this.activeNeighborhoodIds.has(n.id);
-        const shortName = n.name.split(" (")[0];
-        html += `
-          <button type="button" class="popover-pill-btn ${isActive ? 'active' : ''}" data-nh="${n.id}">
-            ${isActive ? '✓ ' : '+ '}${this.escapeHtml(shortName)}
-          </button>
-        `;
-      });
-
-      nhPillsRow.innerHTML = html;
-    }
   },
 
   // -------------------------------------------------------------
-  // Boundary Polygons Drawing (Google Maps Polygon & Leaflet)
+  // Pan and Focus on Selected Locality / City (Administrative Level)
   // -------------------------------------------------------------
-  clearBoundaries() {
-    this.boundaryOverlays.forEach(overlay => {
-      if (overlay.setMap) overlay.setMap(null);
-      if (overlay.remove) overlay.remove();
+  panToSelectedArea() {
+    const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId) || GTA_COMMUNITIES[0];
+    if (!city || !city.center) return;
+
+    if (this.googleMap && !this.isFallbackMode) {
+      this.googleMap.panTo(city.center);
+      this.googleMap.setZoom(city.zoom || 12);
+    } else if (this.fallbackMap) {
+      this.fallbackMap.setView([city.center.lat, city.center.lng], city.zoom || 12);
+    }
+  },
+
+  setupResizeObserver() {
+    const canvas = document.getElementById("mapExplorerCanvas");
+    if (canvas && window.ResizeObserver) {
+      this.resizeObserver = new ResizeObserver(() => {
+        this.handleResize();
+      });
+      this.resizeObserver.observe(canvas);
+    }
+
+    window.addEventListener("greenoil:workbench-resize", () => {
+      this.handleResize();
     });
-    this.boundaryOverlays = [];
+
+    window.addEventListener("resize", () => {
+      this.handleResize();
+    });
+  },
+
+  handleResize() {
+    if (this.googleMap && window.google && window.google.maps) {
+      google.maps.event.trigger(this.googleMap, "resize");
+    }
+    if (this.fallbackMap) {
+      this.fallbackMap.invalidateSize();
+    }
+  },
+
+  clearBoundaries() {
+    // No-op (polygons removed)
   },
 
   drawSelectedBoundaries() {
-    this.clearBoundaries();
-
-    let polygonsToDraw = [];
-
-    // Check if specific neighborhoods are selected
-    if (!this.activeNeighborhoodIds.has("all") && this.activeNeighborhoodIds.size > 0) {
-      this.activeNeighborhoodIds.forEach(nhId => {
-        let found = null;
-        GTA_COMMUNITIES.forEach(c => (c.neighborhoods || []).forEach(n => { if (n.id === nhId) found = n; }));
-        if (found && found.polygonPaths && found.polygonPaths.length > 0) {
-          polygonsToDraw.push({ name: found.name, paths: found.polygonPaths });
-        }
-      });
-    }
-
-    // Otherwise use active city boundary polygon
-    if (polygonsToDraw.length === 0) {
-      const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId) || GTA_COMMUNITIES[0];
-      if (city && city.polygonPaths && city.polygonPaths.length > 0) {
-        polygonsToDraw.push({ name: city.name, paths: city.polygonPaths });
-      }
-    }
-
-    if (polygonsToDraw.length === 0) return;
-
-    let googleBounds = null;
-    let leafletBounds = [];
-
-    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-      googleBounds = new google.maps.LatLngBounds();
-    }
-
-    polygonsToDraw.forEach(poly => {
-      if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-        const googlePolygon = new google.maps.Polygon({
-          paths: poly.paths,
-          strokeColor: "#16a34a",
-          strokeOpacity: 0.9,
-          strokeWeight: 2.5,
-          fillColor: "#22c55e",
-          fillOpacity: 0.16,
-          map: this.googleMap,
-          clickable: false
-        });
-        this.boundaryOverlays.push(googlePolygon);
-        poly.paths.forEach(pt => googleBounds.extend(pt));
-      } else if (this.fallbackMap && window.L) {
-        const leafletPolygon = L.polygon(poly.paths.map(p => [p.lat, p.lng]), {
-          color: "#16a34a",
-          weight: 2.5,
-          opacity: 0.9,
-          fillColor: "#22c55e",
-          fillOpacity: 0.16
-        }).addTo(this.fallbackMap);
-        this.boundaryOverlays.push(leafletPolygon);
-        leafletBounds.push(leafletPolygon.getBounds());
-      }
-    });
-
-    // Fit map bounds
-    if (googleBounds && !googleBounds.isEmpty()) {
-      this.googleMap.fitBounds(googleBounds);
-    } else if (this.fallbackMap && leafletBounds.length > 0) {
-      let combined = leafletBounds[0];
-      for (let i = 1; i < leafletBounds.length; i++) {
-        combined = combined.extend(leafletBounds[i]);
-      }
-      this.fallbackMap.fitBounds(combined, { maxZoom: 16 });
-    }
+    this.panToSelectedArea();
   },
 
   // -------------------------------------------------------------
@@ -1167,11 +1057,6 @@ export const MapExplorer = {
 
     if (this.searchKeyword) {
       areaQuery = this.searchKeyword;
-    } else if (!this.activeNeighborhoodIds.has("all") && this.activeNeighborhoodIds.size > 0) {
-      const nhId = Array.from(this.activeNeighborhoodIds)[0];
-      let nh = null;
-      GTA_COMMUNITIES.forEach(c => (c.neighborhoods || []).forEach(n => { if (n.id === nhId) nh = n; }));
-      areaQuery = nh ? `${nh.name.split(" (")[0]} restaurants Toronto` : "Toronto restaurants";
     } else if (city && city.id !== "all") {
       areaQuery = `restaurants in ${city.name.split(" (")[0]} Ontario`;
     } else {
@@ -1313,11 +1198,7 @@ export const MapExplorer = {
     const cityName = city ? city.name.split(" (")[0] : "全大区";
 
     if (regionTitleEl) {
-      if (!this.activeNeighborhoodIds.has("all") && this.activeNeighborhoodIds.size > 0) {
-        regionTitleEl.textContent = `${cityName}商圈餐馆 (${total} 家)`;
-      } else {
-        regionTitleEl.textContent = `${cityName}餐馆列表 (${total} 家)`;
-      }
+      regionTitleEl.textContent = `${cityName}餐馆列表 (${total} 家)`;
     }
   },
 
@@ -1460,10 +1341,10 @@ export const MapExplorer = {
 
       const kvBadge = r.inKV
         ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:600;">✓ 已在KV库</span>`
-        : `<span class="badge" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700;">🆕 Google新店</span>`;
+        : `<span class="badge" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700;">Google新店</span>`;
 
       const visitBadge = r.isVisited
-        ? `<span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #6ee7b7; font-size:0.7rem; padding:2px 6px; border-radius:4px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">🏷️ 已拜访 · ${this.escapeHtml(r.lastOutcome || '已记录')}</span>`
+        ? `<span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #6ee7b7; font-size:0.7rem; padding:2px 6px; border-radius:4px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">已拜访 · ${this.escapeHtml(r.lastOutcome || '已记录')}</span>`
         : `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; font-size:0.7rem; padding:2px 6px; border-radius:4px;">未拜访</span>`;
 
       const ratingStr = r.rating ? `★ ${parseFloat(r.rating).toFixed(1)}` : "★ 4.2";
@@ -1472,20 +1353,20 @@ export const MapExplorer = {
 
       const saveKvBtn = !r.inKV ? `
         <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); window.mapExplorerAddSingleToKv('${this.escapeQuotes(key)}');" style="background:#059669; border-color:#059669; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="立即一键保存到云端KV">
-          <span>📥 + 保存至KV</span>
+          <span>保存至KV</span>
         </button>
       ` : "";
 
       const visitActionBtn = r.inKV ? `
         <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerLogVisit('${this.escapeQuotes(key)}');" style="font-size:0.75rem; padding:0.25rem 0.5rem;" title="登记现场拜访记录">
-          <span>📝 拜访记录</span>
+          <span>拜访记录</span>
         </button>
       ` : "";
 
       return `
         <div class="map-place-card" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
           <div class="card-thumb">
-            🍽️
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M18 2v20"></path><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path><path d="M6 2v20"></path><path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2"></path></svg>
           </div>
           <div class="card-main">
             <div class="card-title-row">
@@ -1506,17 +1387,17 @@ export const MapExplorer = {
             </div>
 
             <div class="card-address" title="${this.escapeHtml(r.address || '')}">
-              📍 ${this.escapeHtml(r.address || "安大略省 GTA")}
+              ${this.escapeHtml(r.address || "安大略省 GTA")}
             </div>
 
             <div class="card-actions-row">
               ${saveKvBtn}
               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="color:#2563eb; border-color:rgba(37,99,235,0.3); font-size:0.75rem; padding:0.25rem 0.5rem;" title="${i18n.t("btn_add_waypoint")}">
-                🗺️ ${i18n.t("btn_add_waypoint")}
+                ${i18n.t("btn_add_waypoint")}
               </button>
               ${visitActionBtn}
               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="Google Maps 导航">
-                🧭
+                导航
               </button>
             </div>
           </div>
@@ -1570,11 +1451,11 @@ export const MapExplorer = {
     const key = r.placeId || r.name;
     const kvBadge = r.inKV 
       ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600;">✓ 已在KV</span>`
-      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">🆕 未入库</span>`;
+      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">未入库</span>`;
 
     const saveBtn = !r.inKV ? `
       <button onclick="window.mapExplorerAddSingleToKv('${this.escapeQuotes(key)}')" style="background:#059669; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer;">
-        📥 保存至KV
+        保存至KV
       </button>
     ` : "";
 
@@ -1588,15 +1469,15 @@ export const MapExplorer = {
           ★ ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"} (${r.reviews || 10}) · <b>${this.escapeHtml(r.price || "$$")}</b>
         </div>
         <div style="font-size: 12px; color: #334155; margin-bottom: 6px;">
-          📍 ${this.escapeHtml(r.address || "暂无地址")}
+          ${this.escapeHtml(r.address || "暂无地址")}
         </div>
         <div style="display:flex; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
           ${saveBtn}
           <button onclick="window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}')" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer;">
-            🗺️ ${i18n.t("btn_add_waypoint")}
+            ${i18n.t("btn_add_waypoint")}
           </button>
           <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">
-            🧭 导航
+            导航
           </button>
         </div>
       </div>
@@ -1701,11 +1582,9 @@ export const MapExplorer = {
     if (clearAllBtn) {
       clearAllBtn.addEventListener("click", () => {
         this.activeCityId = "all";
-        this.activeNeighborhoodIds.clear();
-        this.activeNeighborhoodIds.add("all");
         this.renderPopover();
         this.updateAreaSummaryBtn();
-        this.drawSelectedBoundaries();
+        this.panToSelectedArea();
         this.loadPlacesForCurrentArea();
       });
     }
@@ -1729,43 +1608,9 @@ export const MapExplorer = {
         if (!cityId) return;
 
         this.activeCityId = cityId;
-        this.activeNeighborhoodIds.clear();
-        this.activeNeighborhoodIds.add("all");
-
         this.renderPopover();
         this.updateAreaSummaryBtn();
-        this.drawSelectedBoundaries();
-        this.loadPlacesForCurrentArea();
-      });
-    }
-
-    // Popover Neighborhood Pills Click Handler
-    const nhPillsRow = document.getElementById("popoverNeighborhoodPills");
-    if (nhPillsRow) {
-      nhPillsRow.addEventListener("click", (e) => {
-        const btn = e.target.closest(".popover-pill-btn");
-        if (!btn) return;
-        const nhId = btn.dataset.nh;
-        if (!nhId) return;
-
-        if (nhId === "all") {
-          this.activeNeighborhoodIds.clear();
-          this.activeNeighborhoodIds.add("all");
-        } else {
-          this.activeNeighborhoodIds.delete("all");
-          if (this.activeNeighborhoodIds.has(nhId)) {
-            this.activeNeighborhoodIds.delete(nhId);
-          } else {
-            this.activeNeighborhoodIds.add(nhId);
-          }
-          if (this.activeNeighborhoodIds.size === 0) {
-            this.activeNeighborhoodIds.add("all");
-          }
-        }
-
-        this.renderPopover();
-        this.updateAreaSummaryBtn();
-        this.drawSelectedBoundaries();
+        this.panToSelectedArea();
         this.loadPlacesForCurrentArea();
       });
     }
@@ -1775,11 +1620,9 @@ export const MapExplorer = {
     if (resetCenterBtn) {
       resetCenterBtn.addEventListener("click", () => {
         this.activeCityId = "all";
-        this.activeNeighborhoodIds.clear();
-        this.activeNeighborhoodIds.add("all");
         this.renderPopover();
         this.updateAreaSummaryBtn();
-        this.drawSelectedBoundaries();
+        this.panToSelectedArea();
         this.loadPlacesForCurrentArea();
         this.togglePopover(false);
       });
@@ -1857,11 +1700,13 @@ export const MapExplorer = {
       planRouteBtn.addEventListener("click", () => {
         const places = this.filteredPlaces.slice(0, 10);
         if (places.length === 0) {
-          alert("当前列表暂无餐馆可规划路线！");
+          const msg = "当前列表暂无餐馆可规划路线";
+          if (window.showToast) window.showToast(msg);
+          else alert(msg);
           return;
         }
         import("./field-sales.js").then(({ FieldSales }) => {
-          FieldSales.addMultipleToRoute(places);
+          FieldSales.addMultipleToRoute(places, false);
         });
       });
     }
@@ -1872,7 +1717,9 @@ export const MapExplorer = {
       selectAllBtn.addEventListener("click", () => {
         const pageItems = this.filteredPlaces.slice((this.currentPage - 1) * this.pageSize, this.currentPage * this.pageSize);
         pageItems.forEach(r => this.selectedMap.set(r.placeId || r.name, r));
-        alert(`已选择 ${pageItems.length} 家餐馆`);
+        const msg = `已选择 ${pageItems.length} 家餐馆`;
+        if (window.showToast) window.showToast(msg);
+        else alert(msg);
       });
     }
 
@@ -1895,7 +1742,9 @@ export const MapExplorer = {
           window.XLSX.utils.book_append_sheet(wb, ws, "餐馆列表");
           window.XLSX.writeFile(wb, `Google_Restaurants_${Date.now()}.xlsx`);
         } else {
-          alert("暂无可导出的餐馆数据！");
+          const msg = "暂无可导出的餐馆数据";
+          if (window.showToast) window.showToast(msg);
+          else alert(msg);
         }
       });
     }
@@ -1950,16 +1799,14 @@ if (typeof window !== "undefined") {
     const r = MapExplorer.filteredPlaces.find(item => (item.placeId || item.name) === key);
     if (!r) return;
     import("./field-sales.js").then(({ FieldSales }) => {
-      FieldSales.addMultipleToRoute([r]);
+      FieldSales.addMultipleToRoute([r], false);
     });
   };
 
   window.mapExplorerLogVisit = function(key) {
     const r = MapExplorer.filteredPlaces.find(item => (item.placeId || item.name) === key);
     if (!r) return;
-    window.switchTab("tab-fieldsale");
     import("./field-sales.js").then(({ FieldSales }) => {
-      FieldSales.switchSubTab("records");
       FieldSales.openSalesRecordModal(null, r);
     });
   };
@@ -1976,22 +1823,9 @@ if (typeof window !== "undefined") {
 
   window.mapExplorerResetToAllGta = function() {
     MapExplorer.activeCityId = "all";
-    MapExplorer.activeNeighborhoodIds.clear();
-    MapExplorer.activeNeighborhoodIds.add("all");
     MapExplorer.renderPopover();
     MapExplorer.updateAreaSummaryBtn();
-    MapExplorer.drawSelectedBoundaries();
-    MapExplorer.loadPlacesForCurrentArea();
-  };
-
-  window.mapExplorerToggleNh = function(nhId) {
-    MapExplorer.activeNeighborhoodIds.delete(nhId);
-    if (MapExplorer.activeNeighborhoodIds.size === 0) {
-      MapExplorer.activeNeighborhoodIds.add("all");
-    }
-    MapExplorer.renderPopover();
-    MapExplorer.updateAreaSummaryBtn();
-    MapExplorer.drawSelectedBoundaries();
+    MapExplorer.panToSelectedArea();
     MapExplorer.loadPlacesForCurrentArea();
   };
 }

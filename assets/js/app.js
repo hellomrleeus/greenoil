@@ -10,10 +10,35 @@ import { FieldSales } from "./field-sales.js";
 import { MapExplorer } from "./map-explorer.js";
 import { i18n } from "./i18n.js";
 
+// Global Toast Notification System
+window.showToast = function(msg) {
+  let toast = document.getElementById("appToast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "appToast";
+    toast.style.cssText = `
+      position: fixed; bottom: 85px; left: 50%; transform: translateX(-50%);
+      background: #0f172a; color: white; padding: 9px 18px; border-radius: 8px;
+      font-size: 0.88rem; font-weight: 500; z-index: 9999; box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      transition: opacity 0.2s ease, transform 0.2s ease; opacity: 0; pointer-events: none;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = "1";
+  toast.style.transform = "translateX(-50%) translateY(0)";
+  if (window._toastTimeout) clearTimeout(window._toastTimeout);
+  window._toastTimeout = setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(-50%) translateY(4px)";
+  }, 2200);
+};
+
 export function initApp() {
   i18n.init();
   setupLanguageSwitcher();
   setupNavigation();
+  setupSidebarCollapse();
   setupAuth();
   setupMobileMenu();
 
@@ -62,10 +87,17 @@ function setupNavigation() {
       pageTitleEl.textContent = titleKey ? i18n.t(titleKey) : (activeItem.dataset.title || "Green Oil");
     }
 
-    if (targetTabId === "tab-mapexplorer" && MapExplorer.googleMap && window.google) {
+    if (targetTabId === "tab-mapexplorer") {
       setTimeout(() => {
-        google.maps.event.trigger(MapExplorer.googleMap, "resize");
-        MapExplorer.panToSelectedArea();
+        if (window.MapExplorer) {
+          if (MapExplorer.googleMap && window.google && window.google.maps) {
+            google.maps.event.trigger(MapExplorer.googleMap, "resize");
+            MapExplorer.panToSelectedArea();
+          }
+          if (MapExplorer.fallbackMap && MapExplorer.fallbackMap.invalidateSize) {
+            MapExplorer.fallbackMap.invalidateSize(true);
+          }
+        }
       }, 100);
     }
 
@@ -76,6 +108,52 @@ function setupNavigation() {
     item.addEventListener("click", () => {
       const tabId = item.dataset.tab;
       window.switchTab(tabId);
+    });
+  });
+}
+
+function setupSidebarCollapse() {
+  const container = document.querySelector(".app-container");
+  const toggleBtns = document.querySelectorAll("#sidebarToggleBtn, #sidebarCollapseBtn");
+
+  function updateToggleIcons(isCollapsed) {
+    document.querySelectorAll(".icon-collapse").forEach(el => el.style.display = isCollapsed ? "none" : "block");
+    document.querySelectorAll(".icon-expand").forEach(el => el.style.display = isCollapsed ? "block" : "none");
+  }
+
+  const savedState = localStorage.getItem("greenoil_sidebar_collapsed");
+  if (savedState === "1" && window.innerWidth > 992 && container) {
+    container.classList.add("sidebar-collapsed");
+    updateToggleIcons(true);
+  }
+
+  function notifyWorkbenchResize() {
+    window.dispatchEvent(new Event("resize"));
+    window.dispatchEvent(new CustomEvent("greenoil:workbench-resize"));
+    if (window.MapExplorer) {
+      if (MapExplorer.googleMap && window.google && window.google.maps) {
+        google.maps.event.trigger(MapExplorer.googleMap, "resize");
+      }
+      if (MapExplorer.fallbackMap && MapExplorer.fallbackMap.invalidateSize) {
+        MapExplorer.fallbackMap.invalidateSize(true);
+      }
+    }
+    if (window.FieldSales && FieldSales.activeSubTab === "analytics") {
+      FieldSales.renderAnalytics();
+    }
+  }
+
+  toggleBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (!container) return;
+      const isCollapsed = container.classList.toggle("sidebar-collapsed");
+      updateToggleIcons(isCollapsed);
+      try {
+        localStorage.setItem("greenoil_sidebar_collapsed", isCollapsed ? "1" : "0");
+      } catch (e) {}
+
+      notifyWorkbenchResize();
+      setTimeout(notifyWorkbenchResize, 260);
     });
   });
 }

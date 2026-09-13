@@ -266,18 +266,29 @@ export const FieldSales = {
     }).join("");
   },
 
-  addRestaurantToRoute(restaurant) {
+  addRestaurantToRoute(restaurant, jumpToTab = false) {
     const exists = this.routeWaypoints.some(w => (w.placeId && w.placeId === restaurant.placeId) || w.name === restaurant.name);
     if (exists) {
-      alert(`餐馆 “${restaurant.name}” 已在路线中！`);
+      const msg = `餐馆 “${restaurant.name}” 已在路线中`;
+      if (window.showToast) window.showToast(msg);
+      else alert(msg);
       return;
     }
     this.routeWaypoints.push(restaurant);
     this.saveRouteWaypoints();
     this.renderRouteWaypoints();
+
+    if (jumpToTab && window.switchTab) {
+      window.switchTab("tab-fieldsale");
+      this.switchSubTab("route");
+    }
+
+    const msg = `已将 “${restaurant.name}” 加入路线规划`;
+    if (window.showToast) window.showToast(msg);
+    else alert(msg);
   },
 
-  addMultipleToRoute(restaurants) {
+  addMultipleToRoute(restaurants, jumpToTab = false) {
     if (!Array.isArray(restaurants) || restaurants.length === 0) return;
     let addedCount = 0;
     restaurants.forEach(r => {
@@ -290,17 +301,22 @@ export const FieldSales = {
 
     this.saveRouteWaypoints();
     this.renderRouteWaypoints();
-    if (window.switchTab) {
+
+    if (jumpToTab && window.switchTab) {
       window.switchTab("tab-fieldsale");
+      this.switchSubTab("route");
     }
-    this.switchSubTab("route");
     
     if (addedCount > 0) {
       const skipped = restaurants.length - addedCount;
-      const skipMsg = skipped > 0 ? `（其中 ${skipped} 家已在路线中，已自动去重）` : "";
-      alert(`已将 ${addedCount} 家餐馆加入路线规划！${skipMsg}`);
+      const skipMsg = skipped > 0 ? `（${skipped} 家已在路线中，已自动去重）` : "";
+      const msg = `已将 ${addedCount} 家餐馆加入路线规划！${skipMsg}`;
+      if (window.showToast) window.showToast(msg);
+      else alert(msg);
     } else {
-      alert("所选餐馆均已在路线规划清单中！");
+      const msg = "所选餐馆均已在路线规划清单中";
+      if (window.showToast) window.showToast(msg);
+      else alert(msg);
     }
   },
 
@@ -357,7 +373,9 @@ export const FieldSales = {
     this.routeWaypoints = optimized;
     this.saveRouteWaypoints();
     this.renderRouteWaypoints();
-    alert("✅ 已按经纬度几何最短拓扑排序调整拜访顺序！");
+    const msg = "已按经纬度几何最短拓扑排序调整拜访顺序";
+    if (window.showToast) window.showToast(msg);
+    else alert(msg);
   },
 
   getEffectiveOrigin() {
@@ -414,7 +432,7 @@ export const FieldSales = {
       const isFirst = index === 0;
       const isLast = index === this.routeWaypoints.length - 1;
       const stopNumber = index + 1;
-      const phoneStr = w.phone && w.phone !== "无" ? `<a href="tel:${w.phone}" class="fs-link">📞 ${w.phone}</a>` : "";
+      const phoneStr = w.phone && w.phone !== "无" ? `<a href="tel:${w.phone}" class="fs-link">${w.phone}</a>` : "";
       const isVisited = !!w.visited;
       const visitedBadge = isVisited 
         ? `<span style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ 已拜访</span>` 
@@ -429,22 +447,22 @@ export const FieldSales = {
               ${visitedBadge}
               <span class="fs-wp-region">${w.region || "GTA"}</span>
             </div>
-            <div class="fs-wp-address">📍 ${w.address || "无地址信息"}</div>
+            <div class="fs-wp-address">${w.address || "无地址信息"}</div>
             <div class="fs-wp-meta">${phoneStr}</div>
           </div>
           <div class="fs-wp-actions">
-            <button class="fs-btn-icon fs-btn-nav" data-action="nav" data-index="${index}" title="在 Google 地图导航到此处">🧭</button>
-            <button class="fs-btn-icon" data-action="up" data-index="${index}" ${isFirst ? "disabled" : ""} title="上移">⬆️</button>
-            <button class="fs-btn-icon" data-action="down" data-index="${index}" ${isLast ? "disabled" : ""} title="下移">⬇️</button>
-            <button class="fs-btn-icon" data-action="del" data-index="${index}" title="删除">🗑️</button>
-            <button class="fs-btn-icon fs-btn-log" data-action="log" data-index="${index}" title="${isVisited ? '修改/查看拜访记录' : '记录拜访'}" style="${isVisited ? 'background: #d1fae5;' : ''}">📝</button>
+            <button class="fs-btn-action fs-btn-nav" data-action="nav" data-index="${index}" title="在 Google 地图导航到此处">导航</button>
+            <button class="fs-btn-action" data-action="up" data-index="${index}" ${isFirst ? "disabled" : ""} title="上移">上移</button>
+            <button class="fs-btn-action" data-action="down" data-index="${index}" ${isLast ? "disabled" : ""} title="下移">下移</button>
+            <button class="fs-btn-action fs-btn-del" data-action="del" data-index="${index}" title="删除">删除</button>
+            <button class="fs-btn-action fs-btn-log" data-action="log" data-index="${index}" title="${isVisited ? '修改/查看拜访记录' : '记录拜访'}" style="${isVisited ? 'background: #d1fae5; color: #065f46; border-color: #a7f3d0;' : ''}">${isVisited ? '已记录' : '记录'}</button>
           </div>
         </div>
       `;
     }).join("");
 
     // Bind action events
-    listEl.querySelectorAll(".fs-btn-icon").forEach(btn => {
+    listEl.querySelectorAll(".fs-btn-action, .fs-btn-icon").forEach(btn => {
       btn.addEventListener("click", () => {
         const action = btn.dataset.action;
         const idx = parseInt(btn.dataset.index, 10);
@@ -619,7 +637,7 @@ export const FieldSales = {
 
     // 1. Group: Route Planning Stops (Highest Priority)
     if (this.routeWaypoints && this.routeWaypoints.length > 0) {
-      html += `<optgroup label="🗺️ 当前路线规划站点 (共 ${this.routeWaypoints.length} 站 · 优先选择)">`;
+      html += `<optgroup label="当前路线规划站点 (共 ${this.routeWaypoints.length} 站 · 优先选择)">`;
       this.routeWaypoints.forEach((w, idx) => {
         const isSelected = selectedRest && (
           (selectedRest.placeId && w.placeId && selectedRest.placeId === w.placeId) ||
@@ -637,7 +655,7 @@ export const FieldSales = {
     const otherRestaurants = (this.cachedRestaurants || []).filter(r => !routeKeys.has(r.placeId || r.name));
 
     if (otherRestaurants.length > 0) {
-      html += `<optgroup label="🏢 数据库其它餐馆 (可搜索选择)">`;
+      html += `<optgroup label="数据库其它餐馆 (可搜索选择)">`;
       otherRestaurants.slice(0, 100).forEach(r => {
         const isSelected = selectedRest && (
           (selectedRest.placeId && r.placeId && selectedRest.placeId === r.placeId) ||
@@ -799,8 +817,8 @@ export const FieldSales = {
 
     this.closeSalesRecordModal();
     this.renderSalesRecords();
-    if (this.activeSubTab === "analytics") this.renderAnalytics();
-    alert("✅ 拜访记录已成功保存！");
+    if (window.showToast) window.showToast("拜访记录已成功保存！");
+    else alert("拜访记录已成功保存！");
   },
 
   async deleteRecord(recordId) {
@@ -877,7 +895,7 @@ export const FieldSales = {
 
   renderRecordCard(r) {
     const outcomeBadge = this.getOutcomeBadge(r.outcome);
-    const methodBadge = r.method === "onsite" ? `<span class="fs-tag fs-tag-onsite">🚗 现场拜访</span>` : `<span class="fs-tag fs-tag-phone">📞 电话沟通</span>`;
+    const methodBadge = r.method === "onsite" ? `<span class="fs-tag fs-tag-onsite">现场拜访</span>` : `<span class="fs-tag fs-tag-phone">电话沟通</span>`;
     const timeFormatted = r.visitTime ? r.visitTime.replace("T", " ") : "";
 
     let detailsBlock = "";
@@ -891,7 +909,7 @@ export const FieldSales = {
     } else if (r.outcome === "signed_others") {
       detailsBlock = `
         <div class="fs-record-competitor">
-          <div class="fs-comp-title">🏢 签其他服务商：${r.signedOthersReason || "未注明原因"}</div>
+          <div class="fs-comp-title">签其他服务商：${r.signedOthersReason || "未注明原因"}</div>
           ${r.competitorName ? `<div><strong>供应商：</strong>${r.competitorName}</div>` : ""}
           ${r.competitorQuote ? `<div><strong>报价/政策：</strong>${r.competitorQuote}</div>` : ""}
           ${r.contractExpiryDate ? `<div><strong>预计到期：</strong>${r.contractExpiryDate}</div>` : ""}
@@ -913,10 +931,10 @@ export const FieldSales = {
         </div>
 
         <div class="fs-rec-meta">
-          <span>🕒 ${timeFormatted}</span>
-          <span>📍 ${r.restaurantAddress || "无地址"}</span>
-          ${r.restaurantPhone ? `<span>📞 ${r.restaurantPhone}</span>` : ""}
-          <span>👤 业务员: ${r.salesRep || "greenoil"}</span>
+          <span>时间: ${timeFormatted}</span>
+          <span>地址: ${r.restaurantAddress || "无地址"}</span>
+          ${r.restaurantPhone ? `<span>电话: ${r.restaurantPhone}</span>` : ""}
+          <span>业务员: ${r.salesRep || "greenoil"}</span>
         </div>
 
         ${detailsBlock}
@@ -1150,13 +1168,13 @@ export const FieldSales = {
   getOutcomeBadge(outcome) {
     switch (outcome) {
       case "contract_signed":
-        return `<span class="fs-badge fs-badge-signed">🤝 签订合同</span>`;
+        return `<span class="fs-badge fs-badge-signed">签订合同</span>`;
       case "interested":
-        return `<span class="fs-badge fs-badge-interested">💡 有意向</span>`;
+        return `<span class="fs-badge fs-badge-interested">有意向</span>`;
       case "rejected":
-        return `<span class="fs-badge fs-badge-rejected">❌ 拒绝</span>`;
+        return `<span class="fs-badge fs-badge-rejected">拒绝</span>`;
       case "signed_others":
-        return `<span class="fs-badge fs-badge-others">🏢 已签其他</span>`;
+        return `<span class="fs-badge fs-badge-others">已签其他</span>`;
       default:
         return `<span class="fs-badge">${outcome}</span>`;
     }
