@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Green Oil 工作台 | 餐饮用油计算与油炸餐馆检索系统</title>
+  <meta name="description" content="Green Oil 员工专用业务工作台：支持多伦多油炸餐饮商家检索与纯前端商用用油/废油回收测算。">
+  <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+</head>
+<body>
+
+  <!-- Mobile Sidebar Backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation (Desktop & Mobile Drawer) -->
+    <aside class="sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon">🌿</div>
+        <div>
+          <div class="brand-title">Green Oil</div>
+          <div class="brand-subtitle">业务个人工作台</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="tab-restaurants" data-title="多伦多油炸餐馆查询">
+          <span class="nav-icon">🍗</span>
+          <span>餐馆查询</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-calculator" data-title="用油与废油测算器">
+          <span class="nav-icon">⚡</span>
+          <span>用油计算器</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-settings" data-title="工作台配置与连接">
+          <span class="nav-icon">⚙️</span>
+          <span>设置与服务</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">GO</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebarUserName">greenoil</div>
+            <div class="user-role">业务专员</div>
+          </div>
+        </div>
+        <button class="btn-logout" id="btnLogout">
+          <span>🚪</span>
+          <span>退出登录</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+      
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="打开菜单">☰</button>
+          <h1 class="page-title" id="currentPageTitle">多伦多油炸餐馆查询</h1>
+        </div>
+
+        <div class="topbar-right">
+          <div class="api-badge" id="apiStatusBadge">
+            <span class="dot"></span>
+            <span>检测中...</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content Area -->
+      <main class="content-area">
+
+        <!-- TAB 1: RESTAURANT QUERY -->
+        <section class="tab-view active" id="tab-restaurants">
+          
+          <!-- Filters Card -->
+          <div class="card">
+            <div class="filters-section">
+              <div class="filter-row-top">
+                <div>
+                  <label class="form-label" for="regionSelect">📍 选择大多伦多区域 (GTA Region)</label>
+                  <select class="form-select" id="regionSelect">
+                    <option value="全部 (All GTA)">全部区域 (All GTA - 608+ 家)</option>
+                    <option value="万锦 (Markham)">万锦 (Markham - 269 家)</option>
+                    <option value="士嘉堡 (Scarborough)">士嘉堡 (Scarborough - 339 家)</option>
+                    <option value="北约克 (North York)">北约克 (North York - 实时检索)</option>
+                    <option value="列治文山 (Richmond Hill)">列治文山 (Richmond Hill - 实时检索)</option>
+                    <option value="多伦多市中心 (Downtown Toronto)">多伦多市中心 (Downtown Toronto - 实时检索)</option>
+                    <option value="密西沙加 (Mississauga)">密西沙加 (Mississauga - 实时检索)</option>
+                    <option value="旺市 (Vaughan)">旺市 (Vaughan - 实时检索)</option>
+                  </select>
+                </div>
+
+                <div class="search-input-wrap">
+                  <label class="form-label" for="restaurantSearch">🔍 关键词检索</label>
+                  <span class="search-icon">🔍</span>
+                  <input type="text" class="form-input" id="restaurantSearch" placeholder="搜索餐馆名、地址、关键词 (如: 盐酥鸡、炸鸡翅、Popeyes)...">
+                </div>
+
+                <div>
+                  <label class="form-label" for="sortSelect">排序方式</label>
+                  <select class="form-select" id="sortSelect">
+                    <option value="rating">评分由高到低 ★</option>
+                    <option value="reviews">评价数量由多到少 💬</option>
+                    <option value="name">按餐馆名称字母排序 A-Z</option>
+                  </select>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; align-self: flex-end;">
+                  <button class="btn btn-secondary" id="btnLiveSearch" title="调用 Cloudflare Worker 请求 Google Maps API 实时刷新">
+                    <span>🔍 实时刷新</span>
+                  </button>
+                  <button class="btn btn-primary" id="btnExportCsv" title="导出当前筛选餐馆为与 Excel 结构一致的 CSV 文件">
+                    <span>📥 导出 CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Categories Pill Filter -->
+              <div>
+                <label class="form-label">油炸品类快速筛选：</label>
+                <div class="category-pills" id="categoryPills">
+                  <button class="cat-pill active" data-category="全部">全部品类</button>
+                  <button class="cat-pill" data-category="中式/台式炸物小吃">中式/台式炸物小吃</button>
+                  <button class="cat-pill" data-category="西式炸鸡/快餐/炸鸡翅">西式炸鸡/快餐/炸鸡翅</button>
+                  <button class="cat-pill" data-category="韩式炸鸡">韩式炸鸡</button>
+                  <button class="cat-pill" data-category="炸鱼薯条">炸鱼薯条</button>
+                  <button class="cat-pill" data-category="日式炸物/炸猪排/天妇罗">日式炸物/炸猪排/天妇罗</button>
+                  <button class="cat-pill" data-category="热狗棒/吉事果/甜甜圈">热狗棒/吉事果/甜甜圈</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Results Header & Toggle Bar -->
+          <div class="results-header">
+            <div class="results-count">
+              共筛选到 <b id="resultsCountNum">0</b> 家油炸特色餐饮商家
+            </div>
+
+            <div class="view-controls">
+              <button class="view-toggle-btn active" id="btnCardView">
+                <span>🎴 卡片视图</span>
+              </button>
+              <button class="view-toggle-btn" id="btnTableView">
+                <span>📑 Excel 表格视图</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading Indicator -->
+          <div id="restaurantListLoader" style="display: none; text-align: center; padding: 2rem;">
+            <div style="font-size: 1.5rem; animation: pulse 1s infinite;">⏳</div>
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">正在检索餐馆数据...</div>
+          </div>
+
+          <!-- Card Grid View (Default) -->
+          <div class="restaurant-grid" id="restaurantCardsView"></div>
+
+          <!-- Excel-like Table View (Toggleable) -->
+          <div class="table-container" id="restaurantTableView" style="display: none;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>餐馆名称 (Name)</th>
+                  <th>所属区域 (Region)</th>
+                  <th>油炸分类 (Categories)</th>
+                  <th>评分与评价</th>
+                  <th>营业状态</th>
+                  <th>消费档次</th>
+                  <th>详细地址 (Address)</th>
+                  <th>联系电话 (Phone)</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="restaurantTableBody"></tbody>
+            </table>
+          </div>
+
+        </section>
+
+        <!-- TAB 2: OIL CONSUMPTION CALCULATOR -->
+        <section class="tab-view" id="tab-calculator">
+          
+          <div class="calculator-grid">
+            
+            <!-- Left Panel: Inputs -->
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-dark); display: flex; align-items: center; gap: 0.4rem;">
+                  <span>🎛️</span>
+                  <span>炸锅参数配置</span>
+                </h3>
+                <span class="api-badge" id="calcTargetRestBadge" style="display: none; background: var(--primary-dark); color: white;">
+                  📍 当前关联餐馆
+                </span>
+              </div>
+
+              <!-- Fryer List -->
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <label class="form-label" style="margin-bottom: 0;">
+                    炸锅情况列表 (共 <span id="totalFryerCountText" style="color: var(--primary); font-weight: 700;">2 个</span>)
+                  </label>
+                  <button class="btn btn-secondary btn-sm" id="btnAddFryer">
+                    <span>➕ 添加炸锅</span>
+                  </button>
+                </div>
+                <div class="fryer-list" id="fryerListContainer">
+                  <!-- Dynamically rendered -->
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                  💡 说明：商用油炸锅常见容量为 15L - 30L，默认每个炸锅容量为 20 升。
+                </div>
+              </div>
+
+              <!-- Replacement Frequency -->
+              <div class="frequency-box">
+                <div class="frequency-title">
+                  <span>⏱️</span>
+                  <span>炸油更换频率设置</span>
+                </div>
+
+                <div class="frequency-sentence">
+                  <span>每</span>
+                  <input type="text" inputmode="numeric" id="freqDays" class="number-input" value="7" maxlength="3" title="每XX天" />
+                  <span>天换</span>
+                  <input type="text" inputmode="numeric" id="freqTimes" class="number-input" value="2" maxlength="3" title="换XX次" />
+                  <span>次，每次换</span>
+                  <input type="text" inputmode="numeric" id="freqFryers" class="number-input" value="2" maxlength="3" title="换XX个炸锅" />
+                  <span>个炸锅的油</span>
+                </div>
+                <div style="font-size: 0.78rem; color: #047857; margin-top: 0.6rem;">
+                  ✓ 已启用纯数字输入限制，不可输入字母与符号。
+                </div>
+              </div>
+
+              <!-- Buttons -->
+              <div style="display: flex; gap: 0.75rem;">
+                <button class="btn btn-primary btn-lg" id="btnCalculateOil" style="flex: 2;">
+                  <span>⚡ 点击计算月用油量</span>
+                </button>
+                <button class="btn btn-secondary btn-lg" id="btnResetCalc" style="flex: 1;" title="重置为默认值">
+                  <span>↺ 重置</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Panel: Results & Business Insights -->
+            <div class="calc-results-card">
+              <h3>
+                <span>📊</span>
+                <span>Green Oil 测算与回收方案</span>
+              </h3>
+
+              <!-- Big Metric -->
+              <div class="metric-big">
+                <div class="metric-big-label">预计该餐馆每月消耗食用油总量</div>
+                <div class="metric-big-val">
+                  <span id="resMonthlyOil">0</span>
+                  <span class="metric-big-unit">升 / 月 (L/mo)</span>
+                </div>
+              </div>
+
+              <!-- Sub Metrics Grid -->
+              <div class="metrics-subgrid">
+                <div class="sub-metric">
+                  <div class="sub-metric-label">📦 商用标准油桶折算 (16L/35lb)</div>
+                  <div class="sub-metric-val" id="resStandardDrums">0 桶</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label">♻️ 预计可回收废油量 (UCO 75%)</div>
+                  <div class="sub-metric-val" id="resUcoRecovery">0 升</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label">🛢️ 推荐 55加仑回收桶配置</div>
+                  <div class="sub-metric-val" id="res55GalDrums">约 0 桶</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label">📅 计算周期基准</div>
+                  <div class="sub-metric-val" style="font-size: 1.05rem;">每月 30 天标准月</div>
+                </div>
+              </div>
+
+              <!-- Business Advice Box -->
+              <div class="business-advice-box">
+                <h4>🚛 Green Oil 回收与服务建议：</h4>
+                <p id="resPickupAdvice">根据换油频次与油品消耗，正在为您规划最经济的回收与配送方案...</p>
+              </div>
+
+              <!-- Export / Copy Action -->
+              <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+                <button class="btn btn-primary" id="btnCopyQuote" style="background: #10b981; border: none; flex: 1; color: white;">
+                  <span>📋 复制核算单 (发微信/客户)</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- TAB 3: SETTINGS -->
+        <section class="tab-view" id="tab-settings">
+          <div class="card" style="max-width: 720px;">
+            <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 1.25rem;">
+              ⚙️ 系统与后端 API 设置
+            </h3>
+
+            <div class="form-group">
+              <label class="form-label" for="settingWorkerUrl">Cloudflare Worker API 域名</label>
+              <input type="text" class="form-input" id="settingWorkerUrl" placeholder="https://greenoil-api.<your-subdomain>.workers.dev" />
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
+                在 Cloudflare 部署好 `worker/index.js` 后，将 Worker 提供的 URL 填入此处，即可启用实时 Google Maps API 代理查询。
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+              <button class="btn btn-primary" id="btnSaveSettings">保存设置并测试连接</button>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid var(--surface-border); margin: 1.5rem 0;" />
+
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">🔐 登录凭据说明</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem;">
+              当前工作台默认固定登录账号为 <code>greenoil</code>，密码为 <code>greenoil2025</code>。登录后将在浏览器中写入 7 天有效期的 <code>greenoil_session</code> Cookie。
+            </p>
+
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">📊 离线数据与 Google Maps API 说明</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+              工作台已预置万锦 (Markham) 与士嘉堡 (Scarborough) 的 608 家真实油炸特色餐馆数据。当查询其他大多伦多区域时，Worker 后台将通过 Google Maps Places API (New) 的 <code>places:searchText</code> 端点进行抓取与 17 项字段对齐。
+            </p>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- RESTAURANT DETAIL MODAL (Matching all 17 Excel columns) -->
+  <div class="modal-overlay" id="detailModalOverlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalRestName">餐馆详情</h3>
+        <button class="modal-close-btn" id="detailModalClose" aria-label="关闭">✕</button>
+      </div>
+
+      <div class="modal-body">
+        
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <span class="status-badge status-open" id="modalRestStatus">营业中</span>
+          <span class="price-tag" id="modalRestPrice">$$</span>
+          <span class="api-badge" id="modalRestRegion">万锦 (Markham)</span>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label">油炸特色分类 (Categories)</div>
+          <div class="detail-value" id="modalRestCategory" style="color: var(--primary); font-weight: 600;">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label">评分与评价 (Rating & Reviews)</div>
+          <div class="detail-value" id="modalRestRating">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label">详细地址 (Address)</div>
+          <div class="detail-value" id="modalRestAddress">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label">联系电话 (Phone)</div>
+          <div class="detail-value" id="modalRestPhone">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label">营业时间安排 (Opening Hours)</div>
+          <pre class="detail-hours-pre" id="modalRestHours">-</pre>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label">主营类型与匹配关键词 (Keywords)</div>
+          <div class="detail-value">
+            类型: <span id="modalRestType">-</span> | 关键词: <span id="modalRestKeywords">-</span>
+          </div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label">Place ID 与地理坐标 (Coordinates)</div>
+          <div class="detail-value" style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">
+            ID: <span id="modalRestPlaceId">-</span><br>
+            经纬度: <span id="modalRestCoordinates">-</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modalBtnPhone" style="display: none;">
+          📞 拨打电话
+        </a>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modalBtnWebsite" style="display: none;">
+          🌐 官方网站
+        </a>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modalBtnMaps">
+          🗺️ Google 地图导航
+        </a>
+        <button class="btn btn-primary btn-sm" id="btnModalImportCalc">
+          ⚡ 导入用油计算器
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIXED CREDENTIAL LOGIN OVERLAY -->
+  <div class="modal-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-icon">🌱</div>
+      <h2 class="login-title">Green Oil 工作台</h2>
+      <p class="login-subtitle">绿色油脂回收与用油服务运营系统</p>
+
+      <div class="login-alert" id="loginAlert">账号或密码错误</div>
+
+      <form class="login-form" id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="loginUsername">工作账号 (Username)</label>
+          <input type="text" class="form-input" id="loginUsername" value="greenoil" required autocomplete="username" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">登录密码 (Password)</label>
+          <input type="password" class="form-input" id="loginPassword" value="greenoil2025" required autocomplete="current-password" />
+        </div>
+
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          🔒 提示：固定凭证登录，系统将生成 <code>greenoil_session</code> Cookie 保存在浏览器中。
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem;">
+          安全进入工作台
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Entry Scripts -->
+  <script type="module" src="assets/js/app.js"></script>
+</body>
+</html>

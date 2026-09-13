@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+.dev.vars
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Wrangler
+.wrangler/
