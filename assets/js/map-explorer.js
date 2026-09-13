@@ -1956,8 +1956,6 @@ export const MapExplorer = {
   },
 
   renderPagination(total) {
-    const obsoleteLoadMore = document.getElementById("mapLoadMoreResults");
-    if (obsoleteLoadMore) obsoleteLoadMore.remove();
     const infoEl = document.getElementById("mapPaginationInfo");
     const controlsEl = document.getElementById("mapPaginationControls");
     if (!infoEl || !controlsEl) return;
