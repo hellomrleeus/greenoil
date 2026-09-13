@@ -280,8 +280,7 @@ export const GreaseTrap = {
         `----------------------------------------`,
         `[Compliance & Service Standards]`,
         `1. Full vacuum pump-out of grease cap and heavy bottom sludge, followed by high-pressure wall scraping`,
-        `2. Authorized official Service Manifest provided for City and Region Water Bylaw annual inspections`,
-        `3. 100% compliant with Ontario Building Code & Municipal Sewer Use Bylaws`,
+        `2. 100% compliant with Ontario Building Code & Municipal Sewer Use Bylaws`,
         `----------------------------------------`,
         `* Quote is for reference. Final pricing subject to on-site pipeline inspection and service agreement.`
       ];
@@ -309,8 +308,7 @@ export const GreaseTrap = {
         `----------------------------------------`,
         `[서비스 보증 및 환경 규정 준수]`,
         `1. 상부 유지류 및 바닥 침전 오니 100% 완전 흡입 배출 및 내벽 고압 제트 세척`,
-        `2. GTA 각 시청 위생·상하수도국 점검 대비 공식 작업 확인증(Service Manifest) 즉시 발행`,
-        `3. Ontario Building Code 및 지자체 하수도 조례 완벽 준수`,
+        `2. Ontario Building Code 및 지자체 하수도 조례 완벽 준수`,
         `----------------------------------------`,
         `* 본 견적은 참고용이며, 현장 배관 상태 및 최종 서비스 계약에 따라 확정됩니다.`
       ];
@@ -338,8 +336,7 @@ export const GreaseTrap = {
         `----------------------------------------`,
         `[服务保障与环保合规]`,
         `1. 包含彻底抽吸沉淀浮油与高压冲洗池壁`,
-        `2. 出具大多伦多市政卫生与水务局认可的标准化排污维保记录单`,
-        `3. 100% 满足 Ontario Building Code 与 Municipal Sewer Use Bylaw 环保要求`,
+        `2. 100% 满足 Ontario Building Code 与 Municipal Sewer Use Bylaw 环保要求`,
         `----------------------------------------`,
         `* 报价仅供参考，具体以现场管线勘测与服务协议为准。`
       ];

@@ -171,7 +171,7 @@ export const TRANSLATIONS = {
     trap_res_annual_label: "预计年度维保支出",
     trap_per_year: "/ 年",
     trap_process_title: "Green Oil 标准清洗工艺流程：",
-    trap_process_body: "1. 彻底抽吸截留浮油、悬浮物与底部沉淀油泥<br>2. 高压冲洗四壁并刮擦油脂硬垢<br>3. 进出水隔板与过滤网疏通检查与密封还原<br>4. 出具市政认可的标准排污维保记录单（供年检备查）",
+    trap_process_body: "1. 彻底抽吸截留浮油、悬浮物与底部沉淀油泥<br>2. 高压冲洗四壁并刮擦油脂硬垢<br>3. 进出水隔板与过滤网疏通检查与密封还原",
     btn_copy_trap_quote: "复制隔油池清洁报价单",
     toast_copied_trap_quote: "已复制隔油池清洁报价单",
 
@@ -355,7 +355,7 @@ export const TRANSLATIONS = {
     trap_res_annual_label: "Est. Annual Maintenance Cost",
     trap_per_year: "/ yr",
     trap_process_title: "Green Oil Standard Cleaning Protocol:",
-    trap_process_body: "1. Complete pump-out of grease cap, suspended solids, and bottom sludge<br>2. High-pressure wall jetting and scraping<br>3. Baffle plate and filter screen clearance and seal restoration<br>4. Certified compliance maintenance manifest issued for municipal inspections",
+    trap_process_body: "1. Complete pump-out of grease cap, suspended solids, and bottom sludge<br>2. High-pressure wall jetting and scraping<br>3. Baffle plate and filter screen clearance and seal restoration",
     btn_copy_trap_quote: "Copy Grease Trap Quote",
     toast_copied_trap_quote: "Grease trap quote copied to clipboard",
 
@@ -539,7 +539,7 @@ export const TRANSLATIONS = {
     trap_res_annual_label: "예상 연간 유지관리 비용",
     trap_per_year: "/ 년",
     trap_process_title: "Green Oil 표준 세척 공정 절차：",
-    trap_process_body: "1. 상부 부유 유지류, 부유물 및 바닥 침전 오니 완전 흡입 배출<br>2. 고압 세척 및 트랩 내벽 고착 유지방 긁어내기 작업<br>3. 유입/유출 격벽 및 거름망 점검, 통수 확인 및 밀폐 복원<br>4. 시청 위생·상하수도국 점검 대비 공식 작업 확인증(Service Manifest) 발급",
+    trap_process_body: "1. 상부 부유 유지류, 부유물 및 바닥 침전 오니 완전 흡입 배출<br>2. 고압 세척 및 트랩 내벽 고착 유지방 긁어내기 작업<br>3. 유입/유출 격벽 및 거름망 점검, 통수 확인 및 밀폐 복원",
     btn_copy_trap_quote: "그리스 트랩 견적서 복사",
     toast_copied_trap_quote: "그리스 트랩 견적서가 복사되었습니다",
 
