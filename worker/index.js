@@ -104,10 +104,10 @@ export default {
         return await handlePlanRoute(request, env, corsHeaders);
       }
 
-      // 9. Google Maps Client Config
+      // 9. Google Maps Client Config (Frontend Key restricted to Website domain)
       if (url.pathname === "/api/maps/config" && request.method === "GET") {
         return new Response(JSON.stringify({
-          apiKey: env.GOOGLE_MAPS_API_KEY || "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc"
+          apiKey: env.GOOGLE_MAPS_FRONTEND_KEY || env.GOOGLE_MAPS_API_KEY || "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc"
         }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -855,7 +855,7 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
     });
   }
 
-  const apiKey = env.GOOGLE_MAPS_API_KEY || "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc";
+  const apiKey = env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_MAPS_API_KEY || "AIzaSyCxkEVTsCSf3BbAgKvHi0x0SWG4L09C0Tw";
   if (!apiKey) {
     return new Response(JSON.stringify({
       success: false,
@@ -984,7 +984,7 @@ async function handlePlanRoute(request, env, corsHeaders) {
     googleMapsUrl += `&waypoints=${wpStr}`;
   }
 
-  const apiKey = env.GOOGLE_MAPS_API_KEY || "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc";
+  const apiKey = env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_MAPS_API_KEY || "AIzaSyCxkEVTsCSf3BbAgKvHi0x0SWG4L09C0Tw";
   if (apiKey) {
     try {
       // Call Google Routes API
