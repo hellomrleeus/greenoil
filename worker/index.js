@@ -2,18 +2,23 @@
  * Cloudflare Worker for Green Oil Workbench
  * 
  * Features:
- * 1. Fixed Credential Authentication with Cookie & Token (greenoil_session)
- * 2. Google Maps Places API (New) Proxy for GTA Fried Food Restaurant Search
- * 3. CORS Support for GitHub Pages and Custom Domains
+ * 1. Background Scheduled Task (Cron: 0 3 * * *): Daily sync of Google Maps Places API (New)
+ * 2. High-Performance KV Cache Storage & Memory Fallback
+ * 3. Server-side Filtering, Search, Sorting, and Pagination
+ * 4. Fixed Credential Authentication with Cookie & Token (greenoil_session)
+ * 5. Manual Sync Trigger (POST /api/sync)
  */
 
-// Default fixed credentials (can be overridden by Cloudflare environment variables)
+import { SEED_RESTAURANTS } from "./seed.js";
+
 const DEFAULT_USERNAME = "greenoil";
 const DEFAULT_PASSWORD = "greenoil2025";
 const COOKIE_NAME = "greenoil_session";
-const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
+const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days
+const KV_CACHE_KEY = "gta_fried_food_restaurants";
+const KV_LAST_UPDATED_KEY = "last_updated_time";
 
-// GTA Region Centroids & Coordinates for Location Biasing
+// GTA Region Centroids & Coordinates for Google Maps queries
 const GTA_REGIONS = {
   "万锦 (Markham)": { lat: 43.8561, lng: -79.3370, radius: 10000, name: "Markham" },
   "士嘉堡 (Scarborough)": { lat: 43.7764, lng: -79.2318, radius: 10000, name: "Scarborough" },
@@ -21,11 +26,21 @@ const GTA_REGIONS = {
   "列治文山 (Richmond Hill)": { lat: 43.8828, lng: -79.4403, radius: 9000, name: "Richmond Hill" },
   "多伦多市中心 (Downtown Toronto)": { lat: 43.6532, lng: -79.3832, radius: 8000, name: "Downtown Toronto" },
   "密西沙加 (Mississauga)": { lat: 43.5890, lng: -79.6441, radius: 12000, name: "Mississauga" },
-  "旺市 (Vaughan)": { lat: 43.8563, lng: -79.5085, radius: 11000, name: "Vaughan" },
-  "全部 (All GTA)": { lat: 43.7001, lng: -79.4163, radius: 25000, name: "Greater Toronto Area" }
+  "旺市 (Vaughan)": { lat: 43.8563, lng: -79.5085, radius: 11000, name: "Vaughan" }
 };
 
 export default {
+  /**
+   * Cron Trigger Scheduled Event (runs once daily at 03:00 UTC)
+   */
+  async scheduled(event, env, ctx) {
+    console.log("Daily Cron triggered: syncing Google Maps Places API to cache...");
+    ctx.waitUntil(syncDailyRestaurants(env));
+  },
+
+  /**
+   * Fetch HTTP Router
+   */
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "*";
@@ -39,36 +54,55 @@ export default {
       "Vary": "Origin"
     };
 
-    // Handle CORS Preflight
+    // Preflight
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders
-      });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     try {
-      // Routing
+      // 1. Auth routes
       if (url.pathname === "/api/login" && request.method === "POST") {
         return await handleLogin(request, env, corsHeaders);
       }
-
       if (url.pathname === "/api/auth/check" && request.method === "GET") {
         return await handleAuthCheck(request, env, corsHeaders);
       }
-
       if (url.pathname === "/api/logout" && request.method === "POST") {
         return await handleLogout(request, corsHeaders);
       }
 
+      // 2. Cached restaurant query with server-side pagination & filter
       if (url.pathname === "/api/restaurants" && request.method === "GET") {
-        return await handleRestaurants(request, env, corsHeaders);
+        return await handleGetCachedRestaurants(request, env, corsHeaders);
       }
 
+      // 3. Cache status
+      if (url.pathname === "/api/cache/status" && request.method === "GET") {
+        return await handleCacheStatus(env, corsHeaders);
+      }
+
+      // 4. Manual sync trigger (runs full background sync to KV)
+      if (url.pathname === "/api/sync" && request.method === "POST") {
+        const isAuthed = checkAuth(request, env);
+        if (!isAuthed) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+        const result = await syncDailyRestaurants(env);
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" }
+        });
+      }
+
+      // 5. Health check
       if (url.pathname === "/" || url.pathname === "/api/health") {
         return new Response(JSON.stringify({
           status: "healthy",
           service: "Green Oil Workbench API",
+          cron: "0 3 * * * (daily sync enabled)",
           timestamp: new Date().toISOString()
         }), {
           status: 200,
@@ -120,15 +154,12 @@ async function handleLogin(request, env, corsHeaders) {
     });
   }
 
-  // Generate simple authenticated session token
   const payload = {
     user: username,
     timestamp: Date.now(),
     role: "greenoil-operator"
   };
   const token = btoa(JSON.stringify(payload));
-
-  // Set-Cookie with SameSite=None; Secure for cross-origin access from GitHub Pages
   const cookieHeader = `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=${SESSION_TTL}`;
 
   return new Response(JSON.stringify({
@@ -182,11 +213,7 @@ async function handleLogout(request, corsHeaders) {
   });
 }
 
-/**
- * Validate incoming cookie or Authorization header
- */
 function checkAuth(request, env) {
-  // Check Authorization header: Bearer <token>
   const authHeader = request.headers.get("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.substring(7);
@@ -198,7 +225,6 @@ function checkAuth(request, env) {
     } catch {}
   }
 
-  // Check Cookie
   const cookieHeader = request.headers.get("Cookie");
   if (cookieHeader) {
     const cookies = Object.fromEntries(
@@ -222,168 +248,123 @@ function checkAuth(request, env) {
 }
 
 /**
- * Handle Restaurant Query via Google Maps Places API (New)
+ * Get cached restaurants with server-side pagination, search, and filtering
  */
-async function handleRestaurants(request, env, corsHeaders) {
+async function handleGetCachedRestaurants(request, env, corsHeaders) {
   const url = new URL(request.url);
-  const regionParam = url.searchParams.get("region") || "万锦 (Markham)";
-  const keywordParam = url.searchParams.get("keyword") || "";
-  const pageSize = parseInt(url.searchParams.get("pageSize") || "20", 10);
-  const pageToken = url.searchParams.get("pageToken") || "";
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+  const pageSize = Math.min(100, Math.max(5, parseInt(url.searchParams.get("pageSize") || "20", 10)));
+  const region = (url.searchParams.get("region") || "全部 (All GTA)").trim();
+  const keyword = (url.searchParams.get("keyword") || "").trim().toLowerCase();
+  const category = (url.searchParams.get("category") || "全部").trim();
+  const sortBy = (url.searchParams.get("sort") || "rating").trim();
 
-  const apiKey = env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Google Maps API Key not configured on Cloudflare Worker",
-      hint: "Please set GOOGLE_MAPS_API_KEY secret in Cloudflare Worker settings or .dev.vars",
-      fallback: true
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
-    });
-  }
+  // 1. Retrieve dataset from KV or fallback to SEED_RESTAURANTS
+  let allRestaurants = SEED_RESTAURANTS;
+  let lastUpdated = "2026-09-13T03:00:00Z";
 
-  const regionInfo = GTA_REGIONS[regionParam] || GTA_REGIONS["全部 (All GTA)"];
-  const regionSearchName = regionInfo.name;
-
-  // Search query for fried food restaurants
-  const textQuery = keywordParam
-    ? `${keywordParam} restaurants in ${regionSearchName}, Ontario, Canada`
-    : `fried food fried chicken wings fish and chips katsu restaurants in ${regionSearchName}, Ontario, Canada`;
-
-  const requestBody = {
-    textQuery,
-    maxResultCount: Math.min(pageSize, 20),
-    languageCode: "zh-CN",
-    regionCode: "CA",
-    locationBias: {
-      circle: {
-        center: {
-          latitude: regionInfo.lat,
-          longitude: regionInfo.lng
-        },
-        radius: regionInfo.radius
+  if (env.RESTAURANTS_KV) {
+    try {
+      const cached = await env.RESTAURANTS_KV.get(KV_CACHE_KEY, { type: "json" });
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        allRestaurants = cached;
       }
+      const updated = await env.RESTAURANTS_KV.get(KV_LAST_UPDATED_KEY);
+      if (updated) lastUpdated = updated;
+    } catch (e) {
+      console.warn("Error reading from RESTAURANTS_KV:", e);
     }
-  };
-
-  if (pageToken) {
-    requestBody.pageToken = pageToken;
   }
 
-  // Field mask specifying all required fields matching the Excel columns
-  const fieldMask = [
-    "places.id",
-    "places.displayName",
-    "places.formattedAddress",
-    "places.nationalPhoneNumber",
-    "places.websiteUri",
-    "places.googleMapsUri",
-    "places.rating",
-    "places.userRatingCount",
-    "places.regularOpeningHours",
-    "places.currentOpeningHours",
-    "places.priceLevel",
-    "places.primaryType",
-    "places.location",
-    "nextPageToken"
-  ].join(",");
+  // 2. Apply Region Filter
+  let filtered = allRestaurants;
+  if (region && region !== "全部 (All GTA)") {
+    filtered = filtered.filter(r => r.region.includes(region) || region.includes(r.region));
+  }
 
-  const gmpResp = await fetch("https://places.googleapis.com/v1/places:searchText", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": fieldMask
-    },
-    body: JSON.stringify(requestBody)
-  });
-
-  if (!gmpResp.ok) {
-    const errorText = await gmpResp.text();
-    return new Response(JSON.stringify({
-      success: false,
-      error: "Google Maps API error",
-      details: errorText
-    }), {
-      status: gmpResp.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+  // 3. Apply Category Filter
+  if (category && category !== "全部") {
+    filtered = filtered.filter(r => {
+      return r.categories && r.categories.some(c => c.includes(category));
     });
   }
 
-  const gmpData = await gmpResp.json();
-  const rawPlaces = gmpData.places || [];
+  // 4. Apply Keyword Search
+  if (keyword) {
+    filtered = filtered.filter(r => {
+      const searchTarget = [
+        r.name,
+        r.address,
+        r.phone,
+        r.keywordsRaw,
+        r.primaryType,
+        r.categoriesRaw
+      ].join(" ").toLowerCase();
+      return searchTarget.includes(keyword);
+    });
+  }
 
-  // Transform Google Maps Places API (New) response into normalized Excel-like columns
-  const restaurants = rawPlaces.map(p => {
-    const name = p.displayName?.text || "未命名餐馆";
-    const address = p.formattedAddress || "";
-    const phone = p.nationalPhoneNumber || "无";
-    const website = p.websiteUri || "";
-    const mapsUrl = p.googleMapsUri || `https://www.google.com/maps/place/?q=place_id:${p.id}`;
-    const rating = p.rating ? parseFloat(p.rating) : 0;
-    const reviews = p.userRatingCount ? parseInt(p.userRatingCount, 10) : 0;
-    const primaryType = p.primaryType || "restaurant";
-    const lat = p.location?.latitude || 0;
-    const lng = p.location?.longitude || 0;
-
-    // Operating hours
-    let openingHours = "未提供";
-    if (p.regularOpeningHours?.weekdayDescriptions) {
-      openingHours = p.regularOpeningHours.weekdayDescriptions.join("\n");
+  // 5. Apply Sorting
+  filtered.sort((a, b) => {
+    if (sortBy === "rating") {
+      if (b.rating !== a.rating) return b.rating - a.rating;
+      return b.reviews - a.reviews;
     }
-
-    // Status
-    let status = "未知";
-    if (p.currentOpeningHours?.openNow !== undefined) {
-      status = p.currentOpeningHours.openNow ? "营业中" : "已打烊";
+    if (sortBy === "reviews") {
+      return b.reviews - a.reviews;
     }
-
-    // Price Level mapping
-    const priceMap = {
-      "PRICE_LEVEL_INEXPENSIVE": "$ (经济实惠)",
-      "PRICE_LEVEL_MODERATE": "$$ (适中消费)",
-      "PRICE_LEVEL_EXPENSIVE": "$$$ (较高消费)",
-      "PRICE_LEVEL_VERY_EXPENSIVE": "$$$$ (高档消费)"
-    };
-    const price = priceMap[p.priceLevel] || "未知";
-
-    // Classify into fried food categories based on name and primary type
-    const cats = classifyFriedCategories(name, primaryType);
-    const keywords = deriveKeywords(name, primaryType);
-
-    return {
-      name,
-      region: regionParam,
-      categories: cats,
-      categoriesRaw: cats.join(" | "),
-      rating,
-      ratingRaw: rating ? rating.toString() : "未知",
-      reviews,
-      reviewsRaw: reviews.toString(),
-      status,
-      openingHours,
-      price,
-      address,
-      phone,
-      website,
-      mapsUrl,
-      primaryType,
-      keywords,
-      keywordsRaw: keywords.join(", "),
-      latitude: lat,
-      longitude: lng,
-      placeId: p.id
-    };
+    if (sortBy === "name") {
+      return a.name.localeCompare(b.name, "zh-CN");
+    }
+    return 0;
   });
+
+  // 6. Pagination Slice
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+  const startIndex = (page - 1) * pageSize;
+  const paginatedData = filtered.slice(startIndex, startIndex + pageSize);
 
   return new Response(JSON.stringify({
     success: true,
-    region: regionParam,
-    total: restaurants.length,
-    nextPageToken: gmpData.nextPageToken || null,
-    restaurants
+    page,
+    pageSize,
+    total,
+    totalPages,
+    lastUpdated,
+    data: paginatedData
+  }), {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=300" // 5 min HTTP edge cache
+    }
+  });
+}
+
+/**
+ * Check cache status
+ */
+async function handleCacheStatus(env, corsHeaders) {
+  let count = SEED_RESTAURANTS.length;
+  let lastUpdated = "Initial Seed (2026-09-13)";
+
+  if (env.RESTAURANTS_KV) {
+    try {
+      const cached = await env.RESTAURANTS_KV.get(KV_CACHE_KEY, { type: "json" });
+      if (cached && Array.isArray(cached)) count = cached.length;
+      const updated = await env.RESTAURANTS_KV.get(KV_LAST_UPDATED_KEY);
+      if (updated) lastUpdated = updated;
+    } catch {}
+  }
+
+  return new Response(JSON.stringify({
+    status: "ok",
+    cachedCount: count,
+    lastUpdated,
+    kvEnabled: Boolean(env.RESTAURANTS_KV),
+    cronSchedule: "0 3 * * *"
   }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -391,12 +372,173 @@ async function handleRestaurants(request, env, corsHeaders) {
 }
 
 /**
- * Helper to classify restaurant into categories
+ * Daily Background Sync of Google Maps Places API (New) into KV Cache
  */
+async function syncDailyRestaurants(env) {
+  const apiKey = env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    console.warn("syncDailyRestaurants aborted: GOOGLE_MAPS_API_KEY not configured.");
+    return { success: false, message: "GOOGLE_MAPS_API_KEY is not configured" };
+  }
+
+  // Start with existing cached data or seed data
+  let existingMap = new Map();
+  for (const r of SEED_RESTAURANTS) {
+    existingMap.set(r.placeId || r.name, r);
+  }
+
+  if (env.RESTAURANTS_KV) {
+    try {
+      const cached = await env.RESTAURANTS_KV.get(KV_CACHE_KEY, { type: "json" });
+      if (cached && Array.isArray(cached)) {
+        for (const r of cached) {
+          existingMap.set(r.placeId || r.name, r);
+        }
+      }
+    } catch {}
+  }
+
+  let newlyFetchedCount = 0;
+
+  // Iterate over each GTA region to fetch fresh restaurants
+  for (const [regionName, regionInfo] of Object.entries(GTA_REGIONS)) {
+    try {
+      const queryList = [
+        `fried chicken wings in ${regionInfo.name}, Ontario, Canada`,
+        `fried food fish and chips katsu in ${regionInfo.name}, Ontario, Canada`
+      ];
+
+      for (const textQuery of queryList) {
+        const fieldMask = [
+          "places.id",
+          "places.displayName",
+          "places.formattedAddress",
+          "places.nationalPhoneNumber",
+          "places.websiteUri",
+          "places.googleMapsUri",
+          "places.rating",
+          "places.userRatingCount",
+          "places.regularOpeningHours",
+          "places.currentOpeningHours",
+          "places.priceLevel",
+          "places.primaryType",
+          "places.location"
+        ].join(",");
+
+        const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": apiKey,
+            "X-Goog-FieldMask": fieldMask
+          },
+          body: JSON.stringify({
+            textQuery,
+            maxResultCount: 20,
+            languageCode: "zh-CN",
+            regionCode: "CA",
+            locationBias: {
+              circle: {
+                center: { latitude: regionInfo.lat, longitude: regionInfo.lng },
+                radius: regionInfo.radius
+              }
+            }
+          })
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const places = data.places || [];
+          for (const p of places) {
+            const transformed = transformGooglePlace(p, regionName);
+            existingMap.set(transformed.placeId, transformed);
+            newlyFetchedCount++;
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`Error querying region ${regionName}:`, err);
+    }
+  }
+
+  const allMerged = Array.from(existingMap.values());
+  const nowStr = new Date().toISOString();
+
+  // Save to KV
+  if (env.RESTAURANTS_KV) {
+    await env.RESTAURANTS_KV.put(KV_CACHE_KEY, JSON.stringify(allMerged));
+    await env.RESTAURANTS_KV.put(KV_LAST_UPDATED_KEY, nowStr);
+  }
+
+  return {
+    success: true,
+    totalRecords: allMerged.length,
+    newlyFetched: newlyFetchedCount,
+    syncedAt: nowStr
+  };
+}
+
+function transformGooglePlace(p, regionName) {
+  const name = p.displayName?.text || "未命名餐馆";
+  const address = p.formattedAddress || "";
+  const phone = p.nationalPhoneNumber || "无";
+  const website = p.websiteUri || "";
+  const mapsUrl = p.googleMapsUri || `https://www.google.com/maps/place/?q=place_id:${p.id}`;
+  const rating = p.rating ? parseFloat(p.rating) : 0;
+  const reviews = p.userRatingCount ? parseInt(p.userRatingCount, 10) : 0;
+  const primaryType = p.primaryType || "restaurant";
+  const lat = p.location?.latitude || 0;
+  const lng = p.location?.longitude || 0;
+
+  let openingHours = "未提供";
+  if (p.regularOpeningHours?.weekdayDescriptions) {
+    openingHours = p.regularOpeningHours.weekdayDescriptions.join("\n");
+  }
+
+  let status = "未知";
+  if (p.currentOpeningHours?.openNow !== undefined) {
+    status = p.currentOpeningHours.openNow ? "营业中" : "已打烊";
+  }
+
+  const priceMap = {
+    "PRICE_LEVEL_INEXPENSIVE": "$ (经济实惠)",
+    "PRICE_LEVEL_MODERATE": "$$ (适中消费)",
+    "PRICE_LEVEL_EXPENSIVE": "$$$ (较高消费)",
+    "PRICE_LEVEL_VERY_EXPENSIVE": "$$$$ (高档消费)"
+  };
+  const price = priceMap[p.priceLevel] || "未知";
+
+  const cats = classifyFriedCategories(name, primaryType);
+  const keywords = deriveKeywords(name, primaryType);
+
+  return {
+    name,
+    region: regionName,
+    categories: cats,
+    categoriesRaw: cats.join(" | "),
+    rating,
+    ratingRaw: rating ? rating.toString() : "未知",
+    reviews,
+    reviewsRaw: reviews.toString(),
+    status,
+    openingHours,
+    price,
+    address,
+    phone,
+    website,
+    mapsUrl,
+    primaryType,
+    keywords,
+    keywordsRaw: keywords.join(", "),
+    latitude: lat,
+    longitude: lng,
+    placeId: p.id
+  };
+}
+
 function classifyFriedCategories(name, primaryType) {
   const text = (name + " " + primaryType).toLowerCase();
   const cats = [];
-
   if (/korean|chicken plus|the fry|bb\.q|kokodak|chimaek|韩国|韩式/i.test(text)) {
     cats.push("韩式炸鸡 (Korean Fried Chicken)");
   }
@@ -415,13 +557,9 @@ function classifyFriedCategories(name, primaryType) {
   if (/taiwan|salt and pepper|炸大肠|炸串|串串|盐酥鸡|大鸡排|中餐/i.test(text) || cats.length === 0) {
     cats.push("中式/台式炸物小吃 (Chinese & Taiwanese Fried Snacks)");
   }
-
   return cats;
 }
 
-/**
- * Helper to derive keywords
- */
 function deriveKeywords(name, primaryType) {
   const text = (name + " " + primaryType).toLowerCase();
   const kws = [];

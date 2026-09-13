@@ -6,5 +6,17 @@ compatibility_date = "2024-09-01"
 WORKER_USERNAME = "greenoil"
 WORKER_PASSWORD = "greenoil2025"
 
+# Cron Trigger: Run daily at 03:00 UTC (midnight Toronto time) to update restaurant cache
+[triggers]
+crons = ["0 3 * * *"]
+
+# Optional: Cloudflare KV Namespace for cached restaurant data
+# To enable KV persistence in Cloudflare:
+# 1. Run: npx wrangler kv:namespace create RESTAURANTS_KV
+# 2. Add the generated id below:
+# [[kv_namespaces]]
+# binding = "RESTAURANTS_KV"
+# id = "<your-kv-namespace-id>"
+
 # Note: Set your GOOGLE_MAPS_API_KEY as a Cloudflare Secret:
 # wrangler secret put GOOGLE_MAPS_API_KEY

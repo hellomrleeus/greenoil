@@ -1,22 +1,37 @@
 # Green Oil 后端服务 (Cloudflare Workers)
 
-本目录包含 Green Oil 专用工作台的 Cloudflare Worker 完整代码。
+本目录包含 Green Oil 专用工作台的 Cloudflare Worker 完整服务代码。
 
-## 功能特性
-1. **固定凭据登录与 Cookie 认证**：
+## 核心功能与架构升级
+
+1. **后台每日定时抓取更新 (Daily Cron Trigger)**：
+   - 触发频次：每天夜间（UTC 03:00 / 多伦多夜间），配置为 `0 3 * * *`；
+   - 自动轮询大多伦多各区域关键词，批量调用 Google Maps Places API (New) 的 `places:searchText`；
+   - 将最新数据与历史数据去重合并，写入 Cloudflare KV (`RESTAURANTS_KV`) 高速缓存中。
+   - **效果**：业务员日常高频查询完全走缓存，**零实时地图 API 费用消耗**！
+
+2. **服务端高性能分页与多条件检索**：
+   - `GET /api/restaurants` 支持：
+     - `page` (页码，默认 1)
+     - `pageSize` (每页条数，10 / 20 / 50 / 100)
+     - `region` (所属区域筛选)
+     - `category` (油炸品类筛选)
+     - `keyword` (模糊搜索餐馆名、地址、电话、关键词)
+     - `sort` (评分、评价数、名称)
+   - 返回标准分页响应结构 `{ success: true, page, pageSize, total, totalPages, lastUpdated, data: [...] }`。
+
+3. **手动全量同步接口**：
+   - `POST /api/sync`：支持管理员在工作台“设置与服务”页面一键手动触发全量后台更新。
+
+4. **固定凭证登录与 Cookie 认证**：
    - 默认账号：`greenoil`，默认密码：`greenoil2025`
-   - 下发 `greenoil_session` Cookie（支持 `SameSite=None; Secure; HttpOnly` 跨域与 GitHub Pages 配合）
-2. **Google Maps Places API (New) 代理**：
-   - 接收区域、关键词，调用 Google Maps Places API (New) 的 `places:searchText`
-   - 自动映射转换为与 Excel 文件完全一致的 17 个字段
-3. **CORS 支持**：
-   - 原生支持 GitHub Pages 域名与本地开发环境（携带凭据 `credentials: include`）
+   - 下发 `greenoil_session` Cookie（支持 `SameSite=None; Secure; HttpOnly` 跨域与 GitHub Pages 配合）。
 
 ---
 
-## 部署方式
+## 部署指引
 
-### 方式 A：使用 Wrangler 命令行部署（推荐）
+### 1. 使用 Wrangler 命令行部署（推荐）
 
 1. 进入 `worker` 目录：
    ```bash
@@ -28,17 +43,22 @@
    npx wrangler login
    ```
 
-3. （可选）配置 Google Maps API 密钥：
+3. 创建 KV 缓存命名空间（推荐开启以获得持久化缓存能力）：
+   ```bash
+   npx wrangler kv:namespace create RESTAURANTS_KV
+   ```
+   命令执行后会输出形如：
+   ```toml
+   [[kv_namespaces]]
+   binding = "RESTAURANTS_KV"
+   id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ```
+   将其复制粘贴到 `worker/wrangler.toml` 中取消注释即可。
+
+4. 配置 Google Maps API 密钥：
    ```bash
    npx wrangler secret put GOOGLE_MAPS_API_KEY
-   # 提示时粘贴您的 Google Maps API Key
-   ```
-
-4. （可选）修改固定账号密码：
-   在 `wrangler.toml` 中修改 `WORKER_USERNAME` 和 `WORKER_PASSWORD`，或使用 secret：
-   ```bash
-   npx wrangler secret put WORKER_USERNAME
-   npx wrangler secret put WORKER_PASSWORD
+   # 根据提示粘贴您的 Google Cloud Maps API Key
    ```
 
 5. 部署到 Cloudflare：
@@ -46,17 +66,15 @@
    npx wrangler deploy
    ```
 
-部署成功后，终端将输出您的 Worker 访问地址（例如 `https://greenoil-api.<your-subdomain>.workers.dev`）。将此地址填入前端页面右上角“⚙️ 设置”中的 API 地址即可！
+部署成功后，终端将输出您的 Worker 访问地址（例如 `https://greenoil-api.<your-subdomain>.workers.dev`）。将此地址填入前端工作台“⚙️ 设置”中的 API 地址即可！
 
 ---
 
-### 方式 B：通过 Cloudflare 网页后台直接部署
+### 2. 通过 Cloudflare 网页后台部署
 
 1. 登录 [Cloudflare 控制台](https://dash.cloudflare.com/)。
-2. 点击左侧 **Workers & Pages** -> **Create application** -> **Create Worker**。
-3. 给 Worker 命名为 `greenoil-api`，点击 **Deploy**。
-4. 点击 **Edit code**，将 `worker/index.js` 中的全部内容粘贴覆盖编辑器中的代码，点击 **Save and deploy**。
-5. 在 Worker 的 **Settings** -> **Variables and Secrets** 中添加：
-   - `GOOGLE_MAPS_API_KEY`（Secret）
-   - `WORKER_USERNAME`（默认 `greenoil`）
-   - `WORKER_PASSWORD`（默认 `greenoil2025`）
+2. 点击 **Workers & Pages** -> **Create application** -> **Create Worker**。
+3. 命名为 `greenoil-api`，点击 **Deploy**。
+4. 点击 **Edit code**，将 `worker/index.js` 和 `worker/seed.js` 上传/粘贴并部署。
+5. 在 Worker 的 **Settings** -> **Variables and Secrets** 中添加 `GOOGLE_MAPS_API_KEY`。
+6. 在 Worker 的 **Settings** -> **Triggers** 中添加 Cron Trigger：`0 3 * * *`。

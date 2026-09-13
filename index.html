@@ -7,6 +7,8 @@
   <meta name="description" content="Green Oil 员工专用业务工作台：支持多伦多油炸餐饮商家检索与纯前端商用用油/废油回收测算。">
   <link rel="stylesheet" href="assets/css/app.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+  <!-- Vendor Library for Strict Excel Template (.xlsx) Generation -->
+  <script src="assets/js/vendor/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -91,16 +93,16 @@
                     <option value="全部 (All GTA)">全部区域 (All GTA - 608+ 家)</option>
                     <option value="万锦 (Markham)">万锦 (Markham - 269 家)</option>
                     <option value="士嘉堡 (Scarborough)">士嘉堡 (Scarborough - 339 家)</option>
-                    <option value="北约克 (North York)">北约克 (North York - 实时检索)</option>
-                    <option value="列治文山 (Richmond Hill)">列治文山 (Richmond Hill - 实时检索)</option>
-                    <option value="多伦多市中心 (Downtown Toronto)">多伦多市中心 (Downtown Toronto - 实时检索)</option>
-                    <option value="密西沙加 (Mississauga)">密西沙加 (Mississauga - 实时检索)</option>
-                    <option value="旺市 (Vaughan)">旺市 (Vaughan - 实时检索)</option>
+                    <option value="北约克 (North York)">北约克 (North York)</option>
+                    <option value="列治文山 (Richmond Hill)">列治文山 (Richmond Hill)</option>
+                    <option value="多伦多市中心 (Downtown Toronto)">多伦多市中心 (Downtown Toronto)</option>
+                    <option value="密西沙加 (Mississauga)">密西沙加 (Mississauga)</option>
+                    <option value="旺市 (Vaughan)">旺市 (Vaughan)</option>
                   </select>
                 </div>
 
                 <div class="search-input-wrap">
-                  <label class="form-label" for="restaurantSearch">🔍 关键词检索</label>
+                  <label class="form-label" for="restaurantSearch">🔍 关键词检索 (支持模糊查询)</label>
                   <span class="search-icon">🔍</span>
                   <input type="text" class="form-input" id="restaurantSearch" placeholder="搜索餐馆名、地址、关键词 (如: 盐酥鸡、炸鸡翅、Popeyes)...">
                 </div>
@@ -115,11 +117,11 @@
                 </div>
 
                 <div style="display: flex; gap: 0.5rem; align-self: flex-end;">
-                  <button class="btn btn-secondary" id="btnLiveSearch" title="调用 Cloudflare Worker 请求 Google Maps API 实时刷新">
-                    <span>🔍 实时刷新</span>
+                  <button class="btn btn-secondary" id="btnSelectAllPage" title="勾选或取消当前页所有餐馆">
+                    <span>☑️ 全选本页</span>
                   </button>
-                  <button class="btn btn-primary" id="btnExportCsv" title="导出当前筛选餐馆为与 Excel 结构一致的 CSV 文件">
-                    <span>📥 导出 CSV</span>
+                  <button class="btn btn-primary" id="btnExportCsv" title="导出已选餐馆为与 Excel 模版完全一致的 .xlsx 文件">
+                    <span>📥 导出所选 Excel</span>
                   </button>
                 </div>
               </div>
@@ -143,7 +145,8 @@
           <!-- Results Header & Toggle Bar -->
           <div class="results-header">
             <div class="results-count">
-              共筛选到 <b id="resultsCountNum">0</b> 家油炸特色餐饮商家
+              共检索到 <b id="resultsCountNum">0</b> 家特色餐饮商家
+              <span id="cacheStatusNote" style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.75rem;"></span>
             </div>
 
             <div class="view-controls">
@@ -159,7 +162,7 @@
           <!-- Loading Indicator -->
           <div id="restaurantListLoader" style="display: none; text-align: center; padding: 2rem;">
             <div style="font-size: 1.5rem; animation: pulse 1s infinite;">⏳</div>
-            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">正在检索餐馆数据...</div>
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">正在检索后端缓存数据...</div>
           </div>
 
           <!-- Card Grid View (Default) -->
@@ -170,6 +173,9 @@
             <table class="data-table">
               <thead>
                 <tr>
+                  <th style="width: 40px; text-align: center;">
+                    <input type="checkbox" id="thSelectAll" class="custom-checkbox" title="全选当前页" />
+                  </th>
                   <th>餐馆名称 (Name)</th>
                   <th>所属区域 (Region)</th>
                   <th>油炸分类 (Categories)</th>
@@ -183,6 +189,25 @@
               </thead>
               <tbody id="restaurantTableBody"></tbody>
             </table>
+          </div>
+
+          <!-- Pagination Bar -->
+          <div class="pagination-container" id="paginationContainer">
+            <div class="pagination-info" id="paginationInfoText">
+              正在加载分页信息...
+            </div>
+
+            <div class="pagination-controls" id="paginationControls"></div>
+
+            <div class="page-size-wrap">
+              <label for="pageSizeSelect">每页显示：</label>
+              <select class="page-size-select" id="pageSizeSelect">
+                <option value="10">10 条</option>
+                <option value="20" selected>20 条</option>
+                <option value="50">50 条</option>
+                <option value="100">100 条</option>
+              </select>
+            </div>
           </div>
 
         </section>
@@ -322,7 +347,7 @@
               <label class="form-label" for="settingWorkerUrl">Cloudflare Worker API 域名</label>
               <input type="text" class="form-input" id="settingWorkerUrl" placeholder="https://greenoil-api.<your-subdomain>.workers.dev" />
               <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem;">
-                在 Cloudflare 部署好 `worker/index.js` 后，将 Worker 提供的 URL 填入此处，即可启用实时 Google Maps API 代理查询。
+                在 Cloudflare 部署好 `worker/index.js` 后，将 Worker 提供的 URL 填入此处，即可启用后端每日定时缓存与分页检索服务。
               </div>
             </div>
 
@@ -332,19 +357,44 @@
 
             <hr style="border: none; border-top: 1px solid var(--surface-border); margin: 1.5rem 0;" />
 
+            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">🔄 后台每日定时任务与缓存状态 (Daily Sync)</h4>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 0.75rem;">
+              为了最大程度节约 Google Maps API 费用与配额，地图数据在后台按每日一次（Cron: <code>0 3 * * *</code> 对应夜间）更新至缓存，前端日常检索完全读取后端缓存，零地图 API 调用消耗。
+            </p>
+            <div id="syncStatusText" style="font-size: 0.82rem; color: var(--primary-dark); background: var(--primary-light); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); border: 1px solid rgba(5, 150, 105, 0.2); margin-bottom: 1rem;">
+              正在检测状态...
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btnTriggerSync">
+              <span>🔄 立即手动触发全量更新</span>
+            </button>
+
+            <hr style="border: none; border-top: 1px solid var(--surface-border); margin: 1.5rem 0;" />
+
             <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">🔐 登录凭据说明</h4>
             <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem;">
               当前工作台默认固定登录账号为 <code>greenoil</code>，密码为 <code>greenoil2025</code>。登录后将在浏览器中写入 7 天有效期的 <code>greenoil_session</code> Cookie。
-            </p>
-
-            <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;">📊 离线数据与 Google Maps API 说明</h4>
-            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
-              工作台已预置万锦 (Markham) 与士嘉堡 (Scarborough) 的 608 家真实油炸特色餐馆数据。当查询其他大多伦多区域时，Worker 后台将通过 Google Maps Places API (New) 的 <code>places:searchText</code> 端点进行抓取与 17 项字段对齐。
             </p>
           </div>
         </section>
 
       </main>
+    </div>
+  </div>
+
+  <!-- FLOATING MULTI-SELECTION ACTION BAR -->
+  <div class="selection-bar" id="selectionBar">
+    <div class="selection-info">
+      <span>已跨页勾选</span>
+      <span class="selection-count-badge" id="selectionCountBadge">0</span>
+      <span>家餐馆</span>
+    </div>
+    <div class="selection-actions">
+      <button class="btn btn-secondary btn-sm" id="btnClearSelection" style="color: white; border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.15);">
+        ✕ 清空所选
+      </button>
+      <button class="btn btn-primary btn-sm" id="btnExportSelected" style="background: #10b981; border: none;">
+        <span id="btnExportSelectedText">📥 导出所选 (0 家)</span>
+      </button>
     </div>
   </div>
 
