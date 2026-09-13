@@ -21,6 +21,7 @@ export const Api = {
     page = 1,
     pageSize = 20,
     region = "全部 (All GTA)",
+    hub = "",
     keyword = "",
     category = "全部",
     sort = "rating"
@@ -32,6 +33,7 @@ export const Api = {
     url.searchParams.set("page", page);
     url.searchParams.set("pageSize", pageSize);
     url.searchParams.set("region", region);
+    if (hub && hub !== "全部" && hub !== "all") url.searchParams.set("hub", hub);
     if (keyword) url.searchParams.set("keyword", keyword);
     if (category) url.searchParams.set("category", category);
     if (sort) url.searchParams.set("sort", sort);
@@ -72,6 +74,30 @@ export const Api = {
       lastUpdated: "-",
       data: []
     };
+  },
+
+  /**
+   * Get GTA Commercial Hubs & Shopping Malls summary
+   */
+  async getHubs() {
+    const workerUrl = this.getWorkerUrl();
+    const token = localStorage.getItem("greenoil_session_token") || "";
+    try {
+      const resp = await fetch(`${workerUrl}/api/hubs`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
+        credentials: "include"
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success) return { success: true, total: data.total, data: data.data || [] };
+      }
+    } catch (e) {
+      console.warn("Worker getHubs failed:", e);
+    }
+    return { success: false, total: 0, data: [] };
   },
 
   /**

@@ -101,6 +101,13 @@
                 </div>
 
                 <div>
+                  <label class="form-label" for="hubSelect" data-i18n="hub_label">商圈 / 商场</label>
+                  <select class="form-select" id="hubSelect">
+                    <option value="all" data-i18n="hub_all">全部商圈与商场</option>
+                  </select>
+                </div>
+
+                <div>
                   <label class="form-label" for="restaurantSearch" data-i18n="search_label">搜索</label>
                   <div class="search-input-wrap">
                     <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor">
@@ -158,6 +165,9 @@
               <button class="view-toggle-btn" id="btnTableView">
                 <span data-i18n="view_table">表格视图</span>
               </button>
+              <button class="view-toggle-btn" id="btnHubView">
+                <span data-i18n="view_hubs">商圈聚合</span>
+              </button>
             </div>
           </div>
 
@@ -179,6 +189,7 @@
                   </th>
                   <th data-i18n="th_name">餐馆名称</th>
                   <th data-i18n="th_region">区域</th>
+                  <th data-i18n="th_hub">商圈/商场</th>
                   <th data-i18n="th_category">分类</th>
                   <th data-i18n="th_rating">评分与评价</th>
                   <th data-i18n="th_status">状态</th>
@@ -191,6 +202,9 @@
               <tbody id="restaurantTableBody"></tbody>
             </table>
           </div>
+
+          <!-- Hubs Grid View -->
+          <div class="hubs-grid" id="restaurantHubsView" style="display: none;"></div>
 
           <!-- Pagination Bar -->
           <div class="pagination-container" id="paginationContainer">
@@ -494,6 +508,11 @@
         <div class="detail-field-group">
           <div class="detail-label" data-i18n="modal_cat">分类</div>
           <div class="detail-value" id="modalRestCategory" style="color: var(--primary); font-weight: 600;">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_hub">所属商圈/商场</div>
+          <div class="detail-value" id="modalRestHub" style="color: #6366f1; font-weight: 600;">-</div>
         </div>
 
         <div class="detail-field-group">

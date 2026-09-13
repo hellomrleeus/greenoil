@@ -58,7 +58,19 @@ export default {
         return await handleGetCachedRestaurants(request, env, corsHeaders);
       }
 
-      // 3. Health check
+      // 3. GTA Hubs & Commercial Plazas summary (Protected)
+      if (url.pathname === "/api/hubs" && request.method === "GET") {
+        const isAuthed = checkAuth(request, env);
+        if (!isAuthed) {
+          return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+        return await handleGetHubs(env, corsHeaders);
+      }
+
+      // 4. Health check
       if (url.pathname === "/" || url.pathname === "/api/health") {
         return new Response(JSON.stringify({
           status: "healthy",
@@ -224,6 +236,7 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
   const region = (url.searchParams.get("region") || "全部 (All GTA)").trim();
   const keyword = (url.searchParams.get("keyword") || "").trim().toLowerCase();
   const category = (url.searchParams.get("category") || "全部").trim();
+  const hub = (url.searchParams.get("hub") || "").trim();
   const sortBy = (url.searchParams.get("sort") || "rating").trim();
 
   // 1. Retrieve dataset from KV
@@ -256,7 +269,17 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
     });
   }
 
-  // 4. Apply Keyword Search
+  // 4. Apply Hub / Mall Filter
+  if (hub && hub !== "全部" && hub !== "all") {
+    filtered = filtered.filter(r => {
+      return (r.hubId === hub) || 
+             (r.hubName && r.hubName.toLowerCase().includes(hub.toLowerCase())) ||
+             (r.hubNameEn && r.hubNameEn.toLowerCase().includes(hub.toLowerCase())) ||
+             (r.hubNameKo && r.hubNameKo.toLowerCase().includes(hub.toLowerCase()));
+    });
+  }
+
+  // 5. Apply Keyword Search
   if (keyword) {
     filtered = filtered.filter(r => {
       const searchTarget = [
@@ -265,7 +288,10 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
         r.phone,
         r.keywordsRaw,
         r.primaryType,
-        r.categoriesRaw
+        r.categoriesRaw,
+        r.hubName,
+        r.hubNameEn,
+        r.hubNameKo
       ].join(" ").toLowerCase();
       return searchTarget.includes(keyword);
     });
@@ -309,4 +335,33 @@ async function handleGetCachedRestaurants(request, env, corsHeaders) {
     }
   });
 }
+
+/**
+ * Get GTA Hubs & Commercial Plazas summary
+ */
+async function handleGetHubs(env, corsHeaders) {
+  let hubs = [];
+  if (env.RESTAURANTS_KV) {
+    try {
+      const cached = await env.RESTAURANTS_KV.get("gta_hubs_summary", { type: "json" });
+      if (cached && Array.isArray(cached)) hubs = cached;
+    } catch (e) {
+      console.warn("Error reading gta_hubs_summary from KV:", e);
+    }
+  }
+
+  return new Response(JSON.stringify({
+    success: true,
+    total: hubs.length,
+    data: hubs
+  }), {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=300"
+    }
+  });
+}
+
 

@@ -13,6 +13,8 @@ export const Restaurants = {
   total: 0,
   totalPages: 1,
   activeRegion: "全部 (All GTA)",
+  activeHub: "all",
+  hubsData: [],
   activeCategory: "全部",
   searchQuery: "",
   sortBy: "rating",
@@ -21,7 +23,9 @@ export const Restaurants = {
 
   async init() {
     this.bindEvents();
+    await this.loadHubs();
     i18n.onLanguageChange(() => {
+      this.populateHubSelect();
       this.render();
       this.renderPagination();
       this.updateSelectionUI();
@@ -33,12 +37,86 @@ export const Restaurants = {
     await this.fetchData();
   },
 
+  async loadHubs() {
+    try {
+      const res = await Api.getHubs();
+      if (res && res.success && Array.isArray(res.data)) {
+        this.hubsData = res.data;
+        this.populateHubSelect();
+      }
+    } catch (e) {
+      console.warn("Failed to load hubs:", e);
+    }
+  },
+
+  populateHubSelect() {
+    const hubSelect = document.getElementById("hubSelect");
+    if (!hubSelect) return;
+
+    let availableHubs = this.hubsData;
+    if (this.activeRegion && this.activeRegion !== "全部 (All GTA)") {
+      availableHubs = availableHubs.filter(h => h.region && (h.region.includes(this.activeRegion) || this.activeRegion.includes(h.region)));
+    }
+
+    const currentVal = this.activeHub;
+    let html = `<option value="all">${i18n.t("hub_all")}</option>`;
+
+    availableHubs.forEach(h => {
+      const hubName = i18n.currentLang === 'en' ? (h.nameEn || h.name) : (i18n.currentLang === 'ko' ? (h.nameKo || h.name) : h.name);
+      html += `<option value="${h.id}">${this.escapeHtml(hubName)} (${h.count})</option>`;
+    });
+
+    hubSelect.innerHTML = html;
+    if (availableHubs.some(h => h.id === currentVal)) {
+      hubSelect.value = currentVal;
+    } else {
+      hubSelect.value = "all";
+      this.activeHub = "all";
+    }
+  },
+
+  switchViewMode(mode) {
+    this.viewMode = mode;
+    const btnCardView = document.getElementById("btnCardView");
+    const btnTableView = document.getElementById("btnTableView");
+    const btnHubView = document.getElementById("btnHubView");
+
+    if (btnCardView) btnCardView.classList.toggle("active", mode === "cards");
+    if (btnTableView) btnTableView.classList.toggle("active", mode === "table");
+    if (btnHubView) btnHubView.classList.toggle("active", mode === "hubs");
+
+    this.render();
+  },
+
+  selectHubAndFilter(hubId) {
+    this.activeHub = hubId;
+    const hubSelect = document.getElementById("hubSelect");
+    if (hubSelect) hubSelect.value = hubId;
+    this.switchViewMode("cards");
+    this.currentPage = 1;
+    this.fetchData();
+  },
+
   bindEvents() {
     const regionSelect = document.getElementById("regionSelect");
     if (regionSelect) {
       regionSelect.addEventListener("change", (e) => {
         this.activeRegion = e.target.value;
+        this.activeHub = "all";
+        this.populateHubSelect();
         this.currentPage = 1;
+        this.fetchData();
+      });
+    }
+
+    const hubSelect = document.getElementById("hubSelect");
+    if (hubSelect) {
+      hubSelect.addEventListener("change", (e) => {
+        this.activeHub = e.target.value;
+        this.currentPage = 1;
+        if (this.activeHub !== "all" && this.viewMode === "hubs") {
+          this.switchViewMode("cards");
+        }
         this.fetchData();
       });
     }
@@ -51,7 +129,11 @@ export const Restaurants = {
         searchDebounceTimer = setTimeout(() => {
           this.searchQuery = e.target.value.trim().toLowerCase();
           this.currentPage = 1;
-          this.fetchData();
+          if (this.viewMode === "hubs") {
+            this.renderHubs();
+          } else {
+            this.fetchData();
+          }
         }, 300);
       });
     }
@@ -80,19 +162,16 @@ export const Restaurants = {
 
     const btnCardView = document.getElementById("btnCardView");
     const btnTableView = document.getElementById("btnTableView");
-    if (btnCardView && btnTableView) {
-      btnCardView.addEventListener("click", () => {
-        this.viewMode = "cards";
-        btnCardView.classList.add("active");
-        btnTableView.classList.remove("active");
-        this.render();
-      });
-      btnTableView.addEventListener("click", () => {
-        this.viewMode = "table";
-        btnTableView.classList.add("active");
-        btnCardView.classList.remove("active");
-        this.render();
-      });
+    const btnHubView = document.getElementById("btnHubView");
+
+    if (btnCardView) {
+      btnCardView.addEventListener("click", () => this.switchViewMode("cards"));
+    }
+    if (btnTableView) {
+      btnTableView.addEventListener("click", () => this.switchViewMode("table"));
+    }
+    if (btnHubView) {
+      btnHubView.addEventListener("click", () => this.switchViewMode("hubs"));
     }
 
     const pageSizeSelect = document.getElementById("pageSizeSelect");
@@ -173,6 +252,7 @@ export const Restaurants = {
         page: this.currentPage,
         pageSize: this.pageSize,
         region: this.activeRegion,
+        hub: this.activeHub,
         keyword: this.searchQuery,
         category: this.activeCategory,
         sort: this.sortBy
@@ -300,15 +380,27 @@ export const Restaurants = {
   render() {
     const cardsContainer = document.getElementById("restaurantCardsView");
     const tableContainer = document.getElementById("restaurantTableView");
+    const hubsContainer = document.getElementById("restaurantHubsView");
+    const paginationContainer = document.getElementById("paginationContainer");
 
     if (this.viewMode === "cards") {
       if (cardsContainer) cardsContainer.style.display = "grid";
       if (tableContainer) tableContainer.style.display = "none";
+      if (hubsContainer) hubsContainer.style.display = "none";
+      if (paginationContainer) paginationContainer.style.display = "flex";
       this.renderCards();
-    } else {
+    } else if (this.viewMode === "table") {
       if (cardsContainer) cardsContainer.style.display = "none";
       if (tableContainer) tableContainer.style.display = "block";
+      if (hubsContainer) hubsContainer.style.display = "none";
+      if (paginationContainer) paginationContainer.style.display = "flex";
       this.renderTable();
+    } else if (this.viewMode === "hubs") {
+      if (cardsContainer) cardsContainer.style.display = "none";
+      if (tableContainer) tableContainer.style.display = "none";
+      if (hubsContainer) hubsContainer.style.display = "grid";
+      if (paginationContainer) paginationContainer.style.display = "none";
+      this.renderHubs();
     }
   },
 
@@ -329,6 +421,7 @@ export const Restaurants = {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
       const statusObj = this.formatStatus(r.status);
+      const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
 
       return `
         <div class="restaurant-card ${isSelected ? 'is-selected' : ''}" data-idx="${idx}" data-key="${this.escapeHtml(key)}">
@@ -355,6 +448,15 @@ export const Restaurants = {
             <div>${this.escapeHtml(r.region)}</div>
             <div class="card-category-text">${this.escapeHtml(r.categoriesRaw || '-')}</div>
           </div>
+
+          ${r.hubId && r.hubId !== "street_retail" ? `
+            <div style="margin-top: -0.25rem;">
+              <span class="hub-badge" title="${this.escapeHtml(hubName)}">
+                <span>${r.hubIcon || '🏬'}</span>
+                <span>${this.escapeHtml(hubName)}</span>
+              </span>
+            </div>
+          ` : ''}
 
           <div class="card-address-row">
             <span>${this.escapeHtml(r.address)}</span>
@@ -389,7 +491,7 @@ export const Restaurants = {
     if (!tbody) return;
 
     if (this.currentPageData.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 2rem;">${i18n.t("no_matching_restaurants")}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 2rem;">${i18n.t("no_matching_restaurants")}</td></tr>`;
       return;
     }
 
@@ -397,6 +499,7 @@ export const Restaurants = {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
       const statusObj = this.formatStatus(r.status);
+      const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
 
       return `
         <tr class="${isSelected ? 'is-selected' : ''}" data-idx="${idx}" data-key="${this.escapeHtml(key)}" style="cursor: pointer;" onclick="window.openRestaurantDetailByIndex(${idx})">
@@ -410,6 +513,14 @@ export const Restaurants = {
           </td>
           <td class="col-name">${this.escapeHtml(r.name)}</td>
           <td>${this.escapeHtml(r.region)}</td>
+          <td>
+            ${r.hubId && r.hubId !== "street_retail" ? `
+              <span class="hub-badge" title="${this.escapeHtml(hubName)}">
+                <span>${r.hubIcon || '🏬'}</span>
+                <span>${this.escapeHtml(hubName)}</span>
+              </span>
+            ` : '<span style="color: var(--text-light); font-size: 0.78rem;">-</span>'}
+          </td>
           <td class="col-category" title="${this.escapeHtml(r.categoriesRaw)}">${this.escapeHtml(r.categoriesRaw)}</td>
           <td><b>★ ${r.rating ? r.rating.toFixed(1) : '-'}</b> (${r.reviews})</td>
           <td><span class="status-badge ${statusObj.cls}">${statusObj.label}</span></td>
@@ -422,6 +533,77 @@ export const Restaurants = {
             </button>
           </td>
         </tr>
+      `;
+    }).join("");
+  },
+
+  renderHubs() {
+    const container = document.getElementById("restaurantHubsView");
+    if (!container) return;
+
+    let list = this.hubsData;
+    if (this.activeRegion && this.activeRegion !== "全部 (All GTA)") {
+      list = list.filter(h => h.region && (h.region.includes(this.activeRegion) || this.activeRegion.includes(h.region)));
+    }
+
+    if (this.searchQuery) {
+      list = list.filter(h => {
+        const str = [h.name, h.nameEn, h.nameKo, h.region].join(" ").toLowerCase();
+        return str.includes(this.searchQuery);
+      });
+    }
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+          <div style="font-weight: 600; font-size: 1rem;">${i18n.t("no_matching_restaurants")}</div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = list.map(h => {
+      const hubName = i18n.currentLang === 'en' ? (h.nameEn || h.name) : (i18n.currentLang === 'ko' ? (h.nameKo || h.name) : h.name);
+      const samples = (h.sampleRestaurants || []).slice(0, 3).map(s => s.name).join("、 ");
+      const ucoLabel = i18n.currentLang === 'en' ? "Est. Monthly UCO (75%)" : (i18n.currentLang === 'ko' ? "월 예상 폐유 (75%)" : "月预估废油 (75% UCO)");
+      const drumUnit = i18n.currentLang === 'en' ? "drums (200L)" : (i18n.currentLang === 'ko' ? "통 (200L)" : "桶 200L");
+      const sampleLabel = i18n.currentLang === 'en' ? "Sample restaurants:" : (i18n.currentLang === 'ko' ? "대표 식당:" : "代表餐馆:");
+
+      return `
+        <div class="hub-card" onclick="window.selectHubAndFilter('${h.id}')">
+          <div class="hub-card-header">
+            <div class="hub-card-icon">${h.icon || '🏬'}</div>
+            <div class="hub-card-titles">
+              <h4 class="hub-card-name">${this.escapeHtml(hubName)}</h4>
+              <div class="hub-card-region">${this.escapeHtml(h.region)}</div>
+            </div>
+          </div>
+
+          <div class="hub-card-stats">
+            <div class="hub-stat-item">
+              <span class="hub-stat-label">${i18n.t("th_rating")}</span>
+              <span class="hub-stat-val">★ ${h.avgRating}</span>
+            </div>
+            <div class="hub-stat-item">
+              <span class="hub-stat-label">${i18n.t("th_name")}</span>
+              <span class="hub-stat-val">${h.count} 家</span>
+            </div>
+            <div class="hub-stat-item" style="grid-column: 1/-1;">
+              <span class="hub-stat-label">${ucoLabel}</span>
+              <span class="hub-stat-val highlight">~${(h.estUcoLiters || 0).toLocaleString()} L <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">(${h.est200lDrums || 0} ${drumUnit})</span></span>
+            </div>
+          </div>
+
+          ${samples ? `
+            <div class="hub-card-samples" title="${this.escapeHtml(samples)}">
+              <span style="font-weight: 600;">${sampleLabel}</span> ${this.escapeHtml(samples)}
+            </div>
+          ` : ''}
+
+          <button class="hub-card-btn" onclick="event.stopPropagation(); window.selectHubAndFilter('${h.id}')">
+            ${i18n.t("hub_card_btn")} (${h.count}) &rarr;
+          </button>
+        </div>
       `;
     }).join("");
   },
@@ -496,6 +678,7 @@ export const Restaurants = {
     const headers = [
       "餐馆名称 (Name)",
       "所属区域 (Region)",
+      "所属商圈 (Hub / Plaza)",
       "详细分类 (Categories)",
       "主分类代码 (Primary Type)",
       "评分 (Rating)",
@@ -514,9 +697,11 @@ export const Restaurants = {
     ];
 
     const rows = selectedList.map(r => {
+      const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
       return {
         "餐馆名称 (Name)": r.name || "",
         "所属区域 (Region)": r.region || "",
+        "所属商圈 (Hub / Plaza)": (r.hubId && r.hubId !== "street_retail") ? (hubName || "") : "沿街与社区广场",
         "详细分类 (Categories)": r.categoriesRaw || (r.categories ? r.categories.join(" | ") : ""),
         "主分类代码 (Primary Type)": r.primaryType || "",
         "评分 (Rating)": r.rating || "",
@@ -541,6 +726,7 @@ export const Restaurants = {
         worksheet["!cols"] = [
           { wch: 28 },
           { wch: 20 },
+          { wch: 25 },
           { wch: 35 },
           { wch: 10 },
           { wch: 12 },
@@ -601,6 +787,17 @@ export const Restaurants = {
 
     document.getElementById("modalRestName").textContent = r.name;
     document.getElementById("modalRestRegion").textContent = r.region;
+
+    const modalHub = document.getElementById("modalRestHub");
+    if (modalHub) {
+      if (r.hubId && r.hubId !== "street_retail") {
+        const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
+        modalHub.innerHTML = `<span class="hub-badge">${r.hubIcon || '🏬'} ${this.escapeHtml(hubName)}</span>`;
+      } else {
+        modalHub.textContent = i18n.currentLang === 'en' ? "Street & Community Retail" : (i18n.currentLang === 'ko' ? "일반 거리 및 상가" : "沿街与社区广场");
+      }
+    }
+
     document.getElementById("modalRestCategory").textContent = r.categoriesRaw || (r.categories ? r.categories.join(" | ") : "");
     document.getElementById("modalRestRating").innerHTML = `★ ${r.rating ? r.rating.toFixed(1) : '-'} <span style="color:var(--text-muted); font-weight:normal;">(${r.reviews})</span>`;
     document.getElementById("modalRestPrice").textContent = r.price || "-";
@@ -696,6 +893,10 @@ if (typeof window !== "undefined") {
     if (rest) {
       Restaurants.toggleSelect(rest);
     }
+  };
+
+  window.selectHubAndFilter = function(hubId) {
+    Restaurants.selectHubAndFilter(hubId);
   };
 
   window.goToPage = function(page) {
