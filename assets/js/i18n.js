@@ -321,8 +321,13 @@ export const TRANSLATIONS = {
     btn_plan_route: "规划路线",
     btn_export_excel: "导出Excel",
     popover_clear_all: "清空",
+    popover_all_gta: "全部大区 (All GTA)",
     popover_reset_all_gta: "重置为多伦多大区中心 (All GTA)",
     popover_search_placeholder: "输入城市或商圈社区名称过滤...",
+    map_search_placeholder: "输入餐馆名或地址...",
+    map_area_pill_title: "点击展开大区区划多选",
+    legend_in_kv: "已在KV库",
+    legend_new_place: "Google新店",
     th_kv_status: "KV状态",
     filter_visited: "是否拜访",
     filter_outcome: "拜访结果",
@@ -655,8 +660,13 @@ export const TRANSLATIONS = {
     btn_plan_route: "Plan Route",
     btn_export_excel: "Export Excel",
     popover_clear_all: "Clear All",
+    popover_all_gta: "All GTA",
     popover_reset_all_gta: "Reset to GTA Center (All GTA)",
     popover_search_placeholder: "Type city or neighborhood to filter...",
+    map_search_placeholder: "Search restaurant name or address...",
+    map_area_pill_title: "Click to expand area / district filter",
+    legend_in_kv: "In KV Database",
+    legend_new_place: "Google New Place",
     th_kv_status: "KV Status",
     filter_visited: "Visited Status",
     filter_outcome: "Visit Outcome",
@@ -989,8 +999,13 @@ export const TRANSLATIONS = {
     btn_plan_route: "경로 계획",
     btn_export_excel: "엑셀 내보내기",
     popover_clear_all: "모두 지우기",
+    popover_all_gta: "광역 토론토 전체",
     popover_reset_all_gta: "광역 토론토 중심으로 초기화",
     popover_search_placeholder: "도시 또는 지역명으로 검색...",
+    map_search_placeholder: "식당명 또는 주소 검색...",
+    map_area_pill_title: "지역 / 구역 필터 펼치기",
+    legend_in_kv: "KV 등록 매장",
+    legend_new_place: "Google 신규 매장",
     th_kv_status: "KV 상태",
     filter_visited: "방문 여부",
     filter_outcome: "방문 결과",
@@ -1119,3 +1134,6 @@ class I18nManager {
 }
 
 export const i18n = new I18nManager();
+if (typeof window !== "undefined") {
+  window.i18n = i18n;
+}

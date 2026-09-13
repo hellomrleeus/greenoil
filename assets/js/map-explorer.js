@@ -17,6 +17,7 @@ export const GTA_COMMUNITIES = [
   {
     id: "all",
     name: "全部大区 (All GTA)",
+    nameZh: "全部大区",
     nameEn: "All GTA",
     nameKo: "광역 토론토 전체",
     center: { lat: 43.7282, lng: -79.3832 },
@@ -37,6 +38,7 @@ export const GTA_COMMUNITIES = [
   {
     id: "downtown",
     name: "多伦多市中心 (Downtown Toronto)",
+    nameZh: "多伦多市中心",
     nameEn: "Downtown Toronto",
     nameKo: "다운타운 토론토",
     center: { lat: 43.6532, lng: -79.3832 },
@@ -56,7 +58,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "dt_chinatown",
         name: "唐人街 / 肯辛顿 (Chinatown & Kensington)",
+        nameZh: "唐人街 / 肯辛顿",
         nameEn: "Chinatown & Kensington",
+        nameKo: "차이나타운 & 켄싱턴",
         keywords: ["spadina", "kensington", "dundas w", "college", "chinatown"],
         center: { lat: 43.6535, lng: -79.3985 },
         zoom: 16,
@@ -70,7 +74,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "dt_bay_financial",
         name: "金融区 / 湾街 (Financial District & Bay St)",
+        nameZh: "金融区 / 湾街",
         nameEn: "Financial District & Bay St",
+        nameKo: "금융 지구 & 베이",
         keywords: ["bay st", "king st w", "front st w", "financial", "university"],
         center: { lat: 43.6485, lng: -79.3817 },
         zoom: 16,
@@ -84,7 +90,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "dt_yonge_dundas",
         name: "央街登打士 (Yonge-Dundas & Eaton Centre)",
+        nameZh: "央街登打士",
         nameEn: "Yonge-Dundas",
+        nameKo: "영-던다스",
         keywords: ["dundas", "yonge", "gould", "church", "victoria", "eaton"],
         center: { lat: 43.6560, lng: -79.3802 },
         zoom: 16,
@@ -98,7 +106,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "dt_entertainment",
         name: "娱乐时尚区 (Entertainment District & King W)",
+        nameZh: "娱乐时尚区",
         nameEn: "Entertainment District",
+        nameKo: "엔터테인먼트 지구",
         keywords: ["king w", "peter", "john st", "mercer", "wellington", "blue jays"],
         center: { lat: 43.6465, lng: -79.3905 },
         zoom: 16,
@@ -112,7 +122,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "dt_queen_west",
         name: "西皇后街 / 艺术区 (Queen West & Trinity)",
+        nameZh: "西皇后街 / 艺术区",
         nameEn: "Queen West",
+        nameKo: "퀸 웨스트",
         keywords: ["queen w", "ossington", "augusta", "bellwoods"],
         center: { lat: 43.6480, lng: -79.4100 },
         zoom: 16,
@@ -126,7 +138,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "dt_koreatown",
         name: "布鲁尔韩国城 (Koreatown Bloor)",
+        nameZh: "布鲁尔韩国城",
         nameEn: "Koreatown Bloor",
+        nameKo: "블루어 코리아타운",
         keywords: ["bloor w", "christie", "manning", "bathurst", "markham st"],
         center: { lat: 43.6645, lng: -79.4180 },
         zoom: 16,
@@ -140,7 +154,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "dt_yorkville",
         name: "约克维尔 (Bloor-Yorkville & Annex)",
+        nameZh: "约克维尔",
         nameEn: "Yorkville & Annex",
+        nameKo: "요크빌 & 아넥스",
         keywords: ["yorkville", "cumberland", "bloor e", "avenue rd", "hazelton"],
         center: { lat: 43.6702, lng: -79.3905 },
         zoom: 16,
@@ -154,7 +170,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "dt_waterfront",
         name: "湖滨港口区 (Waterfront & CityPlace)",
+        nameZh: "湖滨港口区",
         nameEn: "Waterfront & CityPlace",
+        nameKo: "하버프론트 & 시티플레이스",
         keywords: ["queens quay", "fort york", "harbour", "lake shore", "cityplace"],
         center: { lat: 43.6390, lng: -79.3870 },
         zoom: 15,
@@ -170,8 +188,9 @@ export const GTA_COMMUNITIES = [
   {
     id: "north_york",
     name: "北约克 (North York)",
+    nameZh: "北约克",
     nameEn: "North York",
-    nameKo: "노스욕 (North York)",
+    nameKo: "노스욕",
     center: { lat: 43.7615, lng: -79.4111 },
     zoom: 13,
     polygonPaths: [
@@ -188,7 +207,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ny_yonge_finch",
         name: "央街芬治韩国城 (Yonge & Finch / Koreatown North)",
+        nameZh: "央街芬奇韩国城",
         nameEn: "Yonge & Finch Koreatown",
+        nameKo: "영 & 핀치 코리아타운",
         keywords: ["finch", "koreatown", "olive", "byng", "drewry", "cummer", "northtown"],
         center: { lat: 43.7795, lng: -79.4155 },
         zoom: 16,
@@ -202,7 +223,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ny_city_centre",
         name: "北约克城市中心 (Willowdale & NYCC)",
+        nameZh: "北约克城市中心",
         nameEn: "Willowdale & NYCC",
+        nameKo: "노스욕 시티 센터",
         keywords: ["sheppard", "empress", "park home", "mel lastman", "doris", "beecroft"],
         center: { lat: 43.7675, lng: -79.4125 },
         zoom: 16,
@@ -216,7 +239,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ny_fairview",
         name: "锦绣商圈 / 唐米尔斯 (Don Mills & Fairview Mall)",
+        nameZh: "锦绣商圈 / 唐米尔斯",
         nameEn: "Fairview Mall & Don Mills",
+        nameKo: "페어뷰 몰 & 돈 밀스",
         keywords: ["fairview", "don mills", "sheppard e", "godstone"],
         center: { lat: 43.7780, lng: -79.3440 },
         zoom: 15,
@@ -230,7 +255,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ny_bayview",
         name: "湾景村社区 (Bayview Village)",
+        nameZh: "湾景村社区",
         nameEn: "Bayview Village",
+        nameKo: "베이뷰 빌리지",
         keywords: ["bayview", "sheppard e", "rector", "mallingham"],
         center: { lat: 43.7690, lng: -79.3870 },
         zoom: 15,
@@ -244,7 +271,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ny_york_u",
         name: "约克大学高地 (York University Heights & Downsview)",
+        nameZh: "约克大学高地",
         nameEn: "York University Heights",
+        nameKo: "요크 대학교",
         keywords: ["keele", "finch w", "steeles w", "allen", "chesswood", "dufferin"],
         center: { lat: 43.7730, lng: -79.4950 },
         zoom: 14,
@@ -260,8 +289,9 @@ export const GTA_COMMUNITIES = [
   {
     id: "markham",
     name: "万锦 (Markham)",
+    nameZh: "万锦",
     nameEn: "Markham",
-    nameKo: "마컴 (Markham)",
+    nameKo: "마컴",
     center: { lat: 43.8561, lng: -79.3370 },
     zoom: 13,
     polygonPaths: [
@@ -278,7 +308,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "mk_unionville",
         name: "于家村历史老街 (Historic Main St Unionville)",
+        nameZh: "于家村历史老街",
         nameEn: "Unionville & Main St",
+        nameKo: "유니온빌 & 메인 스트리트",
         keywords: ["main st", "unionville", "carlton", "fred varley", "kennedy"],
         center: { lat: 43.8670, lng: -79.3135 },
         zoom: 15,
@@ -292,7 +324,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "mk_pacific_mall",
         name: "太古商圈 / 太子中心 (Pacific Mall & Milliken)",
+        nameZh: "太古商圈 / 太子中心",
         nameEn: "Pacific Mall & Milliken",
+        nameKo: "퍼시픽 몰 & 밀리켄",
         keywords: ["pacific mall", "steeles", "silver star", "redlea", "milliken"],
         center: { lat: 43.8258, lng: -79.3060 },
         zoom: 16,
@@ -306,7 +340,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "mk_fmp",
         name: "万锦广场 / 寰宇角 (First Markham Place & Commerce Gate)",
+        nameZh: "万锦广场 / 寰宇角",
         nameEn: "First Markham Place & Commerce Gate",
+        nameKo: "퍼스트 마컴 플레이스",
         keywords: ["first markham", "commerce gate", "hwy 7", "woodbine", "montgomery"],
         center: { lat: 43.8485, lng: -79.3490 },
         zoom: 16,
@@ -320,7 +356,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "mk_village_cornell",
         name: "万锦村 / 康奈尔 (Markham Village & Cornell)",
+        nameZh: "万锦村 / 康奈尔",
         nameEn: "Markham Village & Cornell",
+        nameKo: "마컴 빌리지 & 코넬",
         keywords: ["cornell", "bur oak", "markham rd", "16th ave", "9th line", "box grove"],
         center: { lat: 43.8820, lng: -79.2550 },
         zoom: 14,
@@ -334,7 +372,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "mk_cachet",
         name: "凯旋豪宅商圈 (Cachet & Woodbine)",
+        nameZh: "凯旋豪宅商圈",
         nameEn: "Cachet & Woodbine",
+        nameKo: "카셰 & 우드바인",
         keywords: ["cachet", "woodbine", "16th", "apple creek", "angus glen"],
         center: { lat: 43.8620, lng: -79.3620 },
         zoom: 15,
@@ -350,8 +390,9 @@ export const GTA_COMMUNITIES = [
   {
     id: "scarborough",
     name: "士嘉堡 (Scarborough)",
+    nameZh: "士嘉堡",
     nameEn: "Scarborough",
-    nameKo: "스카버러 (Scarborough)",
+    nameKo: "스카버러",
     center: { lat: 43.7764, lng: -79.2318 },
     zoom: 13,
     polygonPaths: [
@@ -368,7 +409,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "sc_agincourt",
         name: "爱静阁美食商圈 (Agincourt / Midland & Sheppard)",
+        nameZh: "爱静阁美食商圈",
         nameEn: "Agincourt / Midland & Sheppard",
+        nameKo: "애진코트 & 미들랜드",
         keywords: ["agincourt", "midland", "glen watford", "rural", "dragon centre"],
         center: { lat: 43.7885, lng: -79.2780 },
         zoom: 15,
@@ -382,7 +425,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "sc_stc",
         name: "士嘉堡市中心 (Scarborough Town Centre)",
+        nameZh: "士嘉堡市中心",
         nameEn: "Scarborough Town Centre",
+        nameKo: "스카버러 타운 센터",
         keywords: ["borough", "mccowan", "ellesmere", "town centre"],
         center: { lat: 43.7745, lng: -79.2575 },
         zoom: 15,
@@ -396,7 +441,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "sc_silverstar",
         name: "东方广场 / 锦绣中华 (Steeles & Silver Star)",
+        nameZh: "东方广场 / 锦绣中华",
         nameEn: "Steeles & Silver Star",
+        nameKo: "실버스타 & 스틸스",
         keywords: ["silver star", "steeles e", "splendid china", "redlea", "milliken"],
         center: { lat: 43.8235, lng: -79.2980 },
         zoom: 16,
@@ -410,7 +457,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "sc_warden_finch",
         name: "丰泰商圈 / 华登 (Warden & Finch / Bridlewood)",
+        nameZh: "丰泰商圈 / 华登",
         nameEn: "Warden & Finch / Bridlewood",
+        nameKo: "워든 & 핀치",
         keywords: ["warden", "bridlewood", "finch e", "bamburgh"],
         center: { lat: 43.7990, lng: -79.3190 },
         zoom: 15,
@@ -424,7 +473,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "sc_kingston",
         name: "悬崖公园湖滨走廊 (Guildwood & Kingston Rd)",
+        nameZh: "悬崖公园湖滨走廊",
         nameEn: "Guildwood & Kingston Rd",
+        nameKo: "길드우드 & 킹스턴 로드",
         keywords: ["kingston", "guildwood", "lawrence e", "eglinton e", "scarborough golf"],
         center: { lat: 43.7420, lng: -79.2150 },
         zoom: 14,
@@ -440,8 +491,9 @@ export const GTA_COMMUNITIES = [
   {
     id: "richmond_hill",
     name: "列治文山 (Richmond Hill)",
+    nameZh: "列治文山",
     nameEn: "Richmond Hill",
-    nameKo: "리치몬드 힐 (Richmond Hill)",
+    nameKo: "리치몬드 힐",
     center: { lat: 43.8828, lng: -79.4403 },
     zoom: 13,
     polygonPaths: [
@@ -456,7 +508,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "rh_times_square",
         name: "时代广场 / 黄金商场 (Times Square & Beaver Creek)",
+        nameZh: "时代广场 / 黄金商场",
         nameEn: "Times Square & Beaver Creek",
+        nameKo: "타임스퀘어 & 비버 크릭",
         keywords: ["times square", "beaver creek", "leslie", "hwy 7", "highway 7"],
         center: { lat: 43.8430, lng: -79.3875 },
         zoom: 16,
@@ -470,7 +524,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "rh_centre",
         name: "央街老街市中心 (Richmond Hill Centre & Yonge)",
+        nameZh: "央街老街市中心",
         nameEn: "Richmond Hill Centre & Yonge",
+        nameKo: "리치몬드 힐 센터 & 영",
         keywords: ["yonge", "major mackenzie", "crosby", "wright"],
         center: { lat: 43.8765, lng: -79.4385 },
         zoom: 15,
@@ -484,7 +540,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "rh_hillcrest",
         name: "喜尔客 / 富豪山庄 (Hillcrest Mall & South Richvale)",
+        nameZh: "喜尔客 / 富豪山庄",
         nameEn: "Hillcrest Mall & South Richvale",
+        nameKo: "힐크레스트 몰 & 사우스 리치베일",
         keywords: ["hillcrest", "16th ave", "carrville", "weldrick"],
         center: { lat: 43.8580, lng: -79.4350 },
         zoom: 15,
@@ -498,7 +556,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "rh_elgin_mills",
         name: "爱尔金湖畔社区 (Elgin Mills & Jefferson)",
+        nameZh: "爱尔金湖畔社区",
         nameEn: "Elgin Mills & Jefferson",
+        nameKo: "엘진 밀스 & 제퍼슨",
         keywords: ["elgin mills", "jefferson", "tower hill", "gamble"],
         center: { lat: 43.9050, lng: -79.4450 },
         zoom: 14,
@@ -514,8 +574,9 @@ export const GTA_COMMUNITIES = [
   {
     id: "mississauga",
     name: "密西沙加 (Mississauga)",
+    nameZh: "密西沙加",
     nameEn: "Mississauga",
-    nameKo: "미시사가 (Mississauga)",
+    nameKo: "미시사가",
     center: { lat: 43.5890, lng: -79.6441 },
     zoom: 13,
     polygonPaths: [
@@ -532,7 +593,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ms_square_one",
         name: "第一广场市中心 (Square One & City Centre)",
+        nameZh: "第一广场市中心",
         nameEn: "Square One & City Centre",
+        nameKo: "스퀘어 원 시티 센터",
         keywords: ["square one", "burnhamthorpe", "duke of york", "hurontario", "rathburn"],
         center: { lat: 43.5930, lng: -79.6425 },
         zoom: 15,
@@ -546,7 +609,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ms_chinatown",
         name: "密市中国城 (Chinatown Mississauga & Cooksville)",
+        nameZh: "密市中国城",
         nameEn: "Chinatown Mississauga & Cooksville",
+        nameKo: "미시사가 차이나타운",
         keywords: ["cawthra", "dundas e", "cooksville", "golden square", "central pkwy"],
         center: { lat: 43.5840, lng: -79.6050 },
         zoom: 15,
@@ -560,7 +625,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ms_dixie",
         name: "迪克西餐饮长廊 (Dixie & Dundas Commercial)",
+        nameZh: "迪克西餐饮长廊",
         nameEn: "Dixie & Dundas Commercial",
+        nameKo: "딕시 & 던다스 상권",
         keywords: ["dixie", "matheson", "tomken", "aimco"],
         center: { lat: 43.6050, lng: -79.5780 },
         zoom: 14,
@@ -574,7 +641,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ms_streetsville",
         name: "斯特里茨维尔历史小镇 (Streetsville Village)",
+        nameZh: "斯特里茨维尔历史小镇",
         nameEn: "Streetsville Village",
+        nameKo: "스트리츠빌 빌리지",
         keywords: ["streetsville", "queen st s", "britannia"],
         center: { lat: 43.5820, lng: -79.7130 },
         zoom: 15,
@@ -588,7 +657,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "ms_port_credit",
         name: "湖滨游艇港镇 (Port Credit Waterfront)",
+        nameZh: "湖滨游艇港镇",
         nameEn: "Port Credit Waterfront",
+        nameKo: "포트 크레디트 워터프론트",
         keywords: ["port credit", "lakeshore", "stavebank"],
         center: { lat: 43.5510, lng: -79.5850 },
         zoom: 15,
@@ -604,8 +675,9 @@ export const GTA_COMMUNITIES = [
   {
     id: "vaughan",
     name: "旺市 (Vaughan)",
+    nameZh: "旺市",
     nameEn: "Vaughan",
-    nameKo: "본 (Vaughan)",
+    nameKo: "본",
     center: { lat: 43.8563, lng: -79.5085 },
     zoom: 13,
     polygonPaths: [
@@ -620,7 +692,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "vg_vmc",
         name: "旺市大都会中心 (VMC & Jane St)",
+        nameZh: "旺市大都会中心",
         nameEn: "VMC & Jane St",
+        nameKo: "본 메트로폴리탄 센터",
         keywords: ["vmc", "metropolitan", "portage", "jane", "edgeley"],
         center: { lat: 43.7940, lng: -79.5280 },
         zoom: 15,
@@ -634,7 +708,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "vg_promenade",
         name: "康山商业走廊 (Thornhill & Promenade Mall)",
+        nameZh: "康山商业走廊",
         nameEn: "Thornhill & Promenade Mall",
+        nameKo: "쏜힐 & 프로머나드 몰",
         keywords: ["promenade", "bathurst", "centre st", "clark"],
         center: { lat: 43.8060, lng: -79.4520 },
         zoom: 15,
@@ -648,7 +724,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "vg_woodbridge",
         name: "伍德布里奇意大利街区 (Woodbridge & Weston Rd)",
+        nameZh: "伍德布里奇意大利街区",
         nameEn: "Woodbridge & Weston Rd",
+        nameKo: "우드브리지 & 웨스턴 로드",
         keywords: ["woodbridge", "weston rd", "hwy 7", "islington"],
         center: { lat: 43.7870, lng: -79.5950 },
         zoom: 14,
@@ -662,7 +740,9 @@ export const GTA_COMMUNITIES = [
       {
         id: "vg_mills_maple",
         name: "枫树镇 / 旺市购物中心 (Maple & Vaughan Mills)",
+        nameZh: "枫树镇 / 旺市购物中心",
         nameEn: "Maple & Vaughan Mills",
+        nameKo: "메이플 & 본 밀스",
         keywords: ["vaughan mills", "rutherford", "bass pro", "major mackenzie w"],
         center: { lat: 43.8260, lng: -79.5390 },
         zoom: 14,
@@ -723,13 +803,21 @@ export const MapExplorer = {
     this.setupResizeObserver();
     this.renderPopover();
     this.updateAreaSummaryBtn();
+    this.updateFilterDropdownsLanguage();
 
-    if (window.i18n && window.i18n.onLanguageChange) {
-      window.i18n.onLanguageChange(() => {
-        this.updateAreaSummaryBtn();
-        this.renderPopover();
-        this.updateResultsSummary();
-      });
+    const onLangChangeHandler = () => {
+      this.updateAreaSummaryBtn();
+      this.renderPopover();
+      this.updateResultsSummary();
+      this.updateFilterDropdownsLanguage();
+      this.renderPlacesCards();
+    };
+
+    if (i18n && typeof i18n.onLanguageChange === "function") {
+      i18n.onLanguageChange(onLangChangeHandler);
+    }
+    if (typeof window !== "undefined" && window.i18n && typeof window.i18n.onLanguageChange === "function" && window.i18n !== i18n) {
+      window.i18n.onLanguageChange(onLangChangeHandler);
     }
 
     // 1. Fetch Google Maps API Key and initialize map
@@ -811,20 +899,26 @@ export const MapExplorer = {
     }
   },
 
+  getCurrentLanguage() {
+    if (i18n && typeof i18n.getLanguage === "function") return i18n.getLanguage();
+    if (typeof window !== "undefined" && window.i18n && typeof window.i18n.getLanguage === "function") return window.i18n.getLanguage();
+    return "zh";
+  },
+
   getLocalizedName(item) {
     if (!item) return "";
-    const lang = (window.i18n && window.i18n.getLanguage) ? window.i18n.getLanguage() : "zh";
+    const lang = this.getCurrentLanguage();
     if (lang === "en") {
       return item.nameEn || item.name.split(" (")[0];
     }
     if (lang === "ko") {
       return item.nameKo || item.nameEn || item.name.split(" (")[0];
     }
-    return item.name.split(" (")[0];
+    return item.nameZh || item.name.split(" (")[0];
   },
 
   getLocalizedAllGta() {
-    const lang = (window.i18n && window.i18n.getLanguage) ? window.i18n.getLanguage() : "zh";
+    const lang = this.getCurrentLanguage();
     if (lang === "en") return "All GTA";
     if (lang === "ko") return "광역 토론토 전체";
     return "全部大区 (All GTA)";
@@ -856,6 +950,9 @@ export const MapExplorer = {
     const summaryEl = document.getElementById("areaActiveTagsSummary");
     if (!summaryEl) return;
 
+    const lang = this.getCurrentLanguage();
+    const sep = lang === "zh" ? "、" : ", ";
+
     const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
     const allNbs = this.getAllNeighborhoods();
@@ -866,17 +963,17 @@ export const MapExplorer = {
       if (selectedNbs.length === 1) {
         label = this.getLocalizedName(selectedNbs[0]);
       } else if (selectedNbs.length === 2) {
-        label = `${this.getLocalizedName(selectedNbs[0])}、${this.getLocalizedName(selectedNbs[1])}`;
+        label = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])}`;
       } else {
-        label = `${this.getLocalizedName(selectedNbs[0])}、${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
+        label = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
       }
     } else if (!isAll && selectedCities.length > 0) {
       if (selectedCities.length === 1) {
         label = this.getLocalizedName(selectedCities[0]);
       } else if (selectedCities.length === 2) {
-        label = `${this.getLocalizedName(selectedCities[0])}、${this.getLocalizedName(selectedCities[1])}`;
+        label = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])}`;
       } else {
-        label = `${this.getLocalizedName(selectedCities[0])}、${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
+        label = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
       }
     }
 
@@ -888,6 +985,8 @@ export const MapExplorer = {
   },
 
   renderPopover() {
+    const lang = this.getCurrentLanguage();
+
     // 1. Render Active Tags Row
     const tagsRow = document.getElementById("popoverActiveTagsRow");
     if (tagsRow) {
@@ -900,11 +999,14 @@ export const MapExplorer = {
       if (isAll || (selectedCities.length === 0 && selectedNbs.length === 0)) {
         html = `<span class="area-tag-pill active">${this.escapeHtml(this.getLocalizedAllGta())}</span>`;
       } else {
+        const removeAreaTitle = lang === "en" ? "Remove area" : (lang === "ko" ? "구역 삭제" : "移除此区划");
+        const removeNbTitle = lang === "en" ? "Remove neighborhood" : (lang === "ko" ? "지역 삭제" : "移除此社区");
+
         // Render city tags
         const cityTags = selectedCities.map(c => `
           <span class="area-tag-pill active" data-city-id="${c.id}">
             ${this.escapeHtml(this.getLocalizedName(c))}
-            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveCity('${c.id}');" title="移除此区划">✕</span>
+            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveCity('${c.id}');" title="${removeAreaTitle}">✕</span>
           </span>
         `).join("");
 
@@ -912,7 +1014,7 @@ export const MapExplorer = {
         const nbTags = selectedNbs.map(nb => `
           <span class="area-tag-pill active" style="background:#2563eb; color:#ffffff; border-color:#1d4ed8;" data-nb-id="${nb.id}">
             ${this.escapeHtml(this.getLocalizedName(nb))}
-            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}');" title="移除此社区">✕</span>
+            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}');" title="${removeNbTitle}">✕</span>
           </span>
         `).join("");
 
@@ -972,8 +1074,97 @@ export const MapExplorer = {
         if (nbSection) nbSection.style.display = "none";
       } else {
         if (nbSection) nbSection.style.display = "block";
-        nbPillsRow.innerHTML = html || `<span style="font-size: 0.8rem; color: var(--text-muted); padding: 0.25rem 0.5rem;">未找到匹配社区</span>`;
+        const noMatchText = lang === "en" ? "No matching neighborhoods found" : (lang === "ko" ? "일치하는 지역이 없습니다" : "未找到匹配社区");
+        nbPillsRow.innerHTML = html || `<span style="font-size: 0.8rem; color: var(--text-muted); padding: 0.25rem 0.5rem;">${noMatchText}</span>`;
       }
+    }
+  },
+
+  updateFilterDropdownsLanguage() {
+    const lang = this.getCurrentLanguage();
+
+    // 1. Visited status select
+    const visitedSelect = document.getElementById("mapVisitedSelect");
+    if (visitedSelect) {
+      const cur = visitedSelect.value;
+      if (lang === "en") {
+        visitedSelect.options[0].text = "Visited Status (All)";
+        visitedSelect.options[1].text = "Visited";
+        visitedSelect.options[2].text = "Unvisited";
+      } else if (lang === "ko") {
+        visitedSelect.options[0].text = "방문 여부 (전체)";
+        visitedSelect.options[1].text = "방문 완료";
+        visitedSelect.options[2].text = "미방문";
+      } else {
+        visitedSelect.options[0].text = "是否拜访 (全部)";
+        visitedSelect.options[1].text = "已拜访";
+        visitedSelect.options[2].text = "未拜访";
+      }
+      visitedSelect.value = cur;
+    }
+
+    // 2. Outcome select
+    const outcomeSelect = document.getElementById("mapOutcomeSelect");
+    if (outcomeSelect) {
+      const cur = outcomeSelect.value;
+      if (lang === "en") {
+        outcomeSelect.options[0].text = "Visit Outcome (All)";
+        outcomeSelect.options[1].text = "Contract Signed";
+        outcomeSelect.options[2].text = "Interested";
+        outcomeSelect.options[3].text = "Considering";
+        outcomeSelect.options[4].text = "Not Interested";
+        outcomeSelect.options[5].text = "Declined";
+        outcomeSelect.options[6].text = "Closed / Shut down";
+      } else if (lang === "ko") {
+        outcomeSelect.options[0].text = "방문 결과 (전체)";
+        outcomeSelect.options[1].text = "계약 완료";
+        outcomeSelect.options[2].text = "관심 있음";
+        outcomeSelect.options[3].text = "고려 중";
+        outcomeSelect.options[4].text = "관심 없음";
+        outcomeSelect.options[5].text = "거절";
+        outcomeSelect.options[6].text = "폐업/영업종료";
+      } else {
+        outcomeSelect.options[0].text = "拜访结果 (全部)";
+        outcomeSelect.options[1].text = "签订合同";
+        outcomeSelect.options[2].text = "有意向";
+        outcomeSelect.options[3].text = "考虑中";
+        outcomeSelect.options[4].text = "暂无意向";
+        outcomeSelect.options[5].text = "拒绝合作";
+        outcomeSelect.options[6].text = "已打烊/关店";
+      }
+      outcomeSelect.value = cur;
+    }
+
+    // 3. Category select
+    const catSelect = document.getElementById("mapCategorySelect");
+    if (catSelect) {
+      const cur = catSelect.value;
+      if (lang === "en") {
+        catSelect.options[0].text = "All Categories";
+        catSelect.options[1].text = "Chinese / Taiwanese Fried";
+        catSelect.options[2].text = "Western Fried Chicken / Fast Food";
+        catSelect.options[3].text = "Korean Fried Chicken";
+        catSelect.options[4].text = "Fish & Chips";
+        catSelect.options[5].text = "Japanese Tempura / Tonkatsu";
+        catSelect.options[6].text = "Corn Dogs / Churros / Donuts";
+      } else if (lang === "ko") {
+        catSelect.options[0].text = "전체 음식 카테고리";
+        catSelect.options[1].text = "중식 / 대만식 튀김";
+        catSelect.options[2].text = "양식 치킨 / 패스트푸드";
+        catSelect.options[3].text = "한국식 치킨";
+        catSelect.options[4].text = "피시 앤 칩스";
+        catSelect.options[5].text = "일식 튀김 / 돈까스";
+        catSelect.options[6].text = "핫도그 / 츄러스 / 도넛";
+      } else {
+        catSelect.options[0].text = "全部品类 (All Food)";
+        catSelect.options[1].text = "中式/台式炸物";
+        catSelect.options[2].text = "西式炸鸡快餐";
+        catSelect.options[3].text = "韩式炸鸡";
+        catSelect.options[4].text = "炸鱼薯条";
+        catSelect.options[5].text = "日式炸物";
+        catSelect.options[6].text = "热狗/甜甜圈";
+      }
+      catSelect.value = cur;
     }
   },
 
@@ -1409,7 +1600,7 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   async loadPlacesForCurrentArea() {
     const container = document.getElementById("mapPlacesCardsContainer");
-    const lang = (window.i18n && window.i18n.getLanguage) ? window.i18n.getLanguage() : "zh";
+    const lang = this.getCurrentLanguage();
     const loadingMsg = lang === "en" ? "Fetching Google Maps restaurants..." :
                        lang === "ko" ? "Google Maps 음식점 목록을 가져오는 중..." :
                        "正在获取区域 Google Maps 餐馆列表...";
@@ -1600,12 +1791,13 @@ export const MapExplorer = {
     const countEl = document.getElementById("mapResultsCount");
     const unsavedCountEl = document.getElementById("mapUnsavedCount");
     const regionTitleEl = document.getElementById("mapResultsRegionTitle");
+    const summaryEl = document.getElementById("mapResultsSummary");
 
     const total = this.filteredPlaces.length;
     const unsaved = this.filteredPlaces.filter(r => !r.inKV).length;
 
-    if (countEl) countEl.textContent = total.toLocaleString();
-    if (unsavedCountEl) unsavedCountEl.textContent = unsaved.toLocaleString();
+    const lang = this.getCurrentLanguage();
+    const sep = lang === "zh" ? "、" : ", ";
 
     const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
@@ -1617,21 +1809,20 @@ export const MapExplorer = {
       if (selectedNbs.length === 1) {
         titleText = this.getLocalizedName(selectedNbs[0]);
       } else if (selectedNbs.length === 2) {
-        titleText = `${this.getLocalizedName(selectedNbs[0])}、${this.getLocalizedName(selectedNbs[1])}`;
+        titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])}`;
       } else {
-        titleText = `${this.getLocalizedName(selectedNbs[0])}、${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
+        titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
       }
     } else if (!isAll && selectedCities.length > 0) {
       if (selectedCities.length === 1) {
         titleText = this.getLocalizedName(selectedCities[0]);
       } else if (selectedCities.length === 2) {
-        titleText = `${this.getLocalizedName(selectedCities[0])}、${this.getLocalizedName(selectedCities[1])}`;
+        titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])}`;
       } else {
-        titleText = `${this.getLocalizedName(selectedCities[0])}、${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
+        titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
       }
     }
 
-    const lang = (window.i18n && window.i18n.getLanguage) ? window.i18n.getLanguage() : "zh";
     let formattedRegionTitle = "";
     if (lang === "en") {
       formattedRegionTitle = `${titleText} Restaurants (${total})`;
@@ -1643,6 +1834,19 @@ export const MapExplorer = {
 
     if (regionTitleEl) {
       regionTitleEl.textContent = formattedRegionTitle;
+    }
+
+    if (summaryEl) {
+      if (lang === "en") {
+        summaryEl.innerHTML = `Matched <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">${total.toLocaleString()}</span> restaurants <span style="color: #64748b;">(New: <span id="mapUnsavedCount" style="font-weight: 700; color: #d97706;">${unsaved.toLocaleString()}</span>)</span>`;
+      } else if (lang === "ko") {
+        summaryEl.innerHTML = `총 <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">${total.toLocaleString()}</span>개 매장 매칭 <span style="color: #64748b;">(신규 미등록: <span id="mapUnsavedCount" style="font-weight: 700; color: #d97706;">${unsaved.toLocaleString()}</span>개)</span>`;
+      } else {
+        summaryEl.innerHTML = `共匹配 <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">${total.toLocaleString()}</span> 家餐馆 <span style="color: #64748b;">(未入库: <span id="mapUnsavedCount" style="font-weight: 700; color: #d97706;">${unsaved.toLocaleString()}</span> 家)</span>`;
+      }
+    } else {
+      if (countEl) countEl.textContent = total.toLocaleString();
+      if (unsavedCountEl) unsavedCountEl.textContent = unsaved.toLocaleString();
     }
   },
 
@@ -1821,13 +2025,20 @@ export const MapExplorer = {
   renderPlacesCards() {
     const container = document.getElementById("mapPlacesCardsContainer");
     if (!container) return;
+    const lang = this.getCurrentLanguage();
 
     if (this.filteredPlaces.length === 0) {
+      const emptyTitle = lang === "en" ? "No matching restaurants found in this area" :
+                         lang === "ko" ? "선택한 지역에 일치하는 음식점이 없습니다" :
+                         "当前区域暂未检索到符合条件的餐馆";
+      const emptySub = lang === "en" ? "Try switching category or selecting another area" :
+                       lang === "ko" ? "다른 카테고리를 선택하거나 지역을 변경해 보세요" :
+                       "尝试切换分类或搜索其它商圈";
       container.innerHTML = `
         <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
           <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔍</div>
-          <div style="font-weight: 600; font-size: 0.95rem;">当前区域暂未检索到符合条件的餐馆</div>
-          <div style="font-size: 0.8rem; margin-top: 0.35rem;">尝试切换分类或搜索其它商圈</div>
+          <div style="font-weight: 600; font-size: 0.95rem;">${emptyTitle}</div>
+          <div style="font-size: 0.8rem; margin-top: 0.35rem;">${emptySub}</div>
         </div>
       `;
       this.renderPagination(0);
@@ -1839,31 +2050,46 @@ export const MapExplorer = {
     const startIdx = (this.currentPage - 1) * this.pageSize;
     const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
 
+    const txtInKv = lang === "en" ? "✓ In KV" : (lang === "ko" ? "✓ KV 등록" : "✓ 已在KV库");
+    const txtNewPlace = lang === "en" ? "Google New" : (lang === "ko" ? "Google 신규" : "Google新店");
+    const txtVisited = lang === "en" ? "Visited" : (lang === "ko" ? "방문 완료" : "已拜访");
+    const txtUnvisited = lang === "en" ? "Unvisited" : (lang === "ko" ? "미방문" : "未拜访");
+    const txtLogged = lang === "en" ? "Logged" : (lang === "ko" ? "기록됨" : "已记录");
+    const txtRecentVisit = lang === "en" ? "Recent visit" : (lang === "ko" ? "최근 방문" : "最近拜访");
+    const txtSaveKv = lang === "en" ? "Save to KV" : (lang === "ko" ? "KV 저장" : "保存至KV");
+    const txtSaveKvTitle = lang === "en" ? "Save to KV Database" : (lang === "ko" ? "KV 데이터베이스에 저장" : "立即一键保存到云端KV");
+    const txtLogVisit = lang === "en" ? "Log Visit" : (lang === "ko" ? "방문 기록" : "拜访记录");
+    const txtLogVisitTitle = lang === "en" ? "Log on-site visit" : (lang === "ko" ? "현장 방문 기록" : "登记现场拜访记录");
+    const txtNav = lang === "en" ? "Directions" : (lang === "ko" ? "길찾기" : "导航");
+    const txtNavTitle = lang === "en" ? "Navigate in Google Maps" : (lang === "ko" ? "Google 지도 길찾기" : "Google Maps 导航");
+    const txtDefaultAddr = lang === "en" ? "Ontario GTA" : (lang === "ko" ? "온타리오 GTA" : "安大略省 GTA");
+    const txtDefaultCat = lang === "en" ? "Food & Dining" : (lang === "ko" ? "음식 및 다이닝" : "餐饮美食");
+
     container.innerHTML = pageItems.map(r => {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
 
       const kvBadge = r.inKV
-        ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:600;">✓ 已在KV库</span>`
-        : `<span class="badge" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700;">Google新店</span>`;
+        ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:600;">${txtInKv}</span>`
+        : `<span class="badge" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700;">${txtNewPlace}</span>`;
 
       const visitBadge = r.isVisited
-        ? `<span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #6ee7b7; font-size:0.7rem; padding:2px 6px; border-radius:4px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">已拜访 · ${this.escapeHtml(r.lastOutcome || '已记录')}</span>`
-        : `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; font-size:0.7rem; padding:2px 6px; border-radius:4px;">未拜访</span>`;
+        ? `<span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #6ee7b7; font-size:0.7rem; padding:2px 6px; border-radius:4px; font-weight:600;" title="${txtRecentVisit}: ${this.escapeHtml(r.lastVisitTime || '')}">${txtVisited} · ${this.escapeHtml(r.lastOutcome || txtLogged)}</span>`
+        : `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; font-size:0.7rem; padding:2px 6px; border-radius:4px;">${txtUnvisited}</span>`;
 
       const ratingStr = r.rating ? `★ ${parseFloat(r.rating).toFixed(1)}` : "★ 4.2";
       const reviewsStr = r.reviews ? `(${r.reviews})` : "(15+)";
-      const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : "餐饮美食");
+      const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : txtDefaultCat);
 
       const saveKvBtn = !r.inKV ? `
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); window.mapExplorerAddSingleToKv('${this.escapeQuotes(key)}');" style="background:#059669; border-color:#059669; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="立即一键保存到云端KV">
-          <span>保存至KV</span>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); window.mapExplorerAddSingleToKv('${this.escapeQuotes(key)}');" style="background:#059669; border-color:#059669; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="${txtSaveKvTitle}">
+          <span>${txtSaveKv}</span>
         </button>
       ` : "";
 
       const visitActionBtn = r.inKV ? `
-        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerLogVisit('${this.escapeQuotes(key)}');" style="font-size:0.75rem; padding:0.25rem 0.5rem;" title="登记现场拜访记录">
-          <span>拜访记录</span>
+        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerLogVisit('${this.escapeQuotes(key)}');" style="font-size:0.75rem; padding:0.25rem 0.5rem;" title="${txtLogVisitTitle}">
+          <span>${txtLogVisit}</span>
         </button>
       ` : "";
 
@@ -1891,7 +2117,7 @@ export const MapExplorer = {
             </div>
 
             <div class="card-address" title="${this.escapeHtml(r.address || '')}">
-              ${this.escapeHtml(r.address || "安大略省 GTA")}
+              ${this.escapeHtml(r.address || txtDefaultAddr)}
             </div>
 
             <div class="card-actions-row">
@@ -1900,8 +2126,8 @@ export const MapExplorer = {
                 ${i18n.t("btn_add_waypoint")}
               </button>
               ${visitActionBtn}
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="Google Maps 导航">
-                导航
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="${txtNavTitle}">
+                ${txtNav}
               </button>
             </div>
           </div>
@@ -1916,9 +2142,12 @@ export const MapExplorer = {
     const infoEl = document.getElementById("mapPaginationInfo");
     const controlsEl = document.getElementById("mapPaginationControls");
     if (!infoEl || !controlsEl) return;
+    const lang = this.getCurrentLanguage();
 
     if (total === 0) {
-      infoEl.textContent = "显示 0 - 0 / 共 0 家餐馆";
+      infoEl.textContent = lang === "en" ? "Showing 0 - 0 of 0 restaurants" :
+                           lang === "ko" ? "0 - 0 / 총 0개 매장" :
+                           "显示 0 - 0 / 共 0 家餐馆";
       controlsEl.innerHTML = "";
       return;
     }
@@ -1927,7 +2156,9 @@ export const MapExplorer = {
     const startIdx = (this.currentPage - 1) * this.pageSize + 1;
     const endIdx = Math.min(this.currentPage * this.pageSize, total);
 
-    infoEl.textContent = `显示 ${startIdx} - ${endIdx} / 共 ${total} 家餐馆`;
+    infoEl.textContent = lang === "en" ? `Showing ${startIdx} - ${endIdx} of ${total} restaurants` :
+                         lang === "ko" ? `${startIdx} - ${endIdx} / 총 ${total}개 매장` :
+                         `显示 ${startIdx} - ${endIdx} / 共 ${total} 家餐馆`;
 
     let html = `
       <button class="btn btn-secondary btn-sm" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.mapExplorerGoToPage(${this.currentPage - 1})">&lt;</button>
@@ -1958,13 +2189,19 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   getPopupHtml(r) {
     const key = r.placeId || r.name;
+    const lang = this.getCurrentLanguage();
+
     const kvBadge = r.inKV 
-      ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600;">✓ 已在KV</span>`
-      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">未入库</span>`;
+      ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600;">✓ ${lang === "en" ? "In KV" : (lang === "ko" ? "KV 등록" : "已在KV")}</span>`
+      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">${lang === "en" ? "Not in KV" : (lang === "ko" ? "미등록" : "未入库")}</span>`;
+
+    const saveText = lang === "en" ? "Save to KV" : (lang === "ko" ? "KV 저장" : "保存至KV");
+    const navText = lang === "en" ? "Directions" : (lang === "ko" ? "길찾기" : "导航");
+    const noAddrText = lang === "en" ? "No address" : (lang === "ko" ? "주소 없음" : "暂无地址");
 
     const saveBtn = !r.inKV ? `
       <button onclick="window.mapExplorerAddSingleToKv('${this.escapeQuotes(key)}')" style="background:#059669; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer;">
-        保存至KV
+        ${saveText}
       </button>
     ` : "";
 
@@ -1978,7 +2215,7 @@ export const MapExplorer = {
           ★ ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"} (${r.reviews || 10}) · <b>${this.escapeHtml(r.price || "$$")}</b>
         </div>
         <div style="font-size: 12px; color: #334155; margin-bottom: 6px;">
-          ${this.escapeHtml(r.address || "暂无地址")}
+          ${this.escapeHtml(r.address || noAddrText)}
         </div>
         <div style="display:flex; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
           ${saveBtn}
@@ -1986,7 +2223,7 @@ export const MapExplorer = {
             ${i18n.t("btn_add_waypoint")}
           </button>
           <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">
-            导航
+            ${navText}
           </button>
         </div>
       </div>
@@ -2011,9 +2248,12 @@ export const MapExplorer = {
   async addSingleToKv(key) {
     const r = this.displayedPlaces.find(item => (item.placeId || item.name) === key);
     if (!r) return;
+    const lang = this.getCurrentLanguage();
 
     if (r.inKV) {
-      alert("该餐馆已在 KV 数据库中！");
+      alert(lang === "en" ? "This restaurant is already in the KV database!" :
+            lang === "ko" ? "이미 KV 데이터베이스에 등록된 매장입니다!" :
+            "该餐馆已在 KV 数据库中！");
       return;
     }
 
@@ -2027,20 +2267,31 @@ export const MapExplorer = {
       this.renderMarkers();
       this.renderPlacesCards();
       this.updateResultsSummary();
-      alert(`🎉 餐馆【${r.name}】已成功添加至云端 KV 数据库！`);
+      const successMsg = lang === "en" ? `🎉 Successfully added [${r.name}] to cloud KV database!` :
+                         lang === "ko" ? `🎉 [${r.name}] 매장이 클라우드 KV 데이터베이스에 저장되었습니다!` :
+                         `🎉 餐馆【${r.name}】已成功添加至云端 KV 数据库！`;
+      alert(successMsg);
     } else {
-      alert("添加失败: " + (res?.error || "未知错误"));
+      const failMsg = lang === "en" ? "Failed to add: " : (lang === "ko" ? "추가 실패: " : "添加失败: ");
+      alert(failMsg + (res?.error || "Unknown error"));
     }
   },
 
   async batchAddToKv() {
+    const lang = this.getCurrentLanguage();
     const unsaved = this.filteredPlaces.filter(r => !r.inKV);
     if (unsaved.length === 0) {
-      alert("当前列表中的所有餐馆都已存在于 KV 数据库中，无需重复添加！");
+      alert(lang === "en" ? "All restaurants in current view are already in KV database!" :
+            lang === "ko" ? "현재 목록의 모든 매장이 이미 KV 데이터베이스에 등록되어 있습니다!" :
+            "当前列表中的所有餐馆都已存在于 KV 数据库中，无需重复添加！");
       return;
     }
 
-    if (!confirm(`检测到当前列表共有 ${unsaved.length} 家未入库新店。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到云端 KV 数据库？`)) {
+    const confirmMsg = lang === "en" ? `Found ${unsaved.length} unsaved restaurants.\nBatch save all ${unsaved.length} restaurants to KV database?` :
+                       lang === "ko" ? `미등록 신규 매장 ${unsaved.length}개가 발견되었습니다.\n${unsaved.length}개 매장을 클라우드 KV 데이터베이스에 일괄 저장하시겠습니까?` :
+                       `检测到当前列表共有 ${unsaved.length} 家未入库新店。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到云端 KV 数据库？`;
+
+    if (!confirm(confirmMsg)) {
       return;
     }
 
@@ -2056,12 +2307,17 @@ export const MapExplorer = {
         this.renderMarkers();
         this.renderPlacesCards();
         this.updateResultsSummary();
-        alert(`🎉 成功将 ${unsaved.length} 家餐馆批量保存至云端 KV 数据库！`);
+        const successMsg = lang === "en" ? `🎉 Successfully batch saved ${unsaved.length} restaurants to cloud KV database!` :
+                           lang === "ko" ? `🎉 매장 ${unsaved.length}개가 클라우드 KV 데이터베이스에 일괄 저장되었습니다!` :
+                           `🎉 成功将 ${unsaved.length} 家餐馆批量保存至云端 KV 数据库！`;
+        alert(successMsg);
       } else {
-        alert("批量保存失败: " + (res?.error || "未知错误"));
+        const failMsg = lang === "en" ? "Batch save failed: " : (lang === "ko" ? "일괄 저장 실패: " : "批量保存失败: ");
+        alert(failMsg + (res?.error || "Unknown error"));
       }
     } catch (e) {
-      alert("批量保存出错: " + e.message);
+      const errMsg = lang === "en" ? "Batch save error: " : (lang === "ko" ? "일괄 저장 오류: " : "批量保存出错: ");
+      alert(errMsg + e.message);
     }
   },
 

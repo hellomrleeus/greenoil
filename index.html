@@ -740,9 +740,9 @@
             <div class="map-explorer-toolbar">
               <!-- 1. Independent Area Search Pill with Floating Popover Panel -->
               <div class="area-search-pill-container" id="areaSearchPillContainer">
-                <div class="area-search-pill-btn" id="areaSearchPillBtn" title="点击展开大区区划多选">
+                <div class="area-search-pill-btn" id="areaSearchPillBtn" title="点击展开大区区划多选" data-i18n-title="map_area_pill_title">
                   <div class="area-active-tags-summary" id="areaActiveTagsSummary">
-                    <span class="area-tag-pill active">全部大区 (All GTA)</span>
+                    <span class="area-tag-pill active" data-i18n="popover_all_gta">全部大区 (All GTA)</span>
                   </div>
                   <span class="area-pill-chevron">▼</span>
                 </div>
@@ -823,19 +823,19 @@
 
               <!-- 5. Search Keyword Input -->
               <div class="toolbar-filter-item toolbar-search-wrap">
-                <input type="text" class="form-input toolbar-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." />
-                <button class="btn btn-primary btn-sm" id="mapBtnSearchGmap" title="搜索 Google Maps">
+                <input type="text" class="form-input toolbar-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." data-i18n-placeholder="map_search_placeholder" />
+                <button class="btn btn-primary btn-sm" id="mapBtnSearchGmap" title="搜索 Google Maps" data-i18n-title="btn_search">
                   <span data-i18n="btn_search">搜索</span>
                 </button>
               </div>
 
               <!-- 6. Viewport follow checkbox & Reset view button -->
               <div class="toolbar-actions-wrap" style="display: flex; align-items: center; gap: 0.5rem;">
-                <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; cursor: pointer; user-select: none; margin: 0; white-space: nowrap;">
+                <label class="form-checkbox-label" title="跟随地图视野实时筛选" data-i18n-title="map_follow_bounds" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; cursor: pointer; user-select: none; margin: 0; white-space: nowrap;">
                   <input type="checkbox" id="mapFollowBounds" class="custom-checkbox" />
                   <span data-i18n="map_follow_bounds">视野筛选</span>
                 </label>
-                <button class="btn btn-secondary btn-sm" id="mapResetViewBtn" title="重置视角">
+                <button class="btn btn-secondary btn-sm" id="mapResetViewBtn" title="重置视角" data-i18n-title="btn_reset_view">
                   <span data-i18n="btn_reset_view">重置视角</span>
                 </button>
               </div>
@@ -873,8 +873,8 @@
             <div class="map-explorer-map-column">
               <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
               <div class="map-floating-legend">
-                <span class="legend-item"><span class="legend-dot in-kv"></span>已在KV库</span>
-                <span class="legend-item"><span class="legend-dot new-place"></span>Google新店</span>
+                <span class="legend-item"><span class="legend-dot in-kv"></span><span data-i18n="legend_in_kv">已在KV库</span></span>
+                <span class="legend-item"><span class="legend-dot new-place"></span><span data-i18n="legend_new_place">Google新店</span></span>
               </div>
             </div>
 
@@ -890,16 +890,16 @@
                   </div>
                 </div>
                 <div class="map-list-actions">
-                  <button class="btn btn-secondary btn-sm" id="mapBtnSelectAll" title="全选当前餐馆">
+                  <button class="btn btn-secondary btn-sm" id="mapBtnSelectAll" title="全选当前餐馆" data-i18n-title="btn_select_all">
                     <span data-i18n="btn_select_all">全选</span>
                   </button>
-                  <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669;" title="批量保存到KV">
+                  <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669;" title="批量保存到KV" data-i18n-title="btn_batch_add_to_kv">
                     <span data-i18n="btn_batch_add_to_kv">保存至KV</span>
                   </button>
                   <button class="btn btn-primary btn-sm" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb;" title="规划路线" data-i18n-title="btn_plan_route">
                     <span data-i18n="btn_plan_route">规划路线</span>
                   </button>
-                  <button class="btn btn-secondary btn-sm" id="mapBtnExportExcel" title="导出所选 Excel">
+                  <button class="btn btn-secondary btn-sm" id="mapBtnExportExcel" title="导出所选 Excel" data-i18n-title="btn_export_excel">
                     <span data-i18n="btn_export_excel">导出Excel</span>
                   </button>
                 </div>
