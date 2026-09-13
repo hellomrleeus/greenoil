@@ -188,18 +188,35 @@ export const Restaurants = {
       btnExportSelected.addEventListener("click", () => this.exportSelectedExcel());
     }
 
-    const btnPlanRouteSelected = document.getElementById("btnPlanRouteSelected");
-    if (btnPlanRouteSelected) {
-      btnPlanRouteSelected.addEventListener("click", () => {
-        const selectedList = Array.from(this.selectedMap.values());
-        if (selectedList.length > 0) {
-          import("./field-sales.js").then(({ FieldSales }) => {
-            FieldSales.addMultipleToRoute(selectedList);
-          });
+    const handlePlanRoute = () => {
+      const selectedList = Array.from(this.selectedMap.values());
+      if (selectedList.length > 0) {
+        import("./field-sales.js").then(({ FieldSales }) => {
+          FieldSales.addMultipleToRoute(selectedList);
+        });
+      } else {
+        if (this.currentPageData && this.currentPageData.length > 0) {
+          const confirmAll = confirm(`当前未勾选餐馆。是否将本页显示的 ${this.currentPageData.length} 家餐馆全部加入路线规划？`);
+          if (confirmAll) {
+            this.setSelectCurrentPage(true);
+            import("./field-sales.js").then(({ FieldSales }) => {
+              FieldSales.addMultipleToRoute(this.currentPageData);
+            });
+          }
         } else {
           alert("请先在列表中勾选要规划路线的餐馆！");
         }
-      });
+      }
+    };
+
+    const btnPlanRouteTop = document.getElementById("btnPlanRouteTop");
+    if (btnPlanRouteTop) {
+      btnPlanRouteTop.addEventListener("click", handlePlanRoute);
+    }
+
+    const btnPlanRouteSelected = document.getElementById("btnPlanRouteSelected");
+    if (btnPlanRouteSelected) {
+      btnPlanRouteSelected.addEventListener("click", handlePlanRoute);
     }
 
     const btnExportTop = document.getElementById("btnExportCsv");
@@ -385,6 +402,21 @@ export const Restaurants = {
       exportBtnText.textContent = i18n.t("btn_export_selection", { count });
     }
 
+    const btnPlanRouteSelected = document.getElementById("btnPlanRouteSelected");
+    if (btnPlanRouteSelected) {
+      const textSpan = btnPlanRouteSelected.querySelector("span:not(:first-child)");
+      if (textSpan) {
+        textSpan.textContent = count > 0 ? `规划路线 (${count} 家)` : i18n.t("btn_plan_route");
+      }
+    }
+    const btnPlanRouteTop = document.getElementById("btnPlanRouteTop");
+    if (btnPlanRouteTop) {
+      const textSpan = btnPlanRouteTop.querySelector("span:not(:first-child)");
+      if (textSpan) {
+        textSpan.textContent = count > 0 ? `规划路线 (${count} 家)` : i18n.t("btn_plan_route");
+      }
+    }
+
     if (selectionBar) {
       if (count > 0) {
         selectionBar.classList.add("active");
@@ -512,9 +544,14 @@ export const Restaurants = {
 
           <div class="card-footer-actions">
             <span style="font-size: 0.75rem; color: var(--text-light);">${i18n.t("btn_details")} &gt;</span>
-            <button class="btn-calc-oil" onclick="event.stopPropagation(); window.importRestaurantByIndex(${idx});">
-              ${i18n.t("btn_calc_oil")}
-            </button>
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+              <button class="btn-calc-oil" style="background: rgba(37,99,235,0.08); color: #2563eb; border: 1px solid rgba(37,99,235,0.25);" onclick="event.stopPropagation(); window.addRestaurantToRouteByIndex(${idx});" title="加入路线规划">
+                🗺️ +路线
+              </button>
+              <button class="btn-calc-oil" onclick="event.stopPropagation(); window.importRestaurantByIndex(${idx});">
+                ${i18n.t("btn_calc_oil")}
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -570,9 +607,14 @@ export const Restaurants = {
           <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(r.address)}</td>
           <td>${this.escapeHtml(r.phone)}</td>
           <td>
-            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.importRestaurantByIndex(${idx});">
-              ${i18n.t("btn_calc_oil")}
-            </button>
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.addRestaurantToRouteByIndex(${idx});" style="color: #2563eb; border-color: rgba(37,99,235,0.3); padding: 0.25rem 0.5rem; font-size: 0.78rem;" title="加入路线规划">
+                🗺️ +路线
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.importRestaurantByIndex(${idx});" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">
+                ${i18n.t("btn_calc_oil")}
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -642,9 +684,14 @@ export const Restaurants = {
             </div>
           ` : ''}
 
-          <button class="hub-card-btn" onclick="event.stopPropagation(); window.selectHubAndFilter('${h.id}')">
-            ${i18n.t("hub_card_btn")} (${h.count}) &rarr;
-          </button>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <button class="hub-card-btn" style="margin-top: 0; flex: 1;" onclick="event.stopPropagation(); window.selectHubAndFilter('${h.id}')">
+              ${i18n.t("hub_card_btn")} (${h.count}) &rarr;
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.addHubToRoute('${h.id}', '${this.escapeHtml(hubName)}')" title="将本商圈所有餐馆批量加入路线规划" style="color: #2563eb; border-color: rgba(37,99,235,0.3); white-space: nowrap; font-size: 0.78rem; padding: 0.4rem 0.6rem;">
+              🗺️ +路线
+            </button>
+          </div>
         </div>
       `;
     }).join("");
@@ -897,6 +944,26 @@ export const Restaurants = {
       .replace(/'/g, "&#039;");
   },
 
+  async addHubToRoute(hubId, hubName) {
+    try {
+      this.showToast(`正在获取【${hubName}】商圈餐馆...`);
+      const res = await Api.queryRestaurants({
+        hub: hubId,
+        pageSize: 300
+      });
+      if (res && res.data && res.data.length > 0) {
+        import("./field-sales.js").then(({ FieldSales }) => {
+          FieldSales.addMultipleToRoute(res.data);
+        });
+      } else {
+        alert("未找到该商圈下的餐馆数据");
+      }
+    } catch (e) {
+      console.error("Error fetching hub restaurants for route:", e);
+      alert("获取商圈餐馆数据失败");
+    }
+  },
+
   showToast(msg) {
     let toast = document.getElementById("appToast");
     if (!toast) {
@@ -928,6 +995,19 @@ if (typeof window !== "undefined") {
     if (rest && window.importRestaurantToCalculator) {
       window.importRestaurantToCalculator(rest);
     }
+  };
+
+  window.addRestaurantToRouteByIndex = function(idx) {
+    const rest = Restaurants.currentPageData[idx];
+    if (rest) {
+      import("./field-sales.js").then(({ FieldSales }) => {
+        FieldSales.addMultipleToRoute([rest]);
+      });
+    }
+  };
+
+  window.addHubToRoute = function(hubId, hubName) {
+    Restaurants.addHubToRoute(hubId, hubName);
   };
 
   window.toggleRestaurantSelect = function(idx) {

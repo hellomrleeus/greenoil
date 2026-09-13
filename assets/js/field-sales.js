@@ -15,6 +15,7 @@ import { Auth } from "./auth.js";
 const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc, Toronto, ON";
 const STORAGE_ORIGIN_KEY = "greenoil_start_address";
 const STORAGE_SALES_CACHE_KEY = "greenoil_field_sales_cache";
+const STORAGE_WAYPOINTS_KEY = "greenoil_route_waypoints";
 
 export const FieldSales = {
   activeSubTab: "route", // route | records | analytics
@@ -41,6 +42,7 @@ export const FieldSales = {
     // Load initial data
     await this.loadSalesRecords();
     this.loadCachedRestaurants();
+    this.loadRouteWaypoints();
     this.renderRouteWaypoints();
     this.requestUserLocation(false);
   },
@@ -211,12 +213,23 @@ export const FieldSales = {
       btnOptimize.addEventListener("click", () => this.optimizeRoute());
     }
 
+    // Go to Restaurant Search for batch selection
+    const btnGoQuery = document.getElementById("fsRouteBtnGoQuery");
+    if (btnGoQuery) {
+      btnGoQuery.addEventListener("click", () => {
+        if (window.switchTab) {
+          window.switchTab("tab-restaurants");
+        }
+      });
+    }
+
     // Clear Route
     const btnClear = document.getElementById("fsRouteBtnClear");
     if (btnClear) {
       btnClear.addEventListener("click", () => {
         if (confirm("确定清空当前路线规划中的所有餐馆？")) {
           this.routeWaypoints = [];
+          this.saveRouteWaypoints();
           this.renderRouteWaypoints();
         }
       });
@@ -226,6 +239,28 @@ export const FieldSales = {
     const btnNav = document.getElementById("fsRouteBtnNavigate");
     if (btnNav) {
       btnNav.addEventListener("click", () => this.openGoogleMapsNavigation());
+    }
+  },
+
+  loadRouteWaypoints() {
+    try {
+      const saved = localStorage.getItem(STORAGE_WAYPOINTS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          this.routeWaypoints = parsed;
+        }
+      }
+    } catch (e) {
+      this.routeWaypoints = [];
+    }
+  },
+
+  saveRouteWaypoints() {
+    try {
+      localStorage.setItem(STORAGE_WAYPOINTS_KEY, JSON.stringify(this.routeWaypoints));
+    } catch (e) {
+      console.warn("Failed to persist route waypoints:", e);
     }
   },
 
@@ -244,6 +279,7 @@ export const FieldSales = {
       return;
     }
     this.routeWaypoints.push(restaurant);
+    this.saveRouteWaypoints();
     this.renderRouteWaypoints();
   },
 
@@ -258,10 +294,20 @@ export const FieldSales = {
       }
     });
 
+    this.saveRouteWaypoints();
     this.renderRouteWaypoints();
-    window.switchTab("tab-fieldsale");
+    if (window.switchTab) {
+      window.switchTab("tab-fieldsale");
+    }
     this.switchSubTab("route");
-    alert(`已将 ${addedCount} 家餐馆加入拜访路线规划！`);
+    
+    if (addedCount > 0) {
+      const skipped = restaurants.length - addedCount;
+      const skipMsg = skipped > 0 ? `（其中 ${skipped} 家已在路线中，已自动去重）` : "";
+      alert(`已将 ${addedCount} 家餐馆加入路线规划！${skipMsg}`);
+    } else {
+      alert("所选餐馆均已在路线规划清单中！");
+    }
   },
 
   moveWaypoint(index, direction) {
@@ -270,11 +316,13 @@ export const FieldSales = {
     const temp = this.routeWaypoints[index];
     this.routeWaypoints[index] = this.routeWaypoints[targetIdx];
     this.routeWaypoints[targetIdx] = temp;
+    this.saveRouteWaypoints();
     this.renderRouteWaypoints();
   },
 
   removeWaypoint(index) {
     this.routeWaypoints.splice(index, 1);
+    this.saveRouteWaypoints();
     this.renderRouteWaypoints();
   },
 
@@ -313,6 +361,7 @@ export const FieldSales = {
     }
 
     this.routeWaypoints = optimized;
+    this.saveRouteWaypoints();
     this.renderRouteWaypoints();
     alert("✅ 已按经纬度几何最短拓扑排序调整拜访顺序！");
   },

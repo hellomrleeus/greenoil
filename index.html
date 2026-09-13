@@ -131,11 +131,14 @@
                   </select>
                 </div>
 
-                <div style="display: flex; gap: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                   <button class="btn btn-secondary" id="btnSelectAllPage" style="white-space: nowrap;">
                     <span data-i18n="btn_select_page">全选本页</span>
                   </button>
-                  <button class="btn btn-primary" id="btnExportCsv" style="white-space: nowrap;">
+                  <button class="btn btn-primary" id="btnPlanRouteTop" style="white-space: nowrap; background: #2563eb; border-color: #2563eb;">
+                    <span>🗺️</span> <span data-i18n="btn_plan_route">规划路线</span>
+                  </button>
+                  <button class="btn btn-primary" id="btnExportCsv" style="white-space: nowrap; background: #10b981; border-color: #10b981;">
                     <span data-i18n="btn_export_csv">导出所选</span>
                   </button>
                 </div>
@@ -510,8 +513,11 @@
 
                 <!-- Add Restaurant Search -->
                 <div class="form-group" style="margin-bottom: 0;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; min-height: 24px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; min-height: 24px; flex-wrap: wrap; gap: 0.5rem;">
                     <label class="form-label" style="margin-bottom: 0;" data-i18n="fs_route_add_restaurant">添加餐馆到路线</label>
+                    <button class="btn btn-secondary btn-sm" id="fsRouteBtnGoQuery" style="font-size: 0.78rem; padding: 0.2rem 0.6rem; color: #2563eb; border-color: rgba(37,99,235,0.3);">
+                      <span>📋</span> <span data-i18n="fs_route_btn_go_query">从餐馆查询批量选择导入 &rarr;</span>
+                    </button>
                   </div>
                   <div style="display: flex; gap: 0.5rem;">
                     <input type="text" class="form-input" id="fsRouteAddRestInput" list="fsRestaurantsDatalist" style="flex: 1; min-width: 0;" data-i18n-placeholder="fs_route_search_placeholder" placeholder="搜索餐馆名称或地址加入路线...">
