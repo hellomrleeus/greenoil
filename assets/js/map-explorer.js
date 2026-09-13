@@ -1598,6 +1598,125 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
+  // Restaurant Photo Resolver (Curated Cuisine Pools & Deterministic Match)
+  // -------------------------------------------------------------
+  getRestaurantPhoto(r) {
+    if (!r) {
+      return {
+        url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80",
+        emoji: "🍽️"
+      };
+    }
+
+    if (r.photoUrl || r.imageUrl || r.photo) {
+      return { url: r.photoUrl || r.imageUrl || r.photo, emoji: "🍴" };
+    }
+
+    const nameLower = (r.name || "").toLowerCase();
+    const catStr = (r.categoriesRaw || (r.categories ? r.categories.join(" ") : "") + " " + (r.primaryType || "")).toLowerCase();
+
+    const pools = {
+      korean: {
+        emoji: "🍗",
+        images: [
+          "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1585238342024-78d387f4a707?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=300&h=300&q=80"
+        ]
+      },
+      chinese: {
+        emoji: "🥢",
+        images: [
+          "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1541696432-82c6da8ce7bf?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=300&h=300&q=80"
+        ]
+      },
+      western: {
+        emoji: "🍔",
+        images: [
+          "https://images.unsplash.com/photo-1513639776629-7b61b0ac49cb?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=300&h=300&q=80"
+        ]
+      },
+      fish_chips: {
+        emoji: "🐟",
+        images: [
+          "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1574484284002-952d92456975?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=300&h=300&q=80"
+        ]
+      },
+      japanese: {
+        emoji: "🍱",
+        images: [
+          "https://images.unsplash.com/photo-1617196034796-73dfa7b1fd56?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1611143669185-af224c5e3252?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=300&h=300&q=80"
+        ]
+      },
+      sweets: {
+        emoji: "🍩",
+        images: [
+          "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1627834377411-8da5f4f09de8?auto=format&fit=crop&w=300&h=300&q=80"
+        ]
+      },
+      pizza: {
+        emoji: "🍕",
+        images: [
+          "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=300&h=300&q=80"
+        ]
+      },
+      general: {
+        emoji: "🍽️",
+        images: [
+          "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=300&h=300&q=80",
+          "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=300&h=300&q=80"
+        ]
+      }
+    };
+
+    let targetGroup = pools.general;
+    if (catStr.includes("韩式") || catStr.includes("korean") || nameLower.includes("bb.q") || nameLower.includes("korean")) {
+      targetGroup = pools.korean;
+    } else if (catStr.includes("中式") || catStr.includes("台式") || catStr.includes("chinese") || catStr.includes("taiwanese")) {
+      targetGroup = pools.chinese;
+    } else if (catStr.includes("炸鱼") || catStr.includes("薯条") || catStr.includes("fish") || catStr.includes("chips")) {
+      targetGroup = pools.fish_chips;
+    } else if (catStr.includes("日式") || catStr.includes("japanese") || catStr.includes("katsu") || catStr.includes("tempura") || nameLower.includes("katsu")) {
+      targetGroup = pools.japanese;
+    } else if (catStr.includes("甜甜圈") || catStr.includes("吉事果") || catStr.includes("热狗") || catStr.includes("donut") || catStr.includes("churro")) {
+      targetGroup = pools.sweets;
+    } else if (catStr.includes("披萨") || catStr.includes("pizza")) {
+      targetGroup = pools.pizza;
+    } else if (catStr.includes("西式") || catStr.includes("快餐") || catStr.includes("炸鸡翅") || catStr.includes("burger") || catStr.includes("wings") || catStr.includes("fried chicken") || nameLower.includes("popeyes") || nameLower.includes("church") || nameLower.includes("kfc")) {
+      targetGroup = pools.western;
+    }
+
+    const seed = r.placeId || r.name || "greenoil";
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+      hash |= 0;
+    }
+    const idx = Math.abs(hash) % targetGroup.images.length;
+    return {
+      url: targetGroup.images[idx],
+      emoji: targetGroup.emoji
+    };
+  },
+
+  // -------------------------------------------------------------
   // Right Side Restaurant Cards Rendering
   // -------------------------------------------------------------
   renderPlacesCards() {
@@ -1646,6 +1765,8 @@ export const MapExplorer = {
     container.innerHTML = pageItems.map(r => {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
+      const photoInfo = this.getRestaurantPhoto(r);
+      const fallbackUrl = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80";
 
       const kvBadge = r.inKV
         ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:600;">${txtInKv}</span>`
@@ -1674,7 +1795,14 @@ export const MapExplorer = {
       return `
         <div class="map-place-card" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
           <div class="card-thumb">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M18 2v20"></path><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path><path d="M6 2v20"></path><path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2"></path></svg>
+            <img 
+              src="${photoInfo.url}" 
+              alt="${this.escapeHtml(r.name)}" 
+              loading="lazy" 
+              class="card-img" 
+              onerror="this.onerror=null; this.src='${fallbackUrl}';" 
+            />
+            <span class="card-thumb-badge">${photoInfo.emoji}</span>
           </div>
           <div class="card-main">
             <div class="card-title-row">
@@ -1768,10 +1896,12 @@ export const MapExplorer = {
   getPopupHtml(r) {
     const key = r.placeId || r.name;
     const lang = this.getCurrentLanguage();
+    const photoInfo = this.getRestaurantPhoto(r);
+    const fallbackUrl = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80";
 
     const kvBadge = r.inKV 
-      ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600;">✓ ${lang === "en" ? "In KV" : (lang === "ko" ? "KV 등록" : "已在KV")}</span>`
-      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">${lang === "en" ? "Not in KV" : (lang === "ko" ? "KV 미등록" : "未在KV库")}</span>`;
+      ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:600;">✓ ${lang === "en" ? "In KV" : (lang === "ko" ? "KV 등록" : "已在KV")}</span>`
+      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:700;">${lang === "en" ? "Not in KV" : (lang === "ko" ? "KV 미등록" : "未在KV库")}</span>`;
 
     const saveText = lang === "en" ? "Save to KV" : (lang === "ko" ? "KV 저장" : "保存至KV");
     const navText = lang === "en" ? "Directions" : (lang === "ko" ? "길찾기" : "导航");
@@ -1784,23 +1914,29 @@ export const MapExplorer = {
     ` : "";
 
     return `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 4px; gap:6px;">
-          <h4 style="margin: 0; font-size: 14px; font-weight: 700; color: #0f172a; line-height: 1.3;">${this.escapeHtml(r.name)}</h4>
-          <div>${kvBadge}</div>
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2px; max-width: 260px;">
+        <div style="display:flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+          <div style="width: 48px; height: 48px; border-radius: 6px; overflow: hidden; position: relative; flex-shrink: 0; background: #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">
+            <img src="${photoInfo.url}" alt="${this.escapeHtml(r.name)}" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.src='${fallbackUrl}';" />
+            <span style="position: absolute; bottom: 2px; right: 2px; font-size: 10px; line-height: 1;">${photoInfo.emoji}</span>
+          </div>
+          <div style="min-width: 0; flex: 1;">
+            <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(r.name)}">${this.escapeHtml(r.name)}</h4>
+            <div style="margin-top: 3px;">${kvBadge}</div>
+          </div>
         </div>
-        <div style="font-size: 12px; color: #64748b; margin-bottom: 4px;">
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 3px;">
           ★ ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"} (${r.reviews || 10}) · <b>${this.escapeHtml(r.price || "$$")}</b>
         </div>
-        <div style="font-size: 12px; color: #334155; margin-bottom: 6px;">
+        <div style="font-size: 11px; color: #334155; margin-bottom: 6px; line-height: 1.3;">
           ${this.escapeHtml(r.address || noAddrText)}
         </div>
-        <div style="display:flex; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
+        <div style="display:flex; gap: 5px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
           ${saveBtn}
-          <button onclick="window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}')" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer;">
+          <button onclick="window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}')" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:600; cursor:pointer;">
             ${i18n.t("btn_add_waypoint")}
           </button>
-          <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">
+          <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer;">
             ${navText}
           </button>
         </div>

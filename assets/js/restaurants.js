@@ -923,6 +923,25 @@ export const Restaurants = {
     if (!r) return;
     this.selectedRestaurant = r;
 
+    // Populate photo banner
+    const modalImage = document.getElementById("modalRestImage");
+    const modalImageBadge = document.getElementById("modalRestImageBadge");
+    const modalImageWrap = document.getElementById("modalRestImageWrap");
+    if (modalImage && modalImageWrap) {
+      const photoInfo = (window.MapExplorer && typeof window.MapExplorer.getRestaurantPhoto === "function")
+        ? window.MapExplorer.getRestaurantPhoto(r)
+        : { url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&h=300&q=80", emoji: "🍽️" };
+
+      modalImage.src = photoInfo.url;
+      modalImage.alt = r.name || "Restaurant";
+      modalImage.onerror = () => {
+        modalImage.src = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&h=300&q=80";
+      };
+      if (modalImageBadge) {
+        modalImageBadge.textContent = photoInfo.emoji || "🍽️";
+      }
+    }
+
     const statusObj = this.formatStatus(r.status);
     const modalStatus = document.getElementById("modalRestStatus");
     if (modalStatus) {
