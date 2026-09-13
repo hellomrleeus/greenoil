@@ -826,23 +826,14 @@ async function handleDeleteSale(request, env, corsHeaders) {
  */
 async function handleGooglePlacesSearch(request, env, corsHeaders) {
   let query = "";
-  let biasLat = 43.7615;
-  let biasLng = -79.4111;
-  let biasRadius = 40000;
 
   if (request.method === "GET") {
     const url = new URL(request.url);
     query = (url.searchParams.get("query") || url.searchParams.get("q") || "").trim();
-    if (url.searchParams.get("lat")) biasLat = parseFloat(url.searchParams.get("lat"));
-    if (url.searchParams.get("lng")) biasLng = parseFloat(url.searchParams.get("lng"));
-    if (url.searchParams.get("radius")) biasRadius = parseFloat(url.searchParams.get("radius"));
   } else {
     try {
       const body = await request.json();
       query = (body.query || body.q || "").trim();
-      if (body.lat) biasLat = parseFloat(body.lat);
-      if (body.lng) biasLng = parseFloat(body.lng);
-      if (body.radius) biasRadius = parseFloat(body.radius);
     } catch {
       query = "";
     }
@@ -898,8 +889,8 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
     regionCode: "CA",
     locationBias: {
       circle: {
-        center: { latitude: biasLat, longitude: biasLng },
-        radius: Math.min(50000, Math.max(1000, biasRadius))
+        center: { latitude: 43.7282, longitude: -79.3832 }, // Central GTA
+        radius: 45000
       }
     }
   };

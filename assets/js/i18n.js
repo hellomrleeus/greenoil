@@ -301,7 +301,6 @@ export const TRANSLATIONS = {
     map_filter_kv: "KV 入库状态",
     map_follow_bounds: "跟随地图视野实时筛选",
     map_reset_view: "重置视角",
-    map_explore_gmap: "探测当前区域 Google Maps 餐馆",
     map_select_area: "全选当前筛选",
     th_kv_status: "KV状态"
   },
@@ -603,7 +602,6 @@ export const TRANSLATIONS = {
     map_filter_kv: "KV Database Status",
     map_follow_bounds: "Filter by map viewport",
     map_reset_view: "Reset View",
-    map_explore_gmap: "Discover Google Maps Places in Area",
     map_select_area: "Select All Filtered",
     th_kv_status: "KV Status"
   },
@@ -905,7 +903,6 @@ export const TRANSLATIONS = {
     map_filter_kv: "KV 저장 상태",
     map_follow_bounds: "지도 시야 실시간 필터",
     map_reset_view: "시점 초기화",
-    map_explore_gmap: "현재 지역 구글 지도 음식점 탐색",
     map_select_area: "현재 필터 전체 선택",
     th_kv_status: "KV 상태"
   }

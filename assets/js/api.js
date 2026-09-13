@@ -251,16 +251,13 @@ export const Api = {
   },
 
   /**
-   * Search Google Maps Places (Proxy)
+   * Search Google Maps Places by Keyword (Proxy)
    */
-  async searchGooglePlaces(query, opts = {}) {
+  async searchGooglePlaces(query) {
     const workerUrl = this.getWorkerUrl();
     try {
       const url = new URL(`${workerUrl}/api/places/search`);
       url.searchParams.set("query", query);
-      if (opts.lat) url.searchParams.set("lat", opts.lat);
-      if (opts.lng) url.searchParams.set("lng", opts.lng);
-      if (opts.radius) url.searchParams.set("radius", opts.radius);
       const resp = await fetch(url.toString(), {
         method: "GET",
         headers: this.getAuthHeaders(),

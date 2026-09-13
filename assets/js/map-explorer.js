@@ -975,11 +975,6 @@ export const MapExplorer = {
       btnSearchGmap.addEventListener("click", () => this.searchKeywordGooglePlaces());
     }
 
-    const btnExploreGmap = document.getElementById("mapBtnExploreGmap");
-    if (btnExploreGmap) {
-      btnExploreGmap.addEventListener("click", () => this.exploreCurrentAreaGooglePlaces());
-    }
-
     const pillsContainer = document.getElementById("mapCategoryPills");
     if (pillsContainer) {
       pillsContainer.addEventListener("click", (e) => {
@@ -1067,130 +1062,8 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
-  // Live Google Maps Places Exploration & POI Click
+  // Keyword Search & POI Click
   // -------------------------------------------------------------
-  async exploreCurrentAreaGooglePlaces() {
-    const btn = document.getElementById("mapBtnExploreGmap");
-    const origText = btn ? btn.innerHTML : "";
-    if (btn) {
-      btn.disabled = true;
-      btn.innerHTML = `<span>⏳</span> <span>探测中...</span>`;
-    }
-
-    try {
-      let center = { lat: 43.7615, lng: -79.4111 };
-      let radius = 3000;
-      let areaLabel = "大多伦多";
-      let locationQuery = "";
-
-      const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
-
-      if (!this.activeNeighborhoodIds.has("all")) {
-        const selectedNhs = [];
-        GTA_COMMUNITIES.forEach(c => {
-          (c.neighborhoods || []).forEach(n => {
-            if (this.activeNeighborhoodIds.has(n.id)) selectedNhs.push(n);
-          });
-        });
-        if (selectedNhs.length > 0) {
-          center = selectedNhs[0].center;
-          radius = selectedNhs[0].radius || 2500;
-          areaLabel = selectedNhs.map(n => n.name.split(" ")[0]).slice(0, 3).join("+");
-          if (selectedNhs.length > 3) areaLabel += `等${selectedNhs.length}商圈`;
-          locationQuery = selectedNhs.map(n => n.nameEn || n.name).join(" ");
-        }
-      } else if (city && city.id !== "all") {
-        areaLabel = city.name.split(" ")[0];
-        locationQuery = city.nameEn || city.name;
-        if (city.center) {
-          center = city.center;
-          radius = 4500;
-        }
-      } else if (this.googleMap && this.googleMap.getCenter()) {
-        const c = this.googleMap.getCenter();
-        center = { lat: c.lat(), lng: c.lng() };
-        radius = 3500;
-      } else if (this.fallbackMap) {
-        const c = this.fallbackMap.getCenter();
-        center = { lat: c.lat, lng: c.lng };
-        radius = 3500;
-      }
-
-      if (!this.activeStreetIds.has("all")) {
-        const selectedSts = GTA_STREETS.filter(s => this.activeStreetIds.has(s.id));
-        if (selectedSts.length > 0) {
-          areaLabel += ` · ${selectedSts.map(s => s.name.split(" ")[0]).join("+")}`;
-          locationQuery = `${selectedSts.map(s => s.name.split(" ")[0]).join(" ")} ${locationQuery}`;
-        }
-      }
-
-      // Build specific search query
-      let queryTerm = "";
-      if (this.searchKeyword) {
-        queryTerm = `${this.searchKeyword} ${locationQuery}`.trim();
-      } else if (this.activeCategory !== "全部") {
-        queryTerm = `${this.activeCategory} ${locationQuery}`.trim();
-      } else {
-        queryTerm = locationQuery ? `restaurants in ${locationQuery}` : "restaurants in Toronto GTA";
-      }
-
-      const res = await Api.searchGooglePlaces(queryTerm, {
-        lat: center.lat,
-        lng: center.lng,
-        radius
-      });
-
-      if (res && res.success && Array.isArray(res.places) && res.places.length > 0) {
-        let newAddedCount = 0;
-        let totalUnsavedCount = 0;
-
-        res.places.forEach(p => {
-          const inKV = this.checkIsInKv(p);
-          p.inKV = inKV;
-          if (!inKV) totalUnsavedCount++;
-
-          const existingIdx = this.allRestaurants.findIndex(item => 
-            (item.placeId && item.placeId === p.placeId) || 
-            (item.name.toLowerCase() === p.name.toLowerCase())
-          );
-
-          if (existingIdx >= 0) {
-            this.allRestaurants[existingIdx].inKV = inKV;
-          } else {
-            this.allRestaurants.unshift(p);
-            newAddedCount++;
-          }
-        });
-
-        this.applyFilters(false);
-
-        const totalReturned = res.places.length;
-        const alreadyInKv = totalReturned - totalUnsavedCount;
-
-        let alertMsg = `📍 探测完成！在【${areaLabel}】共检索到 ${totalReturned} 家 Google 地图餐馆：\n\n`;
-        alertMsg += `• 🆕 未入库新店：${totalUnsavedCount} 家（已在列表中以琥珀色标出）\n`;
-        alertMsg += `• ✓ 已在 KV 库：${alreadyInKv} 家\n`;
-        if (newAddedCount > 0) {
-          alertMsg += `• ➕ 本次新载入列表：${newAddedCount} 家\n`;
-        }
-        if (totalUnsavedCount > 0) {
-          alertMsg += `\n💡 提示：您可以勾选餐馆，或直接点击上方绿色的【📥 批量添加到KV】一键永久保存到云端数据库！`;
-        }
-        alert(alertMsg);
-      } else {
-        alert(res?.error || "未在当前区域检索到新餐馆，请尝试调整关键词或社区范围。");
-      }
-    } catch (err) {
-      console.error("exploreCurrentAreaGooglePlaces error:", err);
-      alert("检索 Google 地图餐馆失败: " + err.message);
-    } finally {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = origText;
-      }
-    }
-  },
-
   async searchKeywordGooglePlaces() {
     const kw = this.searchKeyword;
     if (!kw) {
