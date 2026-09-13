@@ -222,12 +222,7 @@ export const FieldSales = {
       });
     }
 
-    // Generate Route & Navigation
-    const btnCalc = document.getElementById("fsRouteBtnCalc");
-    if (btnCalc) {
-      btnCalc.addEventListener("click", () => this.calculateAndDisplayRoute());
-    }
-
+    // Navigation via Google Maps
     const btnNav = document.getElementById("fsRouteBtnNavigate");
     if (btnNav) {
       btnNav.addEventListener("click", () => this.openGoogleMapsNavigation());
@@ -341,60 +336,6 @@ export const FieldSales = {
     };
   },
 
-  async calculateAndDisplayRoute() {
-    if (this.routeWaypoints.length === 0) {
-      alert("请先添加至少一家餐馆到路线中");
-      return;
-    }
-
-    const origin = this.getEffectiveOrigin();
-    const destination = this.routeWaypoints[this.routeWaypoints.length - 1];
-    const waypoints = this.routeWaypoints.slice(0, -1);
-
-    const btnCalc = document.getElementById("fsRouteBtnCalc");
-    if (btnCalc) btnCalc.textContent = "正在计算路线...";
-
-    // Call backend route planner
-    const res = await Api.planRoute(origin, destination, waypoints);
-
-    if (btnCalc) btnCalc.textContent = i18n.t("fs_route_btn_calc");
-
-    let distKm = 0;
-    let durMins = 0;
-
-    if (res && res.success) {
-      distKm = res.distanceKm;
-      durMins = res.durationMins;
-    } else {
-      // Local fallback calculation
-      const points = [origin, ...this.routeWaypoints];
-      for (let i = 0; i < points.length - 1; i++) {
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        distKm += this.getHaversineDistance(
-          parseFloat(p1.lat || p1.latitude) || 43.76,
-          parseFloat(p1.lng || p1.longitude) || -79.41,
-          parseFloat(p2.lat || p2.latitude) || 43.76,
-          parseFloat(p2.lng || p2.longitude) || -79.41
-        ) * 1.35;
-      }
-      durMins = Math.max(10, Math.round((distKm / 40) * 60));
-      distKm = parseFloat(distKm.toFixed(1));
-    }
-
-    // Render metrics
-    const distEl = document.getElementById("fsRouteDistDisplay");
-    const durEl = document.getElementById("fsRouteDurDisplay");
-    const stopsEl = document.getElementById("fsRouteStopsDisplay");
-
-    if (distEl) distEl.textContent = `${distKm} km`;
-    if (durEl) durEl.textContent = `${durMins} min`;
-    if (stopsEl) stopsEl.textContent = `${this.routeWaypoints.length} 家`;
-
-    const summaryBox = document.getElementById("fsRouteSummaryCard");
-    if (summaryBox) summaryBox.style.display = "block";
-  },
-
   openGoogleMapsNavigation() {
     if (this.routeWaypoints.length === 0) {
       alert("请先添加途经餐馆后再发起导航");
@@ -406,8 +347,8 @@ export const FieldSales = {
     const intermediates = this.routeWaypoints.slice(0, -1);
 
     const originStr = encodeURIComponent(origin.address);
-    const destStr = encodeURIComponent(destination.address || destination.name);
-    const wpStr = intermediates.map(w => encodeURIComponent(w.address || w.name)).join("|");
+    const destStr = encodeURIComponent((destination.name ? destination.name + ", " : "") + (destination.address || ""));
+    const wpStr = intermediates.map(w => encodeURIComponent((w.name ? w.name + ", " : "") + (w.address || ""))).join("|");
 
     let url = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&travelmode=driving`;
     if (wpStr) {
@@ -429,8 +370,6 @@ export const FieldSales = {
     if (this.routeWaypoints.length === 0) {
       listEl.innerHTML = "";
       if (emptyEl) emptyEl.style.display = "block";
-      const summaryBox = document.getElementById("fsRouteSummaryCard");
-      if (summaryBox) summaryBox.style.display = "none";
       return;
     }
 
@@ -454,6 +393,7 @@ export const FieldSales = {
             <div class="fs-wp-meta">${phoneStr}</div>
           </div>
           <div class="fs-wp-actions">
+            <button class="fs-btn-icon fs-btn-nav" data-action="nav" data-index="${index}" title="在 Google 地图导航到此处">🧭</button>
             <button class="fs-btn-icon" data-action="up" data-index="${index}" ${isFirst ? "disabled" : ""} title="上移">⬆️</button>
             <button class="fs-btn-icon" data-action="down" data-index="${index}" ${isLast ? "disabled" : ""} title="下移">⬇️</button>
             <button class="fs-btn-icon" data-action="del" data-index="${index}" title="删除">🗑️</button>
@@ -468,6 +408,11 @@ export const FieldSales = {
       btn.addEventListener("click", () => {
         const action = btn.dataset.action;
         const idx = parseInt(btn.dataset.index, 10);
+        if (action === "nav") {
+          const rest = this.routeWaypoints[idx];
+          const query = encodeURIComponent((rest.name ? rest.name + " " : "") + (rest.address || ""));
+          window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`, "_blank");
+        }
         if (action === "up") this.moveWaypoint(idx, -1);
         if (action === "down") this.moveWaypoint(idx, 1);
         if (action === "del") this.removeWaypoint(idx);
