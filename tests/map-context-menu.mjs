@@ -8,6 +8,7 @@ const data = JSON.parse(fs.readFileSync(new URL('../assets/data/official_subarea
 map.neighbourhoodsGeoJson = data;
 map.neighbourhoodsMap = new Map(data.features.map(feature => [feature.id, feature]));
 map.getCurrentLanguage = () => 'zh';
+assert.deepEqual(map.activeCityIds, new Set(['vaughan']), 'Map explorer defaults to Vaughan as the loaded area');
 assert.deepEqual(map.getMapEventCoordinate({ lat: () => 43.66, lng: () => -79.39 }), { lat: 43.66, lng: -79.39 });
 assert.deepEqual(map.getMapEventCoordinate({ lat: 43.66, lng: -79.39 }), { lat: 43.66, lng: -79.39 });
 assert.equal(map.getMapEventCoordinate({ lat: 'invalid', lng: -79.39 }), null);

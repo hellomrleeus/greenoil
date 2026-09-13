@@ -116,7 +116,9 @@ export const MapExplorer = {
   kvNormalizedNamesSet: new Set(),
   
   // Filter States (Locality / Cities Multi-Select & Neighborhoods)
-  activeCityIds: new Set(["all"]),
+  // Start the map explorer in Vaughan and load only Vaughan restaurants.
+  // Users can still choose All GTA from the area popover when needed.
+  activeCityIds: new Set(["vaughan"]),
   activeNeighborhoodIds: new Set(),
   polygonsMap: new Map(), // Boundary polygons
   activeCategory: "全部",
@@ -165,9 +167,8 @@ export const MapExplorer = {
     await this.initGoogleMap();
 
 
-    // 3. Load places. The map instance already starts at Vaughan; do not
-    // immediately fit the default All GTA selection back out to the whole
-    // region. Explicit city/ward changes still call panToSelectedArea().
+    // 3. Fit the initial Vaughan selection and load only its restaurants.
+    // Explicit city/ward changes use the same pan-and-load path.
     const hasExplicitInitialArea = !(this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0);
     if (hasExplicitInitialArea) this.panToSelectedArea();
     await this.loadPlacesForCurrentArea();
