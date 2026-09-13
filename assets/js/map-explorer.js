@@ -143,6 +143,8 @@ export const MapExplorer = {
   allRestaurants: [],
   displayedPlaces: [],
   selectedMap: new Map(), // key -> Restaurant
+  googlePhotosCache: new Map(), // placeId -> Google Places photo URL
+  googleApiKey: "",
 
   // GeoJSON Municipal Boundaries Dataset & Hash Map Index
   neighbourhoodsGeoJson: null,
@@ -178,6 +180,8 @@ export const MapExplorer = {
   async init() {
     if (this.isInitialized) return;
     this.isInitialized = true;
+
+    this.googleApiKey = await Api.getGoogleMapsApiKey();
 
     // 1. Load official GTA municipal GeoJSON boundaries dataset
     await this.loadNeighbourhoodsGeoJson();
@@ -1034,7 +1038,8 @@ export const MapExplorer = {
       return;
     }
 
-    const apiKey = await Api.getGoogleMapsApiKey();
+    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
+    this.googleApiKey = apiKey;
     if (!apiKey) {
       this.triggerFallbackMode();
       return;
@@ -1598,20 +1603,43 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
-  // Restaurant Photo Resolver (Curated Cuisine Pools & Deterministic Match)
+  // Restaurant Photo Resolver (Real Google Places Photos & Curated Fallbacks)
   // -------------------------------------------------------------
   getRestaurantPhoto(r) {
     if (!r) {
       return {
         url: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=300&h=300&q=80",
-        emoji: "🍽️"
+        emoji: "🍽️",
+        isGoogle: false
       };
     }
 
+    // 1. Direct photoUrl on restaurant record (Google Places Photo or custom)
     if (r.photoUrl || r.imageUrl || r.photo) {
-      return { url: r.photoUrl || r.imageUrl || r.photo, emoji: "🍴" };
+      let rawUrl = r.photoUrl || r.imageUrl || r.photo;
+      if (rawUrl.startsWith("/") && !rawUrl.startsWith("//")) {
+        rawUrl = `${Api.getWorkerUrl()}${rawUrl}`;
+      }
+      return { url: rawUrl, emoji: "📸", isGoogle: true };
     }
 
+    // 2. In-memory Google Places photo cache
+    if (r.placeId && this.googlePhotosCache && this.googlePhotosCache.has(r.placeId)) {
+      return { url: this.googlePhotosCache.get(r.placeId), emoji: "📸", isGoogle: true };
+    }
+
+    // 3. Browser sessionStorage cache
+    if (r.placeId && r.placeId.startsWith("ChIJ")) {
+      try {
+        const cached = sessionStorage.getItem("gphoto_" + r.placeId);
+        if (cached) {
+          if (this.googlePhotosCache) this.googlePhotosCache.set(r.placeId, cached);
+          return { url: cached, emoji: "📸", isGoogle: true };
+        }
+      } catch (e) {}
+    }
+
+    // 4. Fallback cuisine-matched placeholder (while Google Photo loads asynchronously)
     const nameLower = (r.name || "").toLowerCase();
     const catStr = (r.categoriesRaw || (r.categories ? r.categories.join(" ") : "") + " " + (r.primaryType || "")).toLowerCase();
 
@@ -1712,8 +1740,99 @@ export const MapExplorer = {
     const idx = Math.abs(hash) % targetGroup.images.length;
     return {
       url: targetGroup.images[idx],
-      emoji: targetGroup.emoji
+      emoji: targetGroup.emoji,
+      isGoogle: false
     };
+  },
+
+  /**
+   * Fetch authentic Google Places photo for a single Place ID
+   * Reads from cache first, then calls Google Places API (New) with public key
+   */
+  async fetchGooglePhotoForPlace(placeId) {
+    if (!placeId || !placeId.startsWith("ChIJ")) return null;
+    if (this.googlePhotosCache && this.googlePhotosCache.has(placeId)) {
+      return this.googlePhotosCache.get(placeId);
+    }
+    try {
+      const cached = sessionStorage.getItem("gphoto_" + placeId);
+      if (cached) {
+        if (this.googlePhotosCache) this.googlePhotosCache.set(placeId, cached);
+        return cached;
+      }
+    } catch (e) {}
+
+    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
+    if (!apiKey) return null;
+
+    try {
+      const resp = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "photos"
+        }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.photos && data.photos.length > 0 && data.photos[0].name) {
+          const photoUrl = `https://places.googleapis.com/v1/${data.photos[0].name}/media?maxHeightPx=300&maxWidthPx=300&key=${apiKey}`;
+          if (this.googlePhotosCache) this.googlePhotosCache.set(placeId, photoUrl);
+          try {
+            sessionStorage.setItem("gphoto_" + placeId, photoUrl);
+          } catch (e) {}
+          return photoUrl;
+        }
+      }
+    } catch (err) {
+      console.warn("fetchGooglePhotoForPlace error:", err);
+    }
+    return null;
+  },
+
+  /**
+   * Resolves authentic Google Places photos for all visible cards on the page
+   */
+  async resolveVisibleGooglePhotos(pageItems) {
+    if (!Array.isArray(pageItems) || pageItems.length === 0) return;
+    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
+    if (!apiKey) return;
+
+    const itemsToFetch = pageItems.filter(r => {
+      if (!r || !r.placeId || !r.placeId.startsWith("ChIJ")) return false;
+      if (r.photoUrl) return false;
+      if (this.googlePhotosCache && this.googlePhotosCache.has(r.placeId)) return false;
+      try {
+        if (sessionStorage.getItem("gphoto_" + r.placeId)) return false;
+      } catch (e) {}
+      return true;
+    });
+
+    if (itemsToFetch.length === 0) return;
+
+    const batchSize = 4;
+    for (let i = 0; i < itemsToFetch.length; i += batchSize) {
+      const batch = itemsToFetch.slice(i, i + batchSize);
+      await Promise.all(batch.map(async r => {
+        const photoUrl = await this.fetchGooglePhotoForPlace(r.placeId);
+        if (photoUrl) {
+          r.photoUrl = photoUrl;
+          const key = r.placeId || r.name;
+          const safeKey = this.escapeQuotes(key);
+          const cardEl = document.querySelector(`.map-place-card[data-key="${safeKey}"]`);
+          if (cardEl) {
+            const imgEl = cardEl.querySelector(".card-thumb img");
+            if (imgEl) {
+              imgEl.src = photoUrl;
+              const badgeEl = cardEl.querySelector(".card-thumb-badge");
+              if (badgeEl) {
+                badgeEl.textContent = "📸";
+                badgeEl.title = "Google 实景照片";
+              }
+            }
+          }
+        }
+      }));
+    }
   },
 
   // -------------------------------------------------------------
@@ -1842,6 +1961,7 @@ export const MapExplorer = {
     }).join("");
 
     this.renderPagination(total);
+    this.resolveVisibleGooglePhotos(pageItems);
   },
 
   renderPagination(total) {
@@ -1954,6 +2074,16 @@ export const MapExplorer = {
 
     this.infoWindow.setContent(this.getPopupHtml(r));
     this.infoWindow.open(this.googleMap, marker);
+
+    // Asynchronously resolve authentic Google photo for popup if not cached yet
+    if (r.placeId && r.placeId.startsWith("ChIJ") && !r.photoUrl && !this.googlePhotosCache.has(r.placeId)) {
+      this.fetchGooglePhotoForPlace(r.placeId).then(photoUrl => {
+        if (photoUrl && this.infoWindow) {
+          r.photoUrl = photoUrl;
+          this.infoWindow.setContent(this.getPopupHtml(r));
+        }
+      });
+    }
   },
 
   // -------------------------------------------------------------

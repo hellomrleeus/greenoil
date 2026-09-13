@@ -52,9 +52,9 @@ export default {
         return await handleLogout(request, corsHeaders);
       }
 
-      // All routes below require authentication
+      // All routes below require authentication (except public static configs and place photos)
       const isAuthed = checkAuth(request, env);
-      if (!isAuthed && url.pathname !== "/" && url.pathname !== "/api/health" && url.pathname !== "/api/maps/config") {
+      if (!isAuthed && url.pathname !== "/" && url.pathname !== "/api/health" && url.pathname !== "/api/maps/config" && url.pathname !== "/api/places/photo") {
         return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -98,6 +98,11 @@ export default {
       // 7. Google Maps Places API Proxy (Protected)
       if (url.pathname === "/api/places/search" && (request.method === "GET" || request.method === "POST")) {
         return await handleGooglePlacesSearch(request, env, corsHeaders);
+      }
+
+      // 7.1. Google Maps Places Photo Proxy / Media Stream (Public / Edge-cached)
+      if (url.pathname === "/api/places/photo" && request.method === "GET") {
+        return await handlePlacePhoto(request, env, corsHeaders);
       }
 
       // 8. Route Planning API (Protected)
@@ -925,7 +930,8 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
     "places.currentOpeningHours",
     "places.priceLevel",
     "places.primaryType",
-    "places.location"
+    "places.location",
+    "places.photos"
   ].join(",");
 
   let finalQuery = query.trim();
@@ -973,7 +979,7 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
     const data = await resp.json();
     const rawPlaces = data.places || [];
 
-    const normalizedPlaces = rawPlaces.map(p => transformGooglePlace(p, "全部 (All GTA)", query));
+    const normalizedPlaces = rawPlaces.map(p => transformGooglePlace(p, "全部 (All GTA)", query, apiKey));
 
     return new Response(JSON.stringify({
       success: true,
@@ -1117,7 +1123,7 @@ function getHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-function transformGooglePlace(p, regionName = "全部 (All GTA)", matchedTerm = "") {
+function transformGooglePlace(p, regionName = "全部 (All GTA)", matchedTerm = "", apiKey = "") {
   const name = p.displayName?.text || "未命名餐馆";
   const address = p.formattedAddress || "";
   const phone = p.nationalPhoneNumber || "无";
@@ -1150,6 +1156,19 @@ function transformGooglePlace(p, regionName = "全部 (All GTA)", matchedTerm = 
   const cats = classifyFriedCategories(name, primaryType, matchedTerm);
   const keywords = deriveKeywords(name, primaryType, matchedTerm);
 
+  let photoUrl = "";
+  let photoReference = "";
+  if (p.photos && p.photos.length > 0 && p.photos[0].name) {
+    photoReference = p.photos[0].name;
+    if (apiKey) {
+      photoUrl = `https://places.googleapis.com/v1/${photoReference}/media?maxHeightPx=300&maxWidthPx=300&key=${apiKey}`;
+    } else {
+      photoUrl = `/api/places/photo?name=${encodeURIComponent(photoReference)}`;
+    }
+  } else if (p.id) {
+    photoUrl = `/api/places/photo?placeId=${encodeURIComponent(p.id)}`;
+  }
+
   return {
     name,
     region: regionName,
@@ -1172,6 +1191,8 @@ function transformGooglePlace(p, regionName = "全部 (All GTA)", matchedTerm = 
     latitude: lat,
     longitude: lng,
     placeId: p.id,
+    photoUrl,
+    photoReference,
     hubId: "custom_street",
     hubName: "沿街商圈",
     _raw: {
@@ -1191,9 +1212,89 @@ function transformGooglePlace(p, regionName = "全部 (All GTA)", matchedTerm = 
       "匹配关键词 (Keywords)": keywords.join(", "),
       "纬度 (Latitude)": lat.toString(),
       "经度 (Longitude)": lng.toString(),
-      "Place ID": p.id
+      "Place ID": p.id,
+      "Google 照片 (Photo)": photoUrl
     }
   };
+}
+
+/**
+ * Google Places Photo Proxy & Redirect Endpoint
+ * Supports ?name=places/.../photos/... or ?placeId=ChIJ...
+ * Returns 302 redirect directly to Google CDN (lh3.googleusercontent.com)
+ * Cached with Cache-Control headers for performance and low API overhead.
+ */
+async function handlePlacePhoto(request, env, corsHeaders) {
+  const url = new URL(request.url);
+  const name = (url.searchParams.get("name") || "").trim();
+  const placeId = (url.searchParams.get("placeId") || url.searchParams.get("place_id") || "").trim();
+  const maxHeight = parseInt(url.searchParams.get("maxHeight") || "300", 10);
+  const maxWidth = parseInt(url.searchParams.get("maxWidth") || "300", 10);
+
+  const apiKey = env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_MAPS_API_KEY || "";
+  if (!apiKey) {
+    return new Response("Google Maps API Key not configured", { status: 500, headers: corsHeaders });
+  }
+
+  let photoName = name;
+  if (!photoName && placeId) {
+    try {
+      const detailsUrl = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`;
+      const detailsResp = await fetch(detailsUrl, {
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "photos",
+          "Referer": "https://hellomrleeus.github.io/greenoil/"
+        }
+      });
+      if (detailsResp.ok) {
+        const d = await detailsResp.json();
+        if (d.photos && d.photos.length > 0 && d.photos[0].name) {
+          photoName = d.photos[0].name;
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch place photos:", err);
+    }
+  }
+
+  if (!photoName) {
+    return new Response("Photo not found", { status: 404, headers: corsHeaders });
+  }
+
+  const mediaUrl = `https://places.googleapis.com/v1/${photoName}/media?maxHeightPx=${maxHeight}&maxWidthPx=${maxWidth}&key=${apiKey}`;
+  
+  try {
+    const photoResp = await fetch(mediaUrl, {
+      headers: {
+        "Referer": "https://hellomrleeus.github.io/greenoil/"
+      },
+      redirect: "manual"
+    });
+
+    const location = photoResp.headers.get("Location");
+    if (location) {
+      return new Response(null, {
+        status: 302,
+        headers: {
+          ...corsHeaders,
+          "Location": location,
+          "Cache-Control": "public, max-age=86400, s-maxage=604800"
+        }
+      });
+    }
+
+    return new Response(photoResp.body, {
+      status: photoResp.status,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": photoResp.headers.get("Content-Type") || "image/jpeg",
+        "Cache-Control": "public, max-age=86400, s-maxage=604800"
+      }
+    });
+  } catch (err) {
+    return new Response("Failed to load photo: " + err.message, { status: 500, headers: corsHeaders });
+  }
 }
 
 function classifyFriedCategories(name, primaryType, matchedTerm = "") {

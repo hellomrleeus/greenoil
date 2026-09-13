@@ -940,6 +940,21 @@ export const Restaurants = {
       if (modalImageBadge) {
         modalImageBadge.textContent = photoInfo.emoji || "🍽️";
       }
+
+      // If restaurant has Google Place ID, resolve authentic Google photo for modal
+      if (r.placeId && r.placeId.startsWith("ChIJ") && (!photoInfo.isGoogle || !r.photoUrl)) {
+        if (window.MapExplorer && typeof window.MapExplorer.fetchGooglePhotoForPlace === "function") {
+          window.MapExplorer.fetchGooglePhotoForPlace(r.placeId).then(gUrl => {
+            if (gUrl && modalImage) {
+              modalImage.src = gUrl;
+              if (modalImageBadge) {
+                modalImageBadge.textContent = "📸";
+                modalImageBadge.title = "Google 实景照片";
+              }
+            }
+          });
+        }
+      }
     }
 
     const statusObj = this.formatStatus(r.status);
