@@ -289,6 +289,7 @@ body {
 /* Collapsed Sidebar Styles */
 .app-container.sidebar-collapsed .sidebar {
   width: 68px;
+  overflow-x: hidden;
 }
 
 .app-container.sidebar-collapsed .main-wrapper {
@@ -298,35 +299,51 @@ body {
 .app-container.sidebar-collapsed .sidebar-header {
   padding: 1.25rem 0.5rem;
   justify-content: center;
+  overflow: hidden;
 }
 
 .app-container.sidebar-collapsed .brand-text,
+.app-container.sidebar-collapsed .brand-text-wrap,
+.app-container.sidebar-collapsed .brand-title,
+.app-container.sidebar-collapsed .brand-subtitle,
 .app-container.sidebar-collapsed #sidebarCollapseBtn {
   display: none !important;
 }
 
+.app-container.sidebar-collapsed .logo-icon {
+  margin: 0 auto;
+}
+
 .app-container.sidebar-collapsed .sidebar-nav {
   padding: 1.25rem 0.5rem;
+  overflow-x: hidden;
 }
 
 .app-container.sidebar-collapsed .nav-item {
   padding: 0.75rem 0;
   justify-content: center;
   border-radius: 8px;
+  overflow: hidden;
+  text-align: center;
 }
 
-.app-container.sidebar-collapsed .nav-item span:not(.nav-icon) {
-  display: none;
+.app-container.sidebar-collapsed .nav-item span:not(.nav-icon),
+.app-container.sidebar-collapsed .nav-item [data-i18n] {
+  display: none !important;
 }
 
 .app-container.sidebar-collapsed .nav-item .nav-icon {
   font-size: 1.3rem;
-  margin: 0;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-container.sidebar-collapsed .sidebar-footer {
   padding: 1rem 0.5rem;
   align-items: center;
+  overflow: hidden;
 }
 
 .app-container.sidebar-collapsed .user-profile {
@@ -334,7 +351,7 @@ body {
 }
 
 .app-container.sidebar-collapsed .user-info {
-  display: none;
+  display: none !important;
 }
 
 .app-container.sidebar-collapsed .btn-logout {
@@ -343,10 +360,11 @@ body {
   padding: 0;
   border-radius: 50%;
   justify-content: center;
+  overflow: hidden;
 }
 
 .app-container.sidebar-collapsed .btn-logout span {
-  display: none;
+  display: none !important;
 }
 
 .app-container.sidebar-collapsed .btn-logout::before {

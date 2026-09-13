@@ -117,9 +117,11 @@ function setupSidebarCollapse() {
   const toggleBtns = document.querySelectorAll("#sidebarToggleBtn, #sidebarCollapseBtn");
 
   function updateToggleIcons(isCollapsed) {
+    const expandTitle = i18n ? i18n.t("sidebar_expand") : "展开侧边栏";
+    const collapseTitle = i18n ? i18n.t("sidebar_collapse") : "折叠侧边栏";
     toggleBtns.forEach(btn => {
       btn.textContent = isCollapsed ? ">" : "<";
-      btn.title = isCollapsed ? "展开侧边栏" : "折叠侧边栏";
+      btn.title = isCollapsed ? expandTitle : collapseTitle;
     });
   }
 
@@ -127,6 +129,13 @@ function setupSidebarCollapse() {
   if (savedState === "1" && window.innerWidth > 992 && container) {
     container.classList.add("sidebar-collapsed");
     updateToggleIcons(true);
+  }
+
+  if (i18n && typeof i18n.onLanguageChange === "function") {
+    i18n.onLanguageChange(() => {
+      const isCollapsed = container ? container.classList.contains("sidebar-collapsed") : false;
+      updateToggleIcons(isCollapsed);
+    });
   }
 
   function notifyWorkbenchResize() {
