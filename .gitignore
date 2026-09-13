@@ -8,3 +8,6 @@ Thumbs.db
 
 # Wrangler
 .wrangler/
+
+# Exports
+greenoil_restaurants_*.xlsx

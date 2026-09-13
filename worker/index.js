@@ -405,13 +405,15 @@ async function syncDailyRestaurants(env) {
   for (const [regionName, regionInfo] of Object.entries(GTA_REGIONS)) {
     try {
       const queryList = [
-        `fried chicken wings in ${regionInfo.name}, Ontario, Canada`,
-        `fish and chips in ${regionInfo.name}, Ontario, Canada`,
-        `fried food katsu tempura in ${regionInfo.name}, Ontario, Canada`,
-        `fried donuts churros corn dog in ${regionInfo.name}, Ontario, Canada`
+        { term: "Western Fried Chicken", q: `fried chicken wings popeyes jollibee mary browns churchs in ${regionInfo.name}, Ontario, Canada` },
+        { term: "Korean Fried Chicken", q: `korean fried chicken bbq chicken the fry chimaek kokodak chicken plus in ${regionInfo.name}, Ontario, Canada` },
+        { term: "Fish and Chips", q: `fish and chips halibut in ${regionInfo.name}, Ontario, Canada` },
+        { term: "Japanese Katsu & Tempura", q: `tonkatsu katsu tempura 天妇罗 日式炸猪排 in ${regionInfo.name}, Ontario, Canada` },
+        { term: "Chinese & Taiwanese Fried Snacks", q: `盐酥鸡 炸串 炸大肠 油炸串串 台式大鸡排 taiwanese fried chicken in ${regionInfo.name}, Ontario, Canada` },
+        { term: "Hot Chicken & Corn Dogs & Churros", q: `nashville hot chicken korean corn dog churros donuts chungchun in ${regionInfo.name}, Ontario, Canada` }
       ];
 
-      for (const textQuery of queryList) {
+      for (const { term, q: textQuery } of queryList) {
         const fieldMask = [
           "places.id",
           "places.displayName",
@@ -453,9 +455,25 @@ async function syncDailyRestaurants(env) {
           const data = await resp.json();
           const places = data.places || [];
           for (const p of places) {
-            const transformed = transformGooglePlace(p, regionName);
-            existingMap.set(transformed.placeId, transformed);
-            newlyFetchedCount++;
+            if (p.id) {
+              const transformed = transformGooglePlace(p, regionName, term);
+              if (existingMap.has(transformed.placeId)) {
+                const prev = existingMap.get(transformed.placeId);
+                const mergedCats = Array.from(new Set([...prev.categories, ...transformed.categories]));
+                const mergedKws = Array.from(new Set([...prev.keywords, ...transformed.keywords]));
+                prev.categories = mergedCats;
+                prev.categoriesRaw = mergedCats.join(" | ");
+                prev.keywords = mergedKws;
+                prev.keywordsRaw = mergedKws.join(", ");
+                if (prev._raw) {
+                  prev._raw["油炸分类 (Categories)"] = prev.categoriesRaw;
+                  prev._raw["匹配关键词 (Keywords)"] = prev.keywordsRaw;
+                }
+              } else {
+                existingMap.set(transformed.placeId, transformed);
+                newlyFetchedCount++;
+              }
+            }
           }
         }
       }
@@ -481,7 +499,7 @@ async function syncDailyRestaurants(env) {
   };
 }
 
-function transformGooglePlace(p, regionName) {
+function transformGooglePlace(p, regionName, matchedTerm = "") {
   const name = p.displayName?.text || "未命名餐馆";
   const address = p.formattedAddress || "";
   const phone = p.nationalPhoneNumber || "无";
@@ -511,8 +529,8 @@ function transformGooglePlace(p, regionName) {
   };
   const price = priceMap[p.priceLevel] || "未知";
 
-  const cats = classifyFriedCategories(name, primaryType);
-  const keywords = deriveKeywords(name, primaryType);
+  const cats = classifyFriedCategories(name, primaryType, matchedTerm);
+  const keywords = deriveKeywords(name, primaryType, matchedTerm);
 
   return {
     name,
@@ -535,17 +553,36 @@ function transformGooglePlace(p, regionName) {
     keywordsRaw: keywords.join(", "),
     latitude: lat,
     longitude: lng,
-    placeId: p.id
+    placeId: p.id,
+    _raw: {
+      "餐馆名称 (Name)": name,
+      "所属区域 (Region)": regionName,
+      "油炸分类 (Categories)": cats.join(" | "),
+      "评分 (Rating)": rating ? rating.toString() : "未知",
+      "评价总数 (Reviews)": reviews.toString(),
+      "当前营业状态 (Status)": status,
+      "营业时间 (Opening Hours)": openingHours,
+      "消费档次 (Price)": price,
+      "详细地址 (Address)": address,
+      "联系电话 (Phone)": phone,
+      "官方网站 (Website)": website,
+      "Google 地图链接 (Maps URL)": mapsUrl,
+      "主营类型 (Primary Type)": primaryType,
+      "匹配关键词 (Keywords)": keywords.join(", "),
+      "纬度 (Latitude)": lat.toString(),
+      "经度 (Longitude)": lng.toString(),
+      "Place ID": p.id
+    }
   };
 }
 
-function classifyFriedCategories(name, primaryType) {
-  const text = (name + " " + primaryType).toLowerCase();
+function classifyFriedCategories(name, primaryType, matchedTerm = "") {
+  const text = (name + " " + primaryType + " " + matchedTerm).toLowerCase();
   const cats = [];
   if (/korean|chicken plus|the fry|bb\.q|kokodak|chimaek|韩国|韩式/i.test(text)) {
     cats.push("韩式炸鸡 (Korean Fried Chicken)");
   }
-  if (/wings|wing|popeyes|church|kfc|mary brown|fried chicken|buffalo|炸鸡|鸡翅/i.test(text)) {
+  if (/wings|wing|popeyes|church|kfc|mary brown|fried chicken|buffalo|nashville|炸鸡|鸡翅/i.test(text)) {
     cats.push("西式炸鸡/快餐/炸鸡翅 (Western Fried Chicken & Wings)");
   }
   if (/fish and chips|halibut|cod|chips|炸鱼/i.test(text)) {
@@ -557,25 +594,60 @@ function classifyFriedCategories(name, primaryType) {
   if (/corn dog|hotdog|churro|churros|donut|rice dog|热狗|吉事果/i.test(text)) {
     cats.push("热狗棒/吉事果/甜甜圈 (Corn Dogs, Churros & Sweets)");
   }
-  if (/taiwan|salt and pepper|炸大肠|炸串|串串|盐酥鸡|大鸡排|中餐/i.test(text) || cats.length === 0) {
+  if (/taiwan|salt and pepper|炸大肠|炸串|串串|盐酥鸡|大鸡排|中餐|chinese/i.test(text)) {
     cats.push("中式/台式炸物小吃 (Chinese & Taiwanese Fried Snacks)");
+  }
+  if (cats.length === 0) {
+    cats.push("西式炸鸡/快餐/炸鸡翅 (Western Fried Chicken & Wings)");
   }
   return cats;
 }
 
-function deriveKeywords(name, primaryType) {
-  const text = (name + " " + primaryType).toLowerCase();
+function deriveKeywords(name, primaryType, matchedTerm = "") {
+  const text = (name + " " + primaryType + " " + matchedTerm).toLowerCase();
   const kws = [];
-  if (/chicken/i.test(text)) kws.push("fried chicken");
-  if (/wings/i.test(text)) kws.push("chicken wings");
-  if (/korean/i.test(text)) kws.push("korean fried chicken");
-  if (/fish|chips/i.test(text)) kws.push("fish and chips");
-  if (/katsu/i.test(text)) kws.push("katsu");
-  if (/tempura/i.test(text)) kws.push("tempura");
-  if (/churro/i.test(text)) kws.push("churros");
-  if (/corn dog/i.test(text)) kws.push("korean corn dog");
-  if (/盐酥鸡/i.test(name)) kws.push("盐酥鸡");
-  if (/炸串/i.test(name)) kws.push("炸串");
-  if (kws.length === 0) kws.push("fried food");
+
+  const candidates = [
+    { regex: /天妇罗/, kw: "天妇罗" },
+    { regex: /tempura/i, kw: "tempura" },
+    { regex: /盐酥鸡/, kw: "盐酥鸡" },
+    { regex: /taiwanese fried chicken/i, kw: "taiwanese fried chicken" },
+    { regex: /炸大肠/, kw: "炸大肠" },
+    { regex: /炸串/, kw: "炸串" },
+    { regex: /油炸串串/, kw: "油炸串串" },
+    { regex: /日式炸猪排/, kw: "日式炸猪排" },
+    { regex: /台式大鸡排/, kw: "台式大鸡排" },
+    { regex: /korean fried chicken|chimaek/i, kw: "korean fried chicken" },
+    { regex: /korean corn dog|rice dog/i, kw: "korean corn dog" },
+    { regex: /nashville hot chicken/i, kw: "nashville hot chicken" },
+    { regex: /halibut and chips/i, kw: "halibut and chips" },
+    { regex: /fish and chips/i, kw: "fish and chips" },
+    { regex: /chicken wings|wings/i, kw: "chicken wings" },
+    { regex: /fried chicken/i, kw: "fried chicken" },
+    { regex: /tonkatsu/i, kw: "tonkatsu" },
+    { regex: /katsu/i, kw: "katsu" },
+    { regex: /churros|churro/i, kw: "churros" },
+    { regex: /popeyes/i, kw: "popeyes" },
+    { regex: /bb\.q chicken|bbq chicken/i, kw: "bb.q chicken" },
+    { regex: /the fry/i, kw: "the fry" },
+    { regex: /kokodak/i, kw: "kokodak" },
+    { regex: /jollibee/i, kw: "jollibee" },
+    { regex: /church\'?s/i, kw: "church's texas chicken" },
+    { regex: /mary brown/i, kw: "mary brown's" },
+    { regex: /wild wing|buffalo wild/i, kw: "buffalo wild wings" },
+    { regex: /chicken plus/i, kw: "chicken plus" },
+    { regex: /chungchun/i, kw: "chungchun rice dog" }
+  ];
+
+  for (const { regex, kw } of candidates) {
+    if (regex.test(text) && !kws.includes(kw)) {
+      kws.push(kw);
+    }
+  }
+
+  if (kws.length === 0) {
+    kws.push("fried food");
+  }
+
   return kws;
 }
