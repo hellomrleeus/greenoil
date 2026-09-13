@@ -885,8 +885,14 @@ async function handleGooglePlacesSearch(request, env, corsHeaders) {
     "places.location"
   ].join(",");
 
+  let finalQuery = query.trim();
+  const qLower = finalQuery.toLowerCase();
+  if (!qLower.includes("ontario") && !qLower.includes("canada")) {
+    finalQuery = `${finalQuery} Ontario Canada`;
+  }
+
   const gmpBody = {
-    textQuery: `${query} Toronto GTA Ontario Canada`,
+    textQuery: finalQuery,
     maxResultCount: 20,
     languageCode: "zh-CN",
     regionCode: "CA",

@@ -599,31 +599,56 @@ export const MapExplorer = {
 
     try {
       let center = { lat: 43.7615, lng: -79.4111 };
-      let radius = 3500;
+      let radius = 3000;
+      let areaLabel = "大多伦多";
+      let locationQuery = "";
 
       const city = GTA_COMMUNITIES.find(c => c.id === this.activeCityId);
+
       if (this.activeNeighborhoodId !== "all" && city?.neighborhoods) {
         const nh = city.neighborhoods.find(n => n.id === this.activeNeighborhoodId);
-        if (nh && nh.center) {
-          center = nh.center;
-          radius = 2000;
+        if (nh) {
+          areaLabel = `${city.name.split(" ")[0]} · ${nh.name.split(" ")[0]}`;
+          locationQuery = `${nh.nameEn || nh.name} ${city.nameEn || city.name}`;
+          if (nh.center) {
+            center = nh.center;
+            radius = 2200;
+          }
         }
-      } else if (city && city.center) {
-        center = city.center;
-        radius = 5000;
+      } else if (city && city.id !== "all") {
+        areaLabel = city.name.split(" ")[0];
+        locationQuery = city.nameEn || city.name;
+        if (city.center) {
+          center = city.center;
+          radius = 4500;
+        }
       } else if (this.googleMap && this.googleMap.getCenter()) {
-        center = {
-          lat: this.googleMap.getCenter().lat(),
-          lng: this.googleMap.getCenter().lng()
-        };
-        radius = 4000;
+        const c = this.googleMap.getCenter();
+        center = { lat: c.lat(), lng: c.lng() };
+        radius = 3500;
       } else if (this.fallbackMap) {
         const c = this.fallbackMap.getCenter();
         center = { lat: c.lat, lng: c.lng };
-        radius = 4000;
+        radius = 3500;
       }
 
-      const queryTerm = this.searchKeyword || (this.activeCategory !== "全部" ? this.activeCategory : "restaurant fried chicken");
+      if (this.activeStreetId !== "all") {
+        const st = GTA_STREETS.find(s => s.id === this.activeStreetId);
+        if (st && st.name) {
+          areaLabel += ` · ${st.name.split(" ")[0]}`;
+          locationQuery = `${st.name.split(" ")[0]} ${locationQuery}`;
+        }
+      }
+
+      // Build specific search query
+      let queryTerm = "";
+      if (this.searchKeyword) {
+        queryTerm = `${this.searchKeyword} ${locationQuery}`.trim();
+      } else if (this.activeCategory !== "全部") {
+        queryTerm = `${this.activeCategory} ${locationQuery}`.trim();
+      } else {
+        queryTerm = locationQuery ? `restaurants in ${locationQuery}` : "restaurants in Toronto GTA";
+      }
 
       const res = await Api.searchGooglePlaces(queryTerm, {
         lat: center.lat,
@@ -631,11 +656,14 @@ export const MapExplorer = {
         radius
       });
 
-      if (res && res.success && Array.isArray(res.places)) {
-        let newCount = 0;
+      if (res && res.success && Array.isArray(res.places) && res.places.length > 0) {
+        let newAddedCount = 0;
+        let totalUnsavedCount = 0;
+
         res.places.forEach(p => {
           const inKV = this.checkIsInKv(p);
           p.inKV = inKV;
+          if (!inKV) totalUnsavedCount++;
 
           const existingIdx = this.allRestaurants.findIndex(item => 
             (item.placeId && item.placeId === p.placeId) || 
@@ -643,19 +671,30 @@ export const MapExplorer = {
           );
 
           if (existingIdx >= 0) {
-            if (this.allRestaurants[existingIdx].inKV) {
-              p.inKV = true;
-            }
+            this.allRestaurants[existingIdx].inKV = inKV;
           } else {
             this.allRestaurants.unshift(p);
-            if (!inKV) newCount++;
+            newAddedCount++;
           }
         });
 
-        alert(`探测完成！共检索到 ${res.places.length} 家 Google 地图餐馆，其中 ${newCount} 家为【尚未入库】的新店，已在列表中以琥珀色高亮并标出！`);
         this.applyFilters(false);
+
+        const totalReturned = res.places.length;
+        const alreadyInKv = totalReturned - totalUnsavedCount;
+
+        let alertMsg = `📍 探测完成！在【${areaLabel}】共检索到 ${totalReturned} 家 Google 地图餐馆：\n\n`;
+        alertMsg += `• 🆕 未入库新店：${totalUnsavedCount} 家（已在列表中以琥珀色标出）\n`;
+        alertMsg += `• ✓ 已在 KV 库：${alreadyInKv} 家\n`;
+        if (newAddedCount > 0) {
+          alertMsg += `• ➕ 本次新载入列表：${newAddedCount} 家\n`;
+        }
+        if (totalUnsavedCount > 0) {
+          alertMsg += `\n💡 提示：您可以勾选餐馆，或直接点击上方绿色的【📥 批量添加到KV】一键永久保存到云端数据库！`;
+        }
+        alert(alertMsg);
       } else {
-        alert(res?.error || "未在当前区域检索到新餐馆，请尝试调整关键词或缩放地图。");
+        alert(res?.error || "未在当前区域检索到新餐馆，请尝试调整关键词或社区范围。");
       }
     } catch (err) {
       console.error("exploreCurrentAreaGooglePlaces error:", err);
