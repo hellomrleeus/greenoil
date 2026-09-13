@@ -1988,7 +1988,7 @@ export const MapExplorer = {
     if (planRouteBtn) {
       const span = planRouteBtn.querySelector("span");
       if (span) {
-        span.textContent = count > 0 ? `${i18n.t("btn_plan_route")} (${count})` : i18n.t("btn_plan_route");
+        span.textContent = i18n.t("btn_plan_route");
       }
     }
 
@@ -1996,7 +1996,7 @@ export const MapExplorer = {
     if (exportBtn) {
       const span = exportBtn.querySelector("span");
       if (span) {
-        span.textContent = count > 0 ? `${i18n.t("btn_export_excel")} (${count})` : i18n.t("btn_export_excel");
+        span.textContent = i18n.t("btn_export_excel");
       }
     }
 
@@ -2004,10 +2004,7 @@ export const MapExplorer = {
     if (batchAddBtn) {
       const span = batchAddBtn.querySelector("span");
       if (span) {
-        const unsavedSelected = Array.from(this.selectedMap.values()).filter(r => !r.inKV).length;
-        span.textContent = count > 0
-          ? `${i18n.t("btn_batch_add_to_kv")} (${unsavedSelected})`
-          : i18n.t("btn_batch_add_to_kv");
+        span.textContent = i18n.t("btn_batch_add_to_kv");
       }
     }
   },
@@ -2292,6 +2289,20 @@ export const MapExplorer = {
         }
       });
     }
+
+    // ESC key listener to close InfoWindow / Popovers
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        if (this.infoWindow) {
+          this.infoWindow.close();
+          this.activePopupKey = null;
+        }
+        if (this.fallbackMap) {
+          this.fallbackMap.closePopup();
+        }
+        this.togglePopover(false);
+      }
+    });
   },
 
   escapeHtml(str) {

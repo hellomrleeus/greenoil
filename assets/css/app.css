@@ -654,6 +654,33 @@ body {
   min-width: 280px;
 }
 
+.filter-categories-row {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.filter-selection-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.filter-selection-row .btn {
+  height: 38px;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.filter-selection-row .selection-count-tag {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
 .filter-action-buttons {
   display: flex;
   flex-direction: row;
@@ -664,8 +691,8 @@ body {
 
 .filter-action-buttons .btn {
   height: 40px;
-  white-space: nowrap;
-  flex-shrink: 0;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .search-input-wrap {
@@ -3371,8 +3398,29 @@ body {
 
 .map-list-actions {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.4rem;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.map-list-actions .btn {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  min-width: max-content !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#mapBtnSelectAll {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  min-width: 52px !important;
+}
+
+.map-selection-tag {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .map-places-cards-container {

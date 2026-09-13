@@ -514,6 +514,16 @@ export const FieldSales = {
     if (btnClose) btnClose.addEventListener("click", () => this.closeSalesRecordModal());
     if (btnCancel) btnCancel.addEventListener("click", () => this.closeSalesRecordModal());
 
+    // ESC key listener to close sales record modal
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        const modal = document.getElementById("fsRecordModalOverlay");
+        if (modal && modal.classList.contains("active")) {
+          this.closeSalesRecordModal();
+        }
+      }
+    });
+
     // View toggle: List vs Calendar
     const btnListView = document.getElementById("fsBtnRecordsListView");
     const btnCalView = document.getElementById("fsBtnRecordsCalendarView");

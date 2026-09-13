@@ -272,6 +272,16 @@ export const Restaurants = {
       });
     }
 
+    // ESC key listener to close detail modal
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.keyCode === 27) {
+        const modal = document.getElementById("detailModalOverlay");
+        if (modal && modal.classList.contains("active")) {
+          this.closeDetailModal();
+        }
+      }
+    });
+
     const btnModalLogVisit = document.getElementById("btnModalLogVisit");
     if (btnModalLogVisit) {
       btnModalLogVisit.addEventListener("click", () => {
@@ -443,8 +453,7 @@ export const Restaurants = {
 
     if (countSpan) countSpan.textContent = count;
     if (suffixSpan) {
-      const formatted = i18n.t("sel_count", { count: "" }).trim();
-      suffixSpan.textContent = formatted;
+      suffixSpan.textContent = "";
     }
     if (countTag) {
       countTag.style.display = count > 0 ? "inline-flex" : "none";
@@ -453,7 +462,7 @@ export const Restaurants = {
     if (exportBtn) {
       const span = exportBtn.querySelector("span");
       if (span) {
-        span.textContent = count > 0 ? `${i18n.t("btn_export_csv")} (${count})` : i18n.t("btn_export_csv");
+        span.textContent = i18n.t("btn_export_csv");
       }
     }
 
@@ -461,7 +470,7 @@ export const Restaurants = {
     if (btnPlanRouteTop) {
       const span = btnPlanRouteTop.querySelector("span");
       if (span) {
-        span.textContent = count > 0 ? i18n.t("plan_route_with_count", { count }) : i18n.t("btn_plan_route");
+        span.textContent = i18n.t("btn_plan_route");
       }
     }
 

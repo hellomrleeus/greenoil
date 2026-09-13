@@ -47,6 +47,13 @@ export function initApp() {
   GreaseTrap.init();
   FieldSales.init();
   MapExplorer.init();
+
+  if (typeof window !== "undefined") {
+    window.Restaurants = Restaurants;
+    window.FieldSales = FieldSales;
+    window.MapExplorer = MapExplorer;
+  }
+  setupEscKeyHandler();
 }
 
 function setupLanguageSwitcher() {
@@ -249,6 +256,49 @@ function closeMobileSidebar() {
   const backdrop = document.getElementById("sidebarBackdrop");
   if (sidebar) sidebar.classList.remove("open");
   if (backdrop) backdrop.classList.remove("active");
+}
+
+function setupEscKeyHandler() {
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.keyCode === 27) {
+      // 1. Close Detail Modal if active
+      const detailModal = document.getElementById("detailModalOverlay");
+      if (detailModal && detailModal.classList.contains("active")) {
+        if (window.Restaurants && typeof window.Restaurants.closeDetailModal === "function") {
+          window.Restaurants.closeDetailModal();
+        } else {
+          detailModal.classList.remove("active");
+        }
+        return;
+      }
+
+      // 2. Close Sales Record Modal if active
+      const fsModal = document.getElementById("fsRecordModalOverlay");
+      if (fsModal && fsModal.classList.contains("active")) {
+        if (window.FieldSales && typeof window.FieldSales.closeSalesRecordModal === "function") {
+          window.FieldSales.closeSalesRecordModal();
+        } else {
+          fsModal.classList.remove("active");
+        }
+        return;
+      }
+
+      // 3. Close Map Explorer InfoWindow or Popovers
+      if (window.MapExplorer) {
+        if (window.MapExplorer.infoWindow) {
+          window.MapExplorer.infoWindow.close();
+          window.MapExplorer.activePopupKey = null;
+        }
+        if (window.MapExplorer.fallbackMap) {
+          window.MapExplorer.fallbackMap.closePopup();
+        }
+        const popover = document.getElementById("areaPopoverPanel");
+        if (popover && popover.style.display === "block") {
+          window.MapExplorer.togglePopover(false);
+        }
+      }
+    }
+  });
 }
 
 if (document.readyState === "loading") {

@@ -173,38 +173,36 @@
                 </div>
               </div>
 
-              <!-- Categories Pill Filter & Action Buttons Bar (Always Horizontal) -->
-              <div class="filter-row-bottom">
-                <div class="filter-categories-wrap">
-                  <label class="form-label" data-i18n="cat_label" style="margin-bottom: 0.35rem;">品类筛选：</label>
-                  <div class="category-pills" id="categoryPills">
-                    <button class="cat-pill active" data-category="全部" data-i18n="cat_all">全部</button>
-                    <button class="cat-pill" data-category="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</button>
-                    <button class="cat-pill" data-category="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</button>
-                    <button class="cat-pill" data-category="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</button>
-                    <button class="cat-pill" data-category="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</button>
-                    <button class="cat-pill" data-category="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</button>
-                    <button class="cat-pill" data-category="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</button>
-                  </div>
+              <!-- Categories Pill Filter Row -->
+              <div class="filter-categories-row" style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+                <label class="form-label" data-i18n="cat_label" style="margin-bottom: 0.35rem;">品类筛选：</label>
+                <div class="category-pills" id="categoryPills">
+                  <button class="cat-pill active" data-category="全部" data-i18n="cat_all">全部</button>
+                  <button class="cat-pill" data-category="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</button>
+                  <button class="cat-pill" data-category="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</button>
+                  <button class="cat-pill" data-category="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</button>
+                  <button class="cat-pill" data-category="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</button>
+                  <button class="cat-pill" data-category="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</button>
+                  <button class="cat-pill" data-category="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</button>
                 </div>
+              </div>
 
-                <div class="filter-action-buttons">
-                  <button class="btn btn-secondary" id="btnSelectAllPage">
-                    <span id="btnSelectAllPageText" data-i18n="btn_select_page">全选本页</span>
-                  </button>
-                  <div class="selection-count-tag" id="selectionCountTag" style="display: none;">
-                    <span data-i18n="sel_selected">已选</span>
-                    <strong class="selection-count-badge" id="selectionCountBadge">0</strong>
-                    <span id="selectionCountSuffix" data-i18n="sel_count" data-param-count="">家餐馆</span>
-                    <button type="button" class="btn-clear-sel" id="btnClearSelection" data-i18n="btn_clear_selection">清空</button>
-                  </div>
-                  <button class="btn btn-primary" id="btnPlanRouteTop" style="background: #2563eb; border-color: #2563eb;">
-                    <span data-i18n="btn_plan_route">规划路线</span>
-                  </button>
-                  <button class="btn btn-primary" id="btnExportCsv" style="background: #10b981; border-color: #10b981;">
-                    <span data-i18n="btn_export_csv">导出所选</span>
-                  </button>
+              <!-- Selection Controls Row (Dedicated Next Row) -->
+              <div class="filter-selection-row" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px dashed #e2e8f0;">
+                <button class="btn btn-secondary" id="btnSelectAllPage" style="white-space: nowrap; flex-shrink: 0;">
+                  <span id="btnSelectAllPageText" data-i18n="btn_select_page">全选本页</span>
+                </button>
+                <div class="selection-count-tag" id="selectionCountTag" style="display: none; white-space: nowrap; flex-shrink: 0;">
+                  <span data-i18n="sel_selected">已选</span>
+                  <strong class="selection-count-badge" id="selectionCountBadge">0</strong>
+                  <button type="button" class="btn-clear-sel" id="btnClearSelection" data-i18n="btn_clear_selection">清空选择</button>
                 </div>
+                <button class="btn btn-primary" id="btnPlanRouteTop" style="background: #2563eb; border-color: #2563eb; white-space: nowrap; flex-shrink: 0;">
+                  <span data-i18n="btn_plan_route">规划路线</span>
+                </button>
+                <button class="btn btn-primary" id="btnExportCsv" style="background: #10b981; border-color: #10b981; white-space: nowrap; flex-shrink: 0;">
+                  <span data-i18n="btn_export_csv">导出所选</span>
+                </button>
               </div>
             </div>
           </div>
@@ -892,22 +890,21 @@
                   </div>
                 </div>
                 <div class="map-list-actions">
-                  <button class="btn btn-secondary btn-sm" id="mapBtnSelectAll" title="全选当前餐馆" data-i18n-title="btn_select_all">
+                  <button class="btn btn-secondary btn-sm" id="mapBtnSelectAll" style="white-space: nowrap; flex-shrink: 0; min-width: 52px;" title="全选当前餐馆" data-i18n-title="btn_select_all">
                     <span id="mapBtnSelectAllText" data-i18n="btn_select_all">全选</span>
                   </button>
-                  <div class="selection-count-tag map-selection-tag" id="mapSelectionCountTag" style="display: none;">
+                  <div class="selection-count-tag map-selection-tag" id="mapSelectionCountTag" style="display: none; white-space: nowrap; flex-shrink: 0;">
                     <span data-i18n="sel_selected">已选</span>
                     <strong class="selection-count-badge" id="mapSelectedCountNum">0</strong>
-                    <span data-i18n="sel_count" data-param-count="">家</span>
-                    <button type="button" class="btn-clear-sel" id="mapBtnClearSelection" data-i18n="btn_clear_selection">清空</button>
+                    <button type="button" class="btn-clear-sel" id="mapBtnClearSelection" data-i18n="btn_clear_selection">清空选择</button>
                   </div>
-                  <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669;" title="批量保存到KV" data-i18n-title="btn_batch_add_to_kv">
+                  <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669; white-space: nowrap; flex-shrink: 0;" title="批量保存到KV" data-i18n-title="btn_batch_add_to_kv">
                     <span data-i18n="btn_batch_add_to_kv">保存至KV</span>
                   </button>
-                  <button class="btn btn-primary btn-sm" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb;" title="规划路线" data-i18n-title="btn_plan_route">
+                  <button class="btn btn-primary btn-sm" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb; white-space: nowrap; flex-shrink: 0;" title="规划路线" data-i18n-title="btn_plan_route">
                     <span data-i18n="btn_plan_route">规划路线</span>
                   </button>
-                  <button class="btn btn-secondary btn-sm" id="mapBtnExportExcel" title="导出所选 Excel" data-i18n-title="btn_export_excel">
+                  <button class="btn btn-secondary btn-sm" id="mapBtnExportExcel" style="white-space: nowrap; flex-shrink: 0;" title="导出所选 Excel" data-i18n-title="btn_export_excel">
                     <span data-i18n="btn_export_excel">导出Excel</span>
                   </button>
                 </div>
