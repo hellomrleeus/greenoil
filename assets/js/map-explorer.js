@@ -9,6 +9,8 @@
  * https://cloud.google.com/maps-platform/terms?utm_campaign=gmp_git_agentskills_v1
  */
 
+import { displayGeometry } from "./map-geometry.js";
+
 import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
 
@@ -820,6 +822,7 @@ export const MapExplorer = {
   },
 
   extractGooglePolygonPaths(geometry) {
+    geometry = displayGeometry(geometry);
     if (!geometry || !geometry.coordinates) return [];
     if (geometry.type === "Polygon") {
       return [geometry.coordinates.map(ring => ring.map(([lng, lat]) => ({ lat, lng })))];
@@ -878,7 +881,7 @@ export const MapExplorer = {
         selectedNbs.forEach(nb => {
           const ft = this.neighbourhoodsMap?.get(nb.id) || nb;
           if (ft && ft.geometry) {
-            const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: ft.geometry }, { interactive: false,
+            const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: displayGeometry(ft.geometry) }, { interactive: false,
               style: {
                 color: "#16a34a",
                 weight: 2.5,
@@ -915,7 +918,7 @@ export const MapExplorer = {
           this.polygonsMap.set(`${city.id}_${index}`, poly);
         });
       } else if (this.fallbackMap && window.L) {
-        const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: city.geometry }, { interactive: false,
+        const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: displayGeometry(city.geometry) }, { interactive: false,
           style: { color: "#16a34a", weight: 2, opacity: 0.85, fillColor: "#22c55e", fillOpacity: 0.10 }
         }).addTo(this.fallbackMap);
         this.polygonsMap.set(city.id, layer);
@@ -1046,7 +1049,7 @@ export const MapExplorer = {
     }
 
     const defaultCenter = [43.7615, -79.4111];
-    this.fallbackMap = L.map(canvas).setView(defaultCenter, 13);
+    this.fallbackMap = L.map(canvas, { preferCanvas: true }).setView(defaultCenter, 13);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
@@ -1425,6 +1428,8 @@ export const MapExplorer = {
     });
   },
 
+  pinIconCache: new Map(),
+
   getPinIcon(r, isHighlight) {
     const key = r.placeId || r.name;
     const isSelected = this.selectedMap.has(key);
@@ -1434,7 +1439,7 @@ export const MapExplorer = {
     const strokeWeight = isHighlight ? 2.8 : (isSelected ? 2.5 : 1.8);
     const fillColor = isHighlight ? "#2563eb" : (isSelected ? "#2563eb" : color);
 
-    return {
+    const symbol = {
       path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
       fillColor: fillColor,
       fillOpacity: 1,
@@ -1443,6 +1448,31 @@ export const MapExplorer = {
       scale: scale,
       anchor: new google.maps.Point(12, 22)
     };
+    // Reuse a small set of raster icons instead of per-marker vector paths.
+    if (typeof Path2D === "undefined") return symbol;
+    const cacheKey = `${fillColor}:${strokeColor}:${scale}:${strokeWeight}`;
+    if (!this.pinIconCache.has(cacheKey)) {
+      const size = 48;
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = size * 2;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return symbol;
+      ctx.scale(2, 2);
+      ctx.translate(size / 2 - 12 * scale, size - 4 - 22 * scale);
+      ctx.scale(scale, scale);
+      const path = new Path2D(symbol.path);
+      ctx.fillStyle = fillColor;
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = strokeWeight / scale;
+      ctx.fill(path);
+      ctx.stroke(path);
+      this.pinIconCache.set(cacheKey, {
+        url: canvas.toDataURL(),
+        scaledSize: new google.maps.Size(size, size),
+        anchor: new google.maps.Point(size / 2, size - 4)
+      });
+    }
+    return this.pinIconCache.get(cacheKey);
   },
 
   highlightMarker(key, highlight) {
