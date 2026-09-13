@@ -1113,38 +1113,7 @@ export const MapExplorer = {
 
     // Merge with known KV restaurants in this area
     let localMatches = this.allRestaurants;
-    if (selectedNbs.length > 0) {
-      const keywords = [];
-      selectedNbs.forEach(nb => {
-        if (Array.isArray(nb.keywords)) {
-          nb.keywords.forEach(kw => keywords.push(kw.toLowerCase()));
-        }
-        if (nb.nameEn) keywords.push(nb.nameEn.toLowerCase());
-        const cn = (nb.nameZh || nb.name || "").split(" (")[0];
-        if (cn) keywords.push(cn.toLowerCase());
-      });
-
-      localMatches = localMatches.filter(r => {
-        // 1. Spatial bbox check if coordinates exist
-        const rLat = parseFloat(r.latitude || r.lat);
-        const rLng = parseFloat(r.longitude || r.lng);
-        if (!isNaN(rLat) && !isNaN(rLng)) {
-          const inAnyBbox = selectedNbs.some(nb => {
-            const ft = this.neighbourhoodsMap?.get(nb.id) || nb;
-            if (ft.bbox && Array.isArray(ft.bbox) && ft.bbox.length === 4) {
-              return rLng >= ft.bbox[0] && rLng <= ft.bbox[2] && rLat >= ft.bbox[1] && rLat <= ft.bbox[3];
-            }
-            return false;
-          });
-          if (inAnyBbox) return true;
-        }
-
-        // 2. Fallback text search on region and address
-        const reg = (r.region || "").toLowerCase();
-        const addr = (r.address || "").toLowerCase();
-        return keywords.some(kw => reg.includes(kw) || addr.includes(kw));
-      });
-    } else if (!isAll && selectedCities.length > 0) {
+    if (selectedNbs.length === 0 && !isAll && selectedCities.length > 0) {
       const keywords = [];
       selectedCities.forEach(c => {
         const cn = c.name.split(" (")[0];
@@ -1208,8 +1177,44 @@ export const MapExplorer = {
     this.filterAndRenderPlaces();
   },
 
+  isPlaceInGeometry(place, geometry) {
+    const latitude = place.latitude ?? place.lat;
+    const longitude = place.longitude ?? place.lng;
+    if (latitude == null || longitude == null || String(latitude).trim() === "" || String(longitude).trim() === "") return false;
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return false;
+    const polygons = geometry?.type === "Polygon" ? [geometry.coordinates] :
+      geometry?.type === "MultiPolygon" ? geometry.coordinates : [];
+
+    // Return 0 outside, 1 inside, 2 on an edge. Include boundary points.
+    const inRing = ring => {
+      let inside = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [ax, ay] = ring[j];
+        const [bx, by] = ring[i];
+        const cross = (lng - ax) * (by - ay) - (lat - ay) * (bx - ax);
+        if (Math.abs(cross) <= 1e-12 && lng >= Math.min(ax, bx) && lng <= Math.max(ax, bx) &&
+            lat >= Math.min(ay, by) && lat <= Math.max(ay, by)) return 2;
+        if ((ay > lat) !== (by > lat) && lng < (bx - ax) * (lat - ay) / (by - ay) + ax) inside = !inside;
+      }
+      return inside ? 1 : 0;
+    };
+    return polygons.some(rings => {
+      if (!rings?.length) return false;
+      const outer = inRing(rings[0]);
+      if (outer === 0) return false;
+      const holes = rings.slice(1).map(inRing);
+      return !holes.includes(1);
+    });
+  },
+
   filterAndRenderPlaces() {
-    let result = [...this.displayedPlaces];
+    // Apply the same exact boundary to both Google discovery and saved places.
+    // Selected subareas take precedence over their parent city tags.
+    const selectedAreas = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    let result = this.displayedPlaces.filter(place => selectedAreas.length === 0 ||
+      selectedAreas.some(area => this.isPlaceInGeometry(place, area.geometry)));
 
     // 1. Category Filter
     if (this.activeCategory !== "全部") {
