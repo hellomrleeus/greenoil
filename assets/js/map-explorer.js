@@ -90,6 +90,7 @@ export const MapExplorer = {
   infoWindow: null,
   allRestaurants: [],
   displayedPlaces: [],
+  filteredPlaces: [],
   selectedMap: new Map(), // key -> Restaurant
   poiPlaces: new Map(),
   activePopupKey: null,
@@ -201,7 +202,6 @@ export const MapExplorer = {
       if (Array.isArray(data) && data.length > 0) {
         this.allRestaurants = data.map(r => {
           r.inKV = true;
-      if (this.activePopupKey === key) this.infoWindow?.setContent(this.getPopupHtml(r));
           if (r.placeId) this.kvPlaceIdsSet.add(r.placeId);
           if (r.name) this.kvNormalizedNamesSet.add(r.name.trim().toLowerCase());
           return r;
@@ -223,30 +223,51 @@ export const MapExplorer = {
   async loadNeighbourhoodsGeoJson() {
     try {
       const municipalities = await fetch("assets/data/official_municipalities.json");
-      if (!municipalities.ok) throw new Error("Municipal boundaries unavailable");
-      const cityData = await municipalities.json();
-      cityData.features.forEach(feature => {
-        const city = GTA_COMMUNITIES.find(c => c.id === feature.id);
-        if (city) Object.assign(city, { geometry: feature.geometry, bbox: feature.bbox });
-      });
-      const resp = await fetch("assets/data/gta_neighbourhoods.json");
-      if (resp.ok) {
-        this.neighbourhoodsGeoJson = await resp.json();
-        const subareasResponse = await fetch("assets/data/official_subareas.json");
-        if (!subareasResponse.ok) throw new Error("Official subareas unavailable");
-        const subareas = await subareasResponse.json();
-        this.neighbourhoodsGeoJson.features.push(...subareas.features);
-        this.neighbourhoodsGeoJson.totalCount = this.neighbourhoodsGeoJson.features.length;
-        if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
-          this.neighbourhoodsMap.clear();
-          this.neighbourhoodsGeoJson.features.forEach(ft => {
-            this.neighbourhoodsMap.set(ft.id, ft);
-            if (ft.code) this.neighbourhoodsMap.set(ft.code, ft);
+      if (municipalities.ok) {
+        const cityData = await municipalities.json();
+        if (cityData && Array.isArray(cityData.features)) {
+          cityData.features.forEach(feature => {
+            const city = GTA_COMMUNITIES.find(c => c.id === feature.id);
+            if (city) Object.assign(city, { geometry: feature.geometry, bbox: feature.bbox });
           });
         }
       }
     } catch (e) {
+      console.warn("Failed to load official_municipalities.json:", e);
+    }
+
+    try {
+      const resp = await fetch("assets/data/gta_neighbourhoods.json");
+      if (resp.ok) {
+        this.neighbourhoodsGeoJson = await resp.json();
+      }
+    } catch (e) {
       console.warn("Failed to load gta_neighbourhoods.json dataset:", e);
+    }
+
+    if (!this.neighbourhoodsGeoJson) {
+      this.neighbourhoodsGeoJson = { type: "FeatureCollection", features: [] };
+    }
+
+    try {
+      const subareasResponse = await fetch("assets/data/official_subareas.json");
+      if (subareasResponse.ok) {
+        const subareas = await subareasResponse.json();
+        if (subareas && Array.isArray(subareas.features)) {
+          this.neighbourhoodsGeoJson.features.push(...subareas.features);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load official_subareas.json:", e);
+    }
+
+    if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
+      this.neighbourhoodsGeoJson.totalCount = this.neighbourhoodsGeoJson.features.length;
+      this.neighbourhoodsMap.clear();
+      this.neighbourhoodsGeoJson.features.forEach(ft => {
+        if (ft.id) this.neighbourhoodsMap.set(ft.id, ft);
+        if (ft.code) this.neighbourhoodsMap.set(ft.code, ft);
+      });
     }
   },
 
@@ -1033,6 +1054,8 @@ export const MapExplorer = {
     }).addTo(this.fallbackMap);
 
     this.fallbackLayerGroup = L.layerGroup().addTo(this.fallbackMap);
+    this.drawSelectedBoundaries();
+    this.renderMarkers();
   },
 
   // -------------------------------------------------------------
@@ -1040,6 +1063,7 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   async loadPlacesForCurrentArea() {
     this.selectedMap.clear();
+    this.filteredPlaces = this.filteredPlaces || [];
     this.updateSelectionUI();
     const container = document.getElementById("mapPlacesCardsContainer");
     const lang = this.getCurrentLanguage();
@@ -1239,10 +1263,12 @@ export const MapExplorer = {
     const regionTitleEl = document.getElementById("mapResultsRegionTitle");
     const summaryEl = document.getElementById("mapResultsSummary");
 
-    const total = this.filteredPlaces.length;
-    const unsaved = this.filteredPlaces.filter(r => !r.inKV).length;
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
+    const total = list.length;
+    const unsaved = list.filter(r => !r.inKV).length;
 
     const lang = this.getCurrentLanguage();
+    const sep = lang === "zh" ? "、" : ", ";
 
     const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
@@ -1318,10 +1344,11 @@ export const MapExplorer = {
     // 3. Remaining places up to max limit (default 600) to keep 60fps
     const markerPlaces = [];
     const seenKeys = new Set();
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
 
     // A. Current page items
     const startIdx = (this.currentPage - 1) * this.pageSize;
-    const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
+    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
     pageItems.forEach(r => {
       const key = r.placeId || r.name;
       if (!seenKeys.has(key)) {
@@ -1340,7 +1367,7 @@ export const MapExplorer = {
     });
 
     // B. Google Places (unsaved)
-    this.filteredPlaces.forEach(r => {
+    list.forEach(r => {
       if (!r.inKV) {
         const key = r.placeId || r.name;
         if (!seenKeys.has(key)) {
@@ -1352,8 +1379,8 @@ export const MapExplorer = {
 
     // C. Remaining places up to max 600
     const maxMarkers = 600;
-    for (let i = 0; i < this.filteredPlaces.length && markerPlaces.length < maxMarkers; i++) {
-      const r = this.filteredPlaces[i];
+    for (let i = 0; i < list.length && markerPlaces.length < maxMarkers; i++) {
+      const r = list[i];
       const key = r.placeId || r.name;
       if (!seenKeys.has(key)) {
         seenKeys.add(key);
@@ -1593,8 +1620,9 @@ export const MapExplorer = {
     const container = document.getElementById("mapPlacesCardsContainer");
     if (!container) return;
     const lang = this.getCurrentLanguage();
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
 
-    if (this.filteredPlaces.length === 0) {
+    if (list.length === 0) {
       const emptyTitle = lang === "en" ? "No matching restaurants found in this area" :
                          lang === "ko" ? "선택한 지역에 일치하는 음식점이 없습니다" :
                          "当前区域暂未检索到符合条件的餐馆";
@@ -1611,10 +1639,10 @@ export const MapExplorer = {
       return;
     }
 
-    const total = this.filteredPlaces.length;
+    const total = list.length;
     const totalPages = Math.ceil(total / this.pageSize) || 1;
     const startIdx = (this.currentPage - 1) * this.pageSize;
-    const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
+    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
 
     const txtInKv = lang === "en" ? "✓ In KV" : (lang === "ko" ? "✓ KV 등록" : "✓ 已在KV库");
     const txtNewPlace = lang === "en" ? "Not in KV" : (lang === "ko" ? "KV 미등록" : "未在KV库");
@@ -1913,8 +1941,9 @@ export const MapExplorer = {
   },
 
   toggleSelectCurrentPage() {
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
     const startIdx = (this.currentPage - 1) * this.pageSize;
-    const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
+    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
     if (pageItems.length === 0) return;
 
     const allSelected = pageItems.every(r => this.selectedMap.has(r.placeId || r.name));
@@ -1946,8 +1975,9 @@ export const MapExplorer = {
       countTag.style.display = count > 0 ? "inline-flex" : "none";
     }
 
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
     const startIdx = (this.currentPage - 1) * this.pageSize;
-    const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
+    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
     const allCurrentSelected = pageItems.length > 0 && pageItems.every(r => this.selectedMap.has(r.placeId || r.name));
 
     if (selectAllText) {
@@ -1997,7 +2027,7 @@ export const MapExplorer = {
   async batchAddToKv() {
     const lang = this.getCurrentLanguage();
     const hasSelection = this.selectedMap.size > 0;
-    const candidates = hasSelection ? Array.from(this.selectedMap.values()) : this.filteredPlaces;
+    const candidates = hasSelection ? Array.from(this.selectedMap.values()) : (Array.isArray(this.filteredPlaces) ? this.filteredPlaces : []);
     const unsaved = candidates.filter(r => !r.inKV);
 
     if (unsaved.length === 0) {
@@ -2208,7 +2238,8 @@ export const MapExplorer = {
     if (planRouteBtn) {
       planRouteBtn.addEventListener("click", () => {
         const selectedList = Array.from(this.selectedMap.values());
-        const places = selectedList.length > 0 ? selectedList : this.filteredPlaces.slice(0, 10);
+        const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
+        const places = selectedList.length > 0 ? selectedList : list.slice(0, 10);
         if (places.length === 0) {
           const msg = "当前列表暂无餐馆可规划路线";
           if (window.showToast) window.showToast(msg);
@@ -2238,7 +2269,8 @@ export const MapExplorer = {
     if (exportExcelBtn) {
       exportExcelBtn.addEventListener("click", () => {
         const selectedList = Array.from(this.selectedMap.values());
-        const candidates = selectedList.length > 0 ? selectedList : this.filteredPlaces;
+        const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
+        const candidates = selectedList.length > 0 ? selectedList : list;
         if (window.XLSX && candidates.length > 0) {
           const rows = candidates.map(r => ({
             "餐馆名称": r.name,
