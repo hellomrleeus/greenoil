@@ -23,8 +23,8 @@
 3. **手动全量同步接口**：
    - `POST /api/sync`：支持管理员在工作台“设置与服务”页面一键手动触发全量后台更新。
 
-4. **固定凭证登录与 Cookie 认证**：
-   - 默认账号：`greenoil`，默认密码：`greenoil2025`
+4. **安全登录与 Cookie 认证**：
+   - 账号密码通过 Cloudflare 环境变量/Secrets（`WORKER_USERNAME` / `WORKER_PASSWORD`）安全托管，不在源码和公开仓库中存储。
    - 下发 `greenoil_session` Cookie（支持 `SameSite=None; Secure; HttpOnly` 跨域与 GitHub Pages 配合）。
 
 ---
@@ -53,12 +53,13 @@
    binding = "RESTAURANTS_KV"
    id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    ```
-   将其复制粘贴到 `worker/wrangler.toml` 中取消注释即可。
+   将其配置在 `worker/wrangler.toml` 中。
 
-4. 配置 Google Maps API 密钥：
+4. 配置账号密码及 Google Maps API 密钥（保存在 Cloudflare Secrets，不提交到代码仓库）：
    ```bash
+   npx wrangler secret put WORKER_USERNAME
+   npx wrangler secret put WORKER_PASSWORD
    npx wrangler secret put GOOGLE_MAPS_API_KEY
-   # 根据提示粘贴您的 Google Cloud Maps API Key
    ```
 
 5. 部署到 Cloudflare：

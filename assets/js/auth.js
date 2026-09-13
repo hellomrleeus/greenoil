@@ -3,9 +3,9 @@
  * Handles fixed credential login, cookie generation & session persistence.
  */
 
+import { Api } from "./api.js";
+
 const AUTH_COOKIE_NAME = "greenoil_session";
-const DEFAULT_USER = "greenoil";
-const DEFAULT_PASS = "greenoil2025";
 const SESSION_DAYS = 7;
 
 export const Auth = {
@@ -59,33 +59,41 @@ export const Auth = {
    * Get current authenticated user
    */
   getUser() {
-    return localStorage.getItem("greenoil_auth_user") || DEFAULT_USER;
+    return localStorage.getItem("greenoil_auth_user") || "操作员";
   },
 
   /**
-   * Perform login
+   * Perform login via backend Cloudflare Worker
    */
   async login(username, password) {
-    const customUser = localStorage.getItem("greenoil_custom_user") || DEFAULT_USER;
-    const customPass = localStorage.getItem("greenoil_custom_pass") || DEFAULT_PASS;
+    const trimmedUser = username.trim();
+    const trimmedPass = password.trim();
 
-    // Check fixed credentials
-    if (username.trim() === customUser && password.trim() === customPass) {
-      const sessionToken = btoa(JSON.stringify({
-        user: username,
-        loginAt: Date.now(),
-        role: "operator"
-      }));
-
-      // Set cookie in browser as requested
-      this.setCookie(AUTH_COOKIE_NAME, sessionToken, SESSION_DAYS);
-      localStorage.setItem("greenoil_auth_user", username);
-      localStorage.setItem("greenoil_session_token", sessionToken);
-
-      return { success: true, user: username };
+    if (!trimmedUser || !trimmedPass) {
+      return { success: false, error: "请输入账号和密码" };
     }
 
-    return { success: false, error: "账号或密码错误（默认账号: greenoil / 密码: greenoil2025）" };
+    try {
+      const res = await Api.login(trimmedUser, trimmedPass);
+      if (res && res.success) {
+        const sessionToken = res.token || btoa(JSON.stringify({
+          user: trimmedUser,
+          loginAt: Date.now(),
+          role: "operator"
+        }));
+
+        // Set cookie in browser as requested
+        this.setCookie(AUTH_COOKIE_NAME, sessionToken, SESSION_DAYS);
+        localStorage.setItem("greenoil_auth_user", trimmedUser);
+        localStorage.setItem("greenoil_session_token", sessionToken);
+
+        return { success: true, user: trimmedUser };
+      }
+
+      return { success: false, error: res?.error || "账号或密码错误" };
+    } catch (err) {
+      return { success: false, error: `登录服务异常: ${err.message}` };
+    }
   },
 
   /**

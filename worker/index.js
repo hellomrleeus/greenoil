@@ -11,8 +11,6 @@
 
 import { SEED_RESTAURANTS } from "./seed.js";
 
-const DEFAULT_USERNAME = "greenoil";
-const DEFAULT_PASSWORD = "greenoil2025";
 const COOKIE_NAME = "greenoil_session";
 const SESSION_TTL = 7 * 24 * 60 * 60; // 7 days
 const KV_CACHE_KEY = "gta_fried_food_restaurants";
@@ -61,7 +59,7 @@ export default {
 
     try {
       // 1. Auth routes
-      if (url.pathname === "/api/login" && request.method === "POST") {
+      if ((url.pathname === "/api/login" || url.pathname === "/api/auth/login") && request.method === "POST") {
         return await handleLogin(request, env, corsHeaders);
       }
       if (url.pathname === "/api/auth/check" && request.method === "GET") {
@@ -141,10 +139,10 @@ async function handleLogin(request, env, corsHeaders) {
   }
 
   const { username, password } = body || {};
-  const validUsername = env.WORKER_USERNAME || DEFAULT_USERNAME;
-  const validPassword = env.WORKER_PASSWORD || DEFAULT_PASSWORD;
+  const validUsername = env.WORKER_USERNAME;
+  const validPassword = env.WORKER_PASSWORD;
 
-  if (username !== validUsername || password !== validPassword) {
+  if (!validUsername || !validPassword || username !== validUsername || password !== validPassword) {
     return new Response(JSON.stringify({
       success: false,
       error: "用户名或密码错误"
@@ -191,7 +189,7 @@ async function handleAuthCheck(request, env, corsHeaders) {
 
   return new Response(JSON.stringify({
     authenticated: true,
-    user: { username: env.WORKER_USERNAME || DEFAULT_USERNAME }
+    user: { username: env.WORKER_USERNAME || "operator" }
   }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -214,12 +212,15 @@ async function handleLogout(request, corsHeaders) {
 }
 
 function checkAuth(request, env) {
+  const validUser = env.WORKER_USERNAME;
+  if (!validUser) return false;
+
   const authHeader = request.headers.get("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.substring(7);
     try {
       const decoded = JSON.parse(atob(token));
-      if (decoded && decoded.user === (env.WORKER_USERNAME || DEFAULT_USERNAME)) {
+      if (decoded && decoded.user === validUser) {
         return true;
       }
     } catch {}
@@ -237,7 +238,7 @@ function checkAuth(request, env) {
     if (token) {
       try {
         const decoded = JSON.parse(atob(token));
-        if (decoded && decoded.user === (env.WORKER_USERNAME || DEFAULT_USERNAME)) {
+        if (decoded && decoded.user === validUser) {
           return true;
         }
       } catch {}

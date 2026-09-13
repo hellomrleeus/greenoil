@@ -159,5 +159,21 @@ export const Api = {
     } catch {
       return null;
     }
+  },
+
+  /**
+   * Remote login against Cloudflare Worker backend
+   */
+  async login(username, password) {
+    const workerUrl = this.getWorkerUrl();
+    const resp = await fetch(`${workerUrl}/api/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, password })
+    });
+
+    return await resp.json();
   }
 };

@@ -3,14 +3,14 @@
 支持 **PC 和手机移动端自适应** 的业务工作台应用。
 - **前端部署**：GitHub Pages (`https://hellomrleeus.github.io/greenoil/`)
 - **后端服务**：Cloudflare Workers (Google Maps API 代理 & 认证)
-- **固定账号**：`greenoil` / `greenoil2025`
+- **安全认证**：由 Cloudflare Worker 存储 Secrets 并进行鉴权验证
 
 ---
 
 ## 核心功能
 
-### 1. 固定账号登录与 Cookie 守护
-- 账号密码为固定值（默认账号：`greenoil`，密码：`greenoil2025`）。
+### 1. 账号登录与 Cookie 守护
+- 账号密码由 Cloudflare Worker 安全加密存储（环境变量 Secrets 托管，不在前端或公开仓库存储）。
 - 登录后生成 `greenoil_session` Cookie 保存在浏览器中（有效期 7 天），同时同步本地 Session，确保在 PC 宽屏与手机触屏（如 iOS Safari）中均能顺畅使用。
 
 ### 2. 多伦多油炸餐饮商家查询系统
