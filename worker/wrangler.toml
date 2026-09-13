@@ -3,13 +3,6 @@ main = "index.js"
 compatibility_date = "2024-09-01"
 
 
-# Cron Trigger: Run daily at 03:00 UTC (midnight Toronto time) to update restaurant cache
-[triggers]
-crons = ["0 3 * * *"]
-
 [[kv_namespaces]]
 binding = "RESTAURANTS_KV"
 id = "36694f8d5c90424a8ad84d4812812d56"
-
-# Note: Set your GOOGLE_MAPS_API_KEY as a Cloudflare Secret:
-# wrangler secret put GOOGLE_MAPS_API_KEY

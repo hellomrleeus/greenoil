@@ -9,5 +9,8 @@ Thumbs.db
 # Wrangler
 .wrangler/
 
-# Exports
+# Exports & Raw Data
 greenoil_restaurants_*.xlsx
+scripts/output/
+scripts/*.json
+!package*.json
