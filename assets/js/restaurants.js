@@ -139,6 +139,16 @@ export const Restaurants = {
         }
       });
     }
+
+    const btnImportTrap = document.getElementById("btnModalImportTrap");
+    if (btnImportTrap) {
+      btnImportTrap.addEventListener("click", () => {
+        if (this.selectedRestaurant && window.importRestaurantToGreaseTrap) {
+          window.importRestaurantToGreaseTrap(this.selectedRestaurant);
+          this.closeDetailModal();
+        }
+      });
+    }
   },
 
   async fetchData() {

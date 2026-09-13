@@ -989,6 +989,32 @@ body {
   pointer-events: none;
 }
 
+.trap-count-btn {
+  background: white;
+  border: 1.5px solid var(--surface-border);
+  color: var(--text-main);
+  padding: 0.65rem 0.5rem;
+  border-radius: var(--radius);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.trap-count-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+}
+
+.trap-count-btn.active {
+  background: var(--primary-dark);
+  color: white;
+  border-color: var(--primary-dark);
+  box-shadow: 0 2px 6px rgba(6, 78, 59, 0.25);
+}
+
 /* Grease Trap Price Card (Right Panel) */
 .trap-price-card {
   background: rgba(255, 255, 255, 0.08);

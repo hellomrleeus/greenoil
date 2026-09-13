@@ -6,6 +6,7 @@ import { Auth } from "./auth.js";
 import { Api } from "./api.js";
 import { Restaurants } from "./restaurants.js";
 import { Calculator } from "./calculator.js";
+import { GreaseTrap } from "./grease-trap.js";
 
 export function initApp() {
   setupNavigation();
@@ -15,6 +16,7 @@ export function initApp() {
 
   Restaurants.init();
   Calculator.init();
+  GreaseTrap.init();
 
   checkApiStatus();
 }

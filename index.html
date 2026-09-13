@@ -35,6 +35,11 @@
           <span>用油计算器</span>
         </button>
 
+        <button class="nav-item" data-tab="tab-greasetrap" data-title="Grease Trap">
+          <span class="nav-icon">🛢️</span>
+          <span>Grease Trap</span>
+        </button>
+
         <button class="nav-item" data-tab="tab-settings" data-title="设置">
           <span class="nav-icon">⚙️</span>
           <span>设置</span>
@@ -253,44 +258,10 @@
                 </div>
               </div>
 
-              <!-- Grease Trap Configuration -->
-              <div class="grease-trap-box">
-                <div class="grease-trap-header">
-                  <div class="grease-trap-title">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
-                      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
-                    </svg>
-                    <span>隔油池清洁配置 (Grease Trap)</span>
-                  </div>
-                  <label class="trap-toggle-label">
-                    <input type="checkbox" id="chkGreaseTrap" class="custom-checkbox" checked />
-                    <span>清洗隔油池</span>
-                  </label>
-                </div>
-
-                <div class="grease-trap-controls" id="greaseTrapControls">
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0.3rem;">隔油池数量</label>
-                    <select id="trapCountSelect" class="form-input" style="font-size: 0.88rem; padding: 0.45rem 0.6rem;">
-                      <option value="1" selected>1 个隔油池</option>
-                      <option value="2">2 个隔油池</option>
-                      <option value="3">3 个隔油池</option>
-                      <option value="4">4 个隔油池</option>
-                    </select>
-                  </div>
-                  <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0.3rem;">容量规格 (主单位公制)</label>
-                    <select id="trapSizeSelect" class="form-input" style="font-size: 0.88rem; padding: 0.45rem 0.6rem;">
-                      <!-- 动态填充 -->
-                    </select>
-                  </div>
-                </div>
-              </div>
-
               <!-- Buttons -->
               <div style="display: flex; gap: 0.75rem;">
                 <button class="btn btn-primary btn-lg" id="btnCalculateOil" style="flex: 2;">
-                  <span>计算用油与清洁费用</span>
+                  <span>计算月用油量</span>
                 </button>
                 <button class="btn btn-secondary btn-lg" id="btnResetCalc" style="flex: 1;">
                   <span>重置</span>
@@ -326,8 +297,8 @@
                 </div>
 
                 <div class="sub-metric">
-                  <div class="sub-metric-label">推荐回收桶配置 (55加仑)</div>
-                  <div class="sub-metric-val" id="res55GalDrums">约 0 桶</div>
+                  <div class="sub-metric-label">推荐回收桶配置 (200L)</div>
+                  <div class="sub-metric-val" id="res200LDrums">约 0 桶</div>
                 </div>
 
                 <div class="sub-metric">
@@ -336,42 +307,9 @@
                 </div>
               </div>
 
-              <!-- Grease Trap Price Card -->
-              <div class="trap-price-card" id="trapPriceCard">
-                <div class="trap-price-header">
-                  <div class="trap-price-title">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                    </svg>
-                    <span>隔油池清洁收费</span>
-                  </div>
-                  <span class="trap-tax-badge">安省 HST 13%</span>
-                </div>
-
-                <div class="trap-price-grid">
-                  <div class="trap-price-item">
-                    <div class="trap-price-label">税前服务费</div>
-                    <div class="trap-price-val" id="resTrapPrice">$100.00</div>
-                  </div>
-                  <div class="trap-price-item">
-                    <div class="trap-price-label">税金 (HST 13%)</div>
-                    <div class="trap-price-val" id="resTrapTax">$13.00</div>
-                  </div>
-                  <div class="trap-price-item trap-price-total-item">
-                    <div class="trap-price-label" style="color: #6ee7b7; font-weight: 700;">税后合计</div>
-                    <div class="trap-price-val trap-price-total-val" id="resTrapTotal">$113.00</div>
-                  </div>
-                </div>
-
-                <div class="trap-spec-pill" id="resTrapSpecPill">
-                  规格：1 个隔油池 · 95 升 (25 加仑)
-                </div>
-              </div>
-
               <!-- Business Advice Box -->
               <div class="business-advice-box">
-                <h4>回收与维保方案：</h4>
+                <h4>回收方案：</h4>
                 <p id="resPickupAdvice">正在计算...</p>
               </div>
 
@@ -387,7 +325,137 @@
 
         </section>
 
-        <!-- TAB 3: SETTINGS -->
+        <!-- TAB 3: GREASE TRAP WORKBENCH -->
+        <section class="tab-view" id="tab-greasetrap">
+          <div class="calculator-grid">
+            
+            <!-- Left Panel: Grease Trap Config -->
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-dark);">
+                  隔油池清洁配置 (Grease Trap)
+                </h3>
+                <span class="api-badge" id="trapTargetRestBadge" style="display: none; background: var(--primary-dark); color: white;">
+                  关联餐馆
+                </span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.9rem; font-weight: 600;">隔油池数量</label>
+                <div class="trap-count-selector" id="trapCountPills" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+                  <button type="button" class="btn btn-secondary trap-count-btn active" data-count="1">1 个</button>
+                  <button type="button" class="btn btn-secondary trap-count-btn" data-count="2">2 个</button>
+                  <button type="button" class="btn btn-secondary trap-count-btn" data-count="3">3 个</button>
+                  <button type="button" class="btn btn-secondary trap-count-btn" data-count="4">4 个</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.9rem; font-weight: 600;" for="gtTrapSizeSelect">
+                  单个隔油池容量规格 (主单位: 公制升数 / 括号: 加仑)
+                </label>
+                <select id="gtTrapSizeSelect" class="form-input" style="font-size: 0.95rem; padding: 0.6rem 0.75rem; width: 100%;">
+                  <!-- Populated via JS -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.9rem; font-weight: 600;" for="gtCleanFrequency">
+                  建议清洗频率
+                </label>
+                <select id="gtCleanFrequency" class="form-input" style="font-size: 0.95rem; padding: 0.6rem 0.75rem; width: 100%;">
+                  <option value="1" selected>每月清洗 1 次 (高客流餐饮推荐)</option>
+                  <option value="2">每 2 个月清洗 1 次 (标准中大型餐馆)</option>
+                  <option value="3">每季度清洗 1 次 (3个月 / 市政法定最低维保线)</option>
+                </select>
+              </div>
+
+              <div class="frequency-box" style="margin-top: 1.25rem;">
+                <div class="frequency-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  <span>市政环保排污合规说明</span>
+                </div>
+                <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-main);">
+                  安省大多伦多各市镇（如多伦多 Bylaw 560、万锦与约克区 Sewer Use Bylaw）严格要求餐饮商户必须安装隔油池并定期由合规持牌服务商抽吸清洗。违规排废或油垢溢出将面临市政重罚及停业整顿。
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button class="btn btn-primary btn-lg" id="btnCalculateTrap" style="flex: 2;">
+                  <span>计算清洁费用</span>
+                </button>
+                <button class="btn btn-secondary btn-lg" id="btnResetTrap" style="flex: 1;">
+                  <span>重置</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Panel: Cleaning Price & Quote Card -->
+            <div class="calc-results-card">
+              <h3>
+                隔油池清洁收费方案 (Ontario HST 13%)
+              </h3>
+
+              <!-- Big Metric: Total with Tax -->
+              <div class="metric-big">
+                <div class="metric-big-label">单次清洁税后合计 (CAD)</div>
+                <div class="metric-big-val">
+                  <span id="gtResTotal">$113.00</span>
+                  <span class="metric-big-unit">含 13% HST</span>
+                </div>
+              </div>
+
+              <!-- Sub Metrics Grid -->
+              <div class="metrics-subgrid">
+                <div class="sub-metric">
+                  <div class="sub-metric-label">税前服务费</div>
+                  <div class="sub-metric-val" id="gtResPrice">$100.00</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label">安省税金 (13% HST)</div>
+                  <div class="sub-metric-val" id="gtResTax">$13.00</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label">当前选定规格</div>
+                  <div class="sub-metric-val" id="gtResSpecText" style="font-size: 1.05rem;">1 个 · 95 升 (25 加仑)</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label">预计年度维保支出</div>
+                  <div class="sub-metric-val" id="gtResAnnualTotal" style="font-size: 1.15rem; color: #34d399;">$1,356.00 / 年</div>
+                </div>
+              </div>
+
+              <!-- Service Details Box -->
+              <div class="business-advice-box">
+                <h4>Green Oil 标准清洗工艺流程：</h4>
+                <p id="gtServiceDetails" style="font-size: 0.82rem; line-height: 1.5;">
+                  1. 彻底抽吸截留浮油、悬浮物与底部沉淀油泥<br>
+                  2. 高压冲洗四壁并刮擦油脂硬垢<br>
+                  3. 进出水隔板与过滤网疏通检查与密封还原<br>
+                  4. 出具市政认可的标准排污维保记录单（供年检备查）
+                </p>
+              </div>
+
+              <!-- Copy Quote Action -->
+              <div style="margin-top: 1.5rem;">
+                <button class="btn btn-primary" id="btnCopyTrapQuote" style="background: #10b981; border: none; width: 100%; color: white; font-size: 1rem; padding: 0.75rem;">
+                  <span>复制隔油池清洁报价单</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- TAB 4: SETTINGS -->
         <section class="tab-view" id="tab-settings">
           <div class="card" style="max-width: 600px;">
             <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 1.25rem;">
@@ -503,7 +571,10 @@
           Google 地图
         </a>
         <button class="btn btn-primary btn-sm" id="btnModalImportCalc">
-          导入计算器
+          导入用油计算
+        </button>
+        <button class="btn btn-secondary btn-sm" id="btnModalImportTrap" style="background: #065f46; color: white; border: none;">
+          隔油池测算
         </button>
       </div>
     </div>
