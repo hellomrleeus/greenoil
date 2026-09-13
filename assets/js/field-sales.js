@@ -42,6 +42,20 @@ export const FieldSales = {
     this.bindRecordEvents();
     this.bindAnalyticsEvents();
 
+    // Listen for language change to update dynamic views
+    i18n.onLanguageChange(() => {
+      this.renderRouteWaypoints();
+      this.renderSalesRecords();
+      if (this.recordsViewMode === "calendar") {
+        this.renderCalendarView();
+      }
+      this.renderAnalytics();
+      const modal = document.getElementById("fsRecordModalOverlay");
+      if (modal && modal.classList.contains("active")) {
+        this.populateProximityRestaurantOptions(this.selectedRestaurantForSale);
+      }
+    });
+
     // Load initial data
     await this.loadSalesRecords();
     this.loadCachedRestaurants();
@@ -189,7 +203,7 @@ export const FieldSales = {
     const btnClear = document.getElementById("fsRouteBtnClear");
     if (btnClear) {
       btnClear.addEventListener("click", () => {
-        if (confirm("确定清空当前路线规划中的所有餐馆？")) {
+        if (confirm(i18n.t("fs_confirm_clear_route"))) {
           this.routeWaypoints = [];
           this.saveRouteWaypoints();
           this.renderRouteWaypoints();
@@ -269,7 +283,7 @@ export const FieldSales = {
   addRestaurantToRoute(restaurant, jumpToTab = false) {
     const exists = this.routeWaypoints.some(w => (w.placeId && w.placeId === restaurant.placeId) || w.name === restaurant.name);
     if (exists) {
-      const msg = `餐馆 “${restaurant.name}” 已在路线中`;
+      const msg = i18n.t("fs_msg_already_in_route", { name: restaurant.name });
       if (window.showToast) window.showToast(msg);
       else alert(msg);
       return;
@@ -283,7 +297,7 @@ export const FieldSales = {
       this.switchSubTab("route");
     }
 
-    const msg = `已将 “${restaurant.name}” 加入路线规划`;
+    const msg = i18n.t("fs_msg_added_to_route", { name: restaurant.name });
     if (window.showToast) window.showToast(msg);
     else alert(msg);
   },
@@ -309,12 +323,12 @@ export const FieldSales = {
     
     if (addedCount > 0) {
       const skipped = restaurants.length - addedCount;
-      const skipMsg = skipped > 0 ? `（${skipped} 家已在路线中，已自动去重）` : "";
-      const msg = `已将 ${addedCount} 家餐馆加入路线规划！${skipMsg}`;
+      const skipMsg = skipped > 0 ? i18n.t("fs_msg_batch_skipped", { count: skipped }) : "";
+      const msg = i18n.t("fs_msg_batch_added", { count: addedCount, skipMsg });
       if (window.showToast) window.showToast(msg);
       else alert(msg);
     } else {
-      const msg = "所选餐馆均已在路线规划清单中";
+      const msg = i18n.t("fs_msg_all_in_route");
       if (window.showToast) window.showToast(msg);
       else alert(msg);
     }
@@ -338,7 +352,7 @@ export const FieldSales = {
 
   optimizeRoute() {
     if (this.routeWaypoints.length < 2) {
-      alert("路线中至少需包含 2 家餐馆方可进行最短路径优化");
+      alert(i18n.t("fs_alert_min_waypoints"));
       return;
     }
 
@@ -373,7 +387,7 @@ export const FieldSales = {
     this.routeWaypoints = optimized;
     this.saveRouteWaypoints();
     this.renderRouteWaypoints();
-    const msg = "已按经纬度几何最短拓扑排序调整拜访顺序";
+    const msg = i18n.t("fs_msg_optimized");
     if (window.showToast) window.showToast(msg);
     else alert(msg);
   },
@@ -391,7 +405,7 @@ export const FieldSales = {
 
   openGoogleMapsNavigation() {
     if (this.routeWaypoints.length === 0) {
-      alert("请先添加途经餐馆后再发起导航");
+      alert(i18n.t("fs_alert_no_waypoints"));
       return;
     }
 
@@ -435,8 +449,8 @@ export const FieldSales = {
       const phoneStr = w.phone && w.phone !== "无" ? `<a href="tel:${w.phone}" class="fs-link">${w.phone}</a>` : "";
       const isVisited = !!w.visited;
       const visitedBadge = isVisited 
-        ? `<span style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ 已拜访</span>` 
-        : `<span style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">待拜访</span>`;
+        ? `<span style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ ${i18n.t("visited_yes")}</span>` 
+        : `<span style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${i18n.t("visited_pending")}</span>`;
 
       return `
         <div class="fs-waypoint-card ${isVisited ? 'is-visited' : ''}" style="${isVisited ? 'border-left: 4px solid #10b981;' : ''}">
@@ -445,17 +459,17 @@ export const FieldSales = {
             <div class="fs-wp-header">
               <span class="fs-wp-name">${w.name}</span>
               ${visitedBadge}
-              <span class="fs-wp-region">${w.region || "GTA"}</span>
+              <span class="fs-wp-region">${(window.restaurants ? window.restaurants.formatRegion(w.region) : w.region) || "GTA"}</span>
             </div>
-            <div class="fs-wp-address">${w.address || "无地址信息"}</div>
+            <div class="fs-wp-address">${w.address || i18n.t("no_address")}</div>
             <div class="fs-wp-meta">${phoneStr}</div>
           </div>
           <div class="fs-wp-actions">
-            <button class="fs-btn-action fs-btn-nav" data-action="nav" data-index="${index}" title="在 Google 地图导航到此处">导航</button>
-            <button class="fs-btn-action" data-action="up" data-index="${index}" ${isFirst ? "disabled" : ""} title="上移">上移</button>
-            <button class="fs-btn-action" data-action="down" data-index="${index}" ${isLast ? "disabled" : ""} title="下移">下移</button>
-            <button class="fs-btn-action fs-btn-del" data-action="del" data-index="${index}" title="删除">删除</button>
-            <button class="fs-btn-action fs-btn-log" data-action="log" data-index="${index}" title="${isVisited ? '修改/查看拜访记录' : '记录拜访'}" style="${isVisited ? 'background: #d1fae5; color: #065f46; border-color: #a7f3d0;' : ''}">${isVisited ? '已记录' : '记录'}</button>
+            <button class="fs-btn-action fs-btn-nav" data-action="nav" data-index="${index}" title="${i18n.t("fs_btn_nav_title")}">${i18n.t("fs_btn_nav")}</button>
+            <button class="fs-btn-action" data-action="up" data-index="${index}" ${isFirst ? "disabled" : ""} title="${i18n.t("fs_btn_move_up")}">${i18n.t("fs_btn_move_up")}</button>
+            <button class="fs-btn-action" data-action="down" data-index="${index}" ${isLast ? "disabled" : ""} title="${i18n.t("fs_btn_move_down")}">${i18n.t("fs_btn_move_down")}</button>
+            <button class="fs-btn-action fs-btn-del" data-action="del" data-index="${index}" title="${i18n.t("btn_delete")}">${i18n.t("btn_delete")}</button>
+            <button class="fs-btn-action fs-btn-log" data-action="log" data-index="${index}" title="${isVisited ? i18n.t('fs_btn_log_title_edit') : i18n.t('fs_btn_log_title_new')}" style="${isVisited ? 'background: #d1fae5; color: #065f46; border-color: #a7f3d0;' : ''}">${isVisited ? i18n.t('fs_btn_log_recorded') : i18n.t('fs_btn_log_new')}</button>
           </div>
         </div>
       `;
@@ -633,19 +647,20 @@ export const FieldSales = {
     const selectEl = document.getElementById("fsRecordRestSelect");
     if (!selectEl) return;
 
-    let html = `<option value="">-- 请选择关联餐馆 --</option>`;
+    let html = `<option value="">${i18n.t("fs_select_rest_placeholder")}</option>`;
 
     // 1. Group: Route Planning Stops (Highest Priority)
     if (this.routeWaypoints && this.routeWaypoints.length > 0) {
-      html += `<optgroup label="当前路线规划站点 (共 ${this.routeWaypoints.length} 站 · 优先选择)">`;
+      html += `<optgroup label="${i18n.t("fs_optgroup_route", { count: this.routeWaypoints.length })}">`;
       this.routeWaypoints.forEach((w, idx) => {
         const isSelected = selectedRest && (
           (selectedRest.placeId && w.placeId && selectedRest.placeId === w.placeId) ||
           (selectedRest.name && w.name && selectedRest.name === w.name)
         );
-        const statusStr = w.visited ? "✓ 已拜访" : "待拜访";
+        const statusStr = w.visited ? `✓ ${i18n.t("visited_yes")}` : i18n.t("visited_pending");
         const val = w.placeId || w.name;
-        html += `<option value="${val}" ${isSelected ? "selected" : ""}>[第 ${idx + 1} 站 · ${statusStr}] ${w.name} (${w.address || w.region || "GTA"})</option>`;
+        const optLabel = i18n.t("fs_opt_stop_format", { stop: idx + 1, status: statusStr, name: w.name, region: w.address || w.region || "GTA" });
+        html += `<option value="${val}" ${isSelected ? "selected" : ""}>${optLabel}</option>`;
       });
       html += `</optgroup>`;
     }
@@ -655,14 +670,14 @@ export const FieldSales = {
     const otherRestaurants = (this.cachedRestaurants || []).filter(r => !routeKeys.has(r.placeId || r.name));
 
     if (otherRestaurants.length > 0) {
-      html += `<optgroup label="数据库其它餐馆 (可搜索选择)">`;
+      html += `<optgroup label="${i18n.t("fs_optgroup_other")}">`;
       otherRestaurants.slice(0, 100).forEach(r => {
         const isSelected = selectedRest && (
           (selectedRest.placeId && r.placeId && selectedRest.placeId === r.placeId) ||
           (selectedRest.name && r.name && selectedRest.name === r.name)
         );
         const val = r.placeId || r.name;
-        html += `<option value="${val}" ${isSelected ? "selected" : ""}>${r.name} (${r.region || "GTA"})</option>`;
+        html += `<option value="${val}" ${isSelected ? "selected" : ""}>${r.name} (${(window.restaurants ? window.restaurants.formatRegion(r.region) : r.region) || "GTA"})</option>`;
       });
       html += `</optgroup>`;
     }
@@ -711,7 +726,7 @@ export const FieldSales = {
     }
 
     if (!rest) {
-      alert("请选择要关联的餐馆");
+      alert(i18n.t("fs_alert_select_rest"));
       return;
     }
 
@@ -763,7 +778,7 @@ export const FieldSales = {
     };
 
     const btnSubmit = document.getElementById("fsBtnSubmitRecord");
-    if (btnSubmit) btnSubmit.textContent = "正在保存...";
+    if (btnSubmit) btnSubmit.textContent = i18n.t("fs_btn_saving");
 
     // 1. Save or Update Record via Worker API
     let res;
@@ -817,12 +832,12 @@ export const FieldSales = {
 
     this.closeSalesRecordModal();
     this.renderSalesRecords();
-    if (window.showToast) window.showToast("拜访记录已成功保存！");
-    else alert("拜访记录已成功保存！");
+    if (window.showToast) window.showToast(i18n.t("fs_record_saved_toast"));
+    else alert(i18n.t("fs_record_saved_toast"));
   },
 
   async deleteRecord(recordId) {
-    if (!confirm("确定删除这条拜访记录吗？")) return;
+    if (!confirm(i18n.t("fs_confirm_delete_record"))) return;
     this.salesRecords = this.salesRecords.filter(r => r.id !== recordId);
     try {
       localStorage.setItem(STORAGE_SALES_CACHE_KEY, JSON.stringify(this.salesRecords));
@@ -895,24 +910,24 @@ export const FieldSales = {
 
   renderRecordCard(r) {
     const outcomeBadge = this.getOutcomeBadge(r.outcome);
-    const methodBadge = r.method === "onsite" ? `<span class="fs-tag fs-tag-onsite">现场拜访</span>` : `<span class="fs-tag fs-tag-phone">电话沟通</span>`;
+    const methodBadge = r.method === "onsite" ? `<span class="fs-tag fs-tag-onsite">${i18n.t("fs_record_method_onsite")}</span>` : `<span class="fs-tag fs-tag-phone">${i18n.t("fs_record_method_phone")}</span>`;
     const timeFormatted = r.visitTime ? r.visitTime.replace("T", " ") : "";
 
     let detailsBlock = "";
     if (r.outcome === "rejected" && (r.rejectionReason || r.rejectionReasonDetails)) {
       detailsBlock = `
         <div class="fs-record-rejection">
-          <span class="fs-reject-tag">拒绝原因：${r.rejectionReason || "未注明"}</span>
+          <span class="fs-reject-tag">${i18n.t("fs_reject_reason_prefix")}${this.getRejectReasonText(r.rejectionReason) || i18n.t("unspecified")}</span>
           ${r.rejectionReasonDetails ? `<span class="fs-reject-desc">${r.rejectionReasonDetails}</span>` : ""}
         </div>
       `;
     } else if (r.outcome === "signed_others") {
       detailsBlock = `
         <div class="fs-record-competitor">
-          <div class="fs-comp-title">签其他服务商：${r.signedOthersReason || "未注明原因"}</div>
-          ${r.competitorName ? `<div><strong>供应商：</strong>${r.competitorName}</div>` : ""}
-          ${r.competitorQuote ? `<div><strong>报价/政策：</strong>${r.competitorQuote}</div>` : ""}
-          ${r.contractExpiryDate ? `<div><strong>预计到期：</strong>${r.contractExpiryDate}</div>` : ""}
+          <div class="fs-comp-title">${i18n.t("fs_signed_others_prefix")}${this.getOthersReasonText(r.signedOthersReason) || i18n.t("unspecified")}</div>
+          ${r.competitorName ? `<div><strong>${i18n.t("fs_meta_supplier")}: </strong>${r.competitorName}</div>` : ""}
+          ${r.competitorQuote ? `<div><strong>${i18n.t("fs_meta_quote")}: </strong>${r.competitorQuote}</div>` : ""}
+          ${r.contractExpiryDate ? `<div><strong>${i18n.t("fs_meta_expiry")}: </strong>${r.contractExpiryDate}</div>` : ""}
         </div>
       `;
     }
@@ -931,19 +946,19 @@ export const FieldSales = {
         </div>
 
         <div class="fs-rec-meta">
-          <span>时间: ${timeFormatted}</span>
-          <span>地址: ${r.restaurantAddress || "无地址"}</span>
-          ${r.restaurantPhone ? `<span>电话: ${r.restaurantPhone}</span>` : ""}
-          <span>业务员: ${r.salesRep || "greenoil"}</span>
+          <span>${i18n.t("fs_meta_time")}: ${timeFormatted}</span>
+          <span>${i18n.t("fs_meta_address")}: ${r.restaurantAddress || i18n.t("no_address")}</span>
+          ${r.restaurantPhone ? `<span>${i18n.t("fs_meta_phone")}: ${r.restaurantPhone}</span>` : ""}
+          <span>${i18n.t("fs_meta_rep")}: ${r.salesRep || "greenoil"}</span>
         </div>
 
         ${detailsBlock}
 
-        ${r.notes ? `<div class="fs-rec-notes"><strong>沟通纪要：</strong>${r.notes}</div>` : ""}
+        ${r.notes ? `<div class="fs-rec-notes"><strong>${i18n.t("fs_meta_notes")}: </strong>${r.notes}</div>` : ""}
 
         <div class="fs-rec-actions">
-          <button class="btn btn-secondary btn-sm" data-action="edit" data-id="${r.id}">编辑</button>
-          <button class="btn btn-secondary btn-sm fs-btn-delete" data-action="delete" data-id="${r.id}">删除</button>
+          <button class="btn btn-secondary btn-sm" data-action="edit" data-id="${r.id}">${i18n.t("btn_edit")}</button>
+          <button class="btn btn-secondary btn-sm fs-btn-delete" data-action="delete" data-id="${r.id}">${i18n.t("btn_delete")}</button>
         </div>
       </div>
     `;
@@ -1165,16 +1180,40 @@ export const FieldSales = {
     }
   },
 
+  getRejectReasonText(reason) {
+    if (!reason) return "";
+    const map = {
+      "价格无优势": "fs_reject_price",
+      "觉得换油/换服务商麻烦": "fs_reject_hassle",
+      "店主不在/无法决策": "fs_reject_decision_maker",
+      "用油量极少无回收价值": "fs_reject_low_volume",
+      "对目前服务商满意": "fs_reject_satisfied",
+      "其他原因": "fs_reject_other"
+    };
+    return map[reason] ? i18n.t(map[reason]) : reason;
+  },
+
+  getOthersReasonText(reason) {
+    if (!reason) return "";
+    const map = {
+      "已有长期排他合同未到期": "fs_others_locked",
+      "现任供应商提供特殊设备/高额补贴": "fs_others_equipment",
+      "现任供应商提供原料捆绑供货": "fs_others_bundle",
+      "其他原因": "fs_others_other"
+    };
+    return map[reason] ? i18n.t(map[reason]) : reason;
+  },
+
   getOutcomeBadge(outcome) {
     switch (outcome) {
       case "contract_signed":
-        return `<span class="fs-badge fs-badge-signed">签订合同</span>`;
+        return `<span class="fs-badge fs-badge-signed">${i18n.t("fs_record_outcome_signed")}</span>`;
       case "interested":
-        return `<span class="fs-badge fs-badge-interested">有意向</span>`;
+        return `<span class="fs-badge fs-badge-interested">${i18n.t("fs_record_outcome_interested")}</span>`;
       case "rejected":
-        return `<span class="fs-badge fs-badge-rejected">拒绝</span>`;
+        return `<span class="fs-badge fs-badge-rejected">${i18n.t("fs_record_outcome_rejected")}</span>`;
       case "signed_others":
-        return `<span class="fs-badge fs-badge-others">已签其他</span>`;
+        return `<span class="fs-badge fs-badge-others">${i18n.t("fs_record_outcome_signed_others")}</span>`;
       default:
         return `<span class="fs-badge">${outcome}</span>`;
     }
@@ -1216,20 +1255,22 @@ export const FieldSales = {
 
     // 1. Render Outcomes Donut/Pie Chart
     this.renderDonutChart("fsChartOutcomesContainer", [
-      { label: "签订合同", count: signed, color: "#10b981" },
-      { label: "有意向", count: interested, color: "#3b82f6" },
-      { label: "拒绝", count: rejected, color: "#94a3b8" },
-      { label: "已签其他", count: others, color: "#f59e0b" }
+      { label: i18n.t("fs_record_outcome_signed"), count: signed, color: "#10b981" },
+      { label: i18n.t("fs_record_outcome_interested"), count: interested, color: "#3b82f6" },
+      { label: i18n.t("fs_record_outcome_rejected"), count: rejected, color: "#94a3b8" },
+      { label: i18n.t("fs_record_outcome_signed_others"), count: others, color: "#f59e0b" }
     ]);
 
     // 2. Render Rejection / Others Reasons Donut Chart
     const reasonsMap = {};
     this.salesRecords.forEach(r => {
       if (r.outcome === "rejected" && r.rejectionReason) {
-        reasonsMap[r.rejectionReason] = (reasonsMap[r.rejectionReason] || 0) + 1;
+        const translated = this.getRejectReasonText(r.rejectionReason);
+        reasonsMap[translated] = (reasonsMap[translated] || 0) + 1;
       }
       if (r.outcome === "signed_others" && r.signedOthersReason) {
-        reasonsMap[r.signedOthersReason] = (reasonsMap[r.signedOthersReason] || 0) + 1;
+        const translated = this.getOthersReasonText(r.signedOthersReason);
+        reasonsMap[translated] = (reasonsMap[translated] || 0) + 1;
       }
     });
 
@@ -1239,7 +1280,7 @@ export const FieldSales = {
     });
 
     this.renderDonutChart("fsChartReasonsContainer", reasonsData.length > 0 ? reasonsData : [
-      { label: "暂无拒绝数据", count: 1, color: "#e2e8f0" }
+      { label: i18n.t("fs_no_rejection_data"), count: 1, color: "#e2e8f0" }
     ]);
 
     // 3. Render Sales Methods Comparison Bar Chart
@@ -1249,15 +1290,16 @@ export const FieldSales = {
     const phoneInt = this.salesRecords.filter(r => r.method === "phone" && r.outcome === "interested").length;
 
     this.renderGroupedBarChart("fsChartMethodsContainer", [
-      { category: "签约合同", onsite: onsiteSigned, phone: phoneSigned },
-      { category: "意向跟进", onsite: onsiteInt, phone: phoneInt },
-      { category: "总拜访数", onsite: onsite, phone: total - onsite }
+      { category: i18n.t("fs_category_signed"), onsite: onsiteSigned, phone: phoneSigned },
+      { category: i18n.t("fs_category_interested"), onsite: onsiteInt, phone: phoneInt },
+      { category: i18n.t("fs_category_total"), onsite: onsite, phone: total - onsite }
     ]);
 
     // 4. Render Regional Distribution Bar Chart
     const regionCounts = {};
     this.salesRecords.forEach(r => {
-      const reg = (r.region || "其他").split(" ")[0].replace("(", "");
+      const rawReg = (r.region || "").split(" ")[0].replace("(", "");
+      const reg = (window.restaurants ? window.restaurants.formatRegion(rawReg) : rawReg) || i18n.t("unspecified");
       regionCounts[reg] = (regionCounts[reg] || 0) + 1;
     });
 
@@ -1274,7 +1316,7 @@ export const FieldSales = {
 
     const total = data.reduce((sum, d) => sum + d.count, 0);
     if (total === 0) {
-      container.innerHTML = `<div class="fs-chart-empty">暂无统计数据</div>`;
+      container.innerHTML = `<div class="fs-chart-empty">${i18n.t("fs_chart_empty")}</div>`;
       return;
     }
 
@@ -1321,7 +1363,7 @@ export const FieldSales = {
           <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
             ${circlesHtml}
             <text x="50%" y="47%" text-anchor="middle" font-size="18" font-weight="700" fill="var(--text-main)">${total}</text>
-            <text x="50%" y="62%" text-anchor="middle" font-size="11" fill="var(--text-muted)">记录总计</text>
+            <text x="50%" y="62%" text-anchor="middle" font-size="11" fill="var(--text-muted)">${i18n.t("fs_chart_total_label")}</text>
           </svg>
         </div>
         <div class="fs-donut-legend">
@@ -1344,10 +1386,10 @@ export const FieldSales = {
       return `
         <div class="fs-bar-group">
           <div class="fs-bar-columns">
-            <div class="fs-bar-col fs-bar-onsite" style="height: ${Math.max(8, hOnsite)}%;" title="现场: ${d.onsite}">
+            <div class="fs-bar-col fs-bar-onsite" style="height: ${Math.max(8, hOnsite)}%;" title="${i18n.t("fs_bar_onsite_title", { count: d.onsite })}">
               <span class="fs-bar-col-val">${d.onsite}</span>
             </div>
-            <div class="fs-bar-col fs-bar-phone" style="height: ${Math.max(8, hPhone)}%;" title="电话: ${d.phone}">
+            <div class="fs-bar-col fs-bar-phone" style="height: ${Math.max(8, hPhone)}%;" title="${i18n.t("fs_bar_phone_title", { count: d.phone })}">
               <span class="fs-bar-col-val">${d.phone}</span>
             </div>
           </div>
@@ -1362,8 +1404,8 @@ export const FieldSales = {
           ${barsHtml}
         </div>
         <div class="fs-bar-legend">
-          <span><span class="fs-legend-dot" style="background: #10b981;"></span> 现场拜访</span>
-          <span><span class="fs-legend-dot" style="background: #3b82f6;"></span> 电话沟通</span>
+          <span><span class="fs-legend-dot" style="background: #10b981;"></span> ${i18n.t("fs_record_method_onsite")}</span>
+          <span><span class="fs-legend-dot" style="background: #3b82f6;"></span> ${i18n.t("fs_record_method_phone")}</span>
         </div>
       </div>
     `;
@@ -1374,7 +1416,7 @@ export const FieldSales = {
     if (!container) return;
 
     if (data.length === 0) {
-      container.innerHTML = `<div class="fs-chart-empty">暂无区域数据</div>`;
+      container.innerHTML = `<div class="fs-chart-empty">${i18n.t("fs_chart_region_empty")}</div>`;
       return;
     }
 
@@ -1388,7 +1430,7 @@ export const FieldSales = {
           <div class="fs-hbar-track">
             <div class="fs-hbar-fill" style="width: ${Math.max(5, wPct)}%;"></div>
           </div>
-          <div class="fs-hbar-val">${d.count} 次</div>
+          <div class="fs-hbar-val">${i18n.t("count_times", { count: d.count })}</div>
         </div>
       `;
     }).join("");
@@ -1403,7 +1445,7 @@ export const FieldSales = {
     const compRecords = this.salesRecords.filter(r => r.outcome === "signed_others" || r.competitorName || r.competitorQuote);
 
     if (compRecords.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">暂无收集到的竞品供应商报价数据</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">${i18n.t("fs_table_empty_competitor")}</td></tr>`;
       return;
     }
 
@@ -1411,10 +1453,10 @@ export const FieldSales = {
       return `
         <tr>
           <td style="font-weight: 600;">${r.restaurantName}</td>
-          <td><span class="fs-tag fs-tag-others">${r.competitorName || "未知供应商"}</span></td>
-          <td style="color: #d97706; font-weight: 600;">${r.competitorQuote || "未透露具体价格"}</td>
-          <td>${r.contractExpiryDate || "未填"}</td>
-          <td>${r.signedOthersReason || r.notes || "-"}</td>
+          <td><span class="fs-tag fs-tag-others">${r.competitorName || i18n.t("fs_unknown_supplier")}</span></td>
+          <td style="color: #d97706; font-weight: 600;">${r.competitorQuote || i18n.t("fs_unrevealed_price")}</td>
+          <td>${r.contractExpiryDate || i18n.t("unfilled")}</td>
+          <td>${this.getOthersReasonText(r.signedOthersReason) || r.notes || "-"}</td>
         </tr>
       `;
     }).join("");
@@ -1422,28 +1464,28 @@ export const FieldSales = {
 
   exportSalesToExcel() {
     if (this.salesRecords.length === 0) {
-      alert("当前暂无拜访记录可导出");
+      alert(i18n.t("fs_export_empty_alert"));
       return;
     }
 
     const exportRows = this.salesRecords.map(r => ({
-      "拜访时间": r.visitTime,
-      "餐馆名称": r.restaurantName,
-      "所属区域": r.region,
-      "详细地址": r.restaurantAddress,
-      "联系电话": r.restaurantPhone,
-      "负责人/联系人": r.contactPerson || "",
-      "拜访方式": r.method === "onsite" ? "现场拜访" : "电话沟通",
-      "销售结果": this.getOutcomeText(r.outcome),
-      "拒绝原因": r.rejectionReason,
-      "拒绝详细说明": r.rejectionReasonDetails,
-      "签其他原因": r.signedOthersReason,
-      "竞品供应商": r.competitorName,
-      "竞品报价/补贴": r.competitorQuote,
-      "竞品合同到期日": r.contractExpiryDate,
-      "沟通纪要": r.notes,
-      "业务员": r.salesRep,
-      "创建时间": r.createdAt
+      [i18n.t("fs_col_visit_time")]: r.visitTime,
+      [i18n.t("fs_col_rest_name")]: r.restaurantName,
+      [i18n.t("fs_col_region")]: (window.restaurants ? window.restaurants.formatRegion(r.region) : r.region) || r.region,
+      [i18n.t("fs_col_address")]: r.restaurantAddress,
+      [i18n.t("fs_col_phone")]: r.restaurantPhone,
+      [i18n.t("fs_col_contact")]: r.contactPerson || "",
+      [i18n.t("fs_col_method")]: r.method === "onsite" ? i18n.t("fs_record_method_onsite") : i18n.t("fs_record_method_phone"),
+      [i18n.t("fs_col_outcome")]: this.getOutcomeText(r.outcome),
+      [i18n.t("fs_col_reject_reason")]: this.getRejectReasonText(r.rejectionReason) || r.rejectionReason || "",
+      [i18n.t("fs_col_reject_details")]: r.rejectionReasonDetails || "",
+      [i18n.t("fs_col_signed_others")]: this.getOthersReasonText(r.signedOthersReason) || r.signedOthersReason || "",
+      [i18n.t("fs_col_competitor")]: r.competitorName || "",
+      [i18n.t("fs_col_quote")]: r.competitorQuote || "",
+      [i18n.t("fs_col_expiry")]: r.contractExpiryDate || "",
+      [i18n.t("fs_col_notes")]: r.notes || "",
+      [i18n.t("fs_col_sales_rep")]: r.salesRep || "",
+      [i18n.t("fs_col_created_at")]: r.createdAt || ""
     }));
 
     if (window.XLSX) {
@@ -1470,10 +1512,10 @@ export const FieldSales = {
 
   getOutcomeText(outcome) {
     switch (outcome) {
-      case "contract_signed": return "签订合同";
-      case "interested": return "有意向";
-      case "rejected": return "拒绝";
-      case "signed_others": return "已签其他";
+      case "contract_signed": return i18n.t("fs_record_outcome_signed");
+      case "interested": return i18n.t("fs_record_outcome_interested");
+      case "rejected": return i18n.t("fs_record_outcome_rejected");
+      case "signed_others": return i18n.t("fs_record_outcome_signed_others");
       default: return outcome;
     }
   },

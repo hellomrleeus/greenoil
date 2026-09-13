@@ -236,7 +236,7 @@
               <thead>
                 <tr>
                   <th style="width: 40px; text-align: center;">
-                    <input type="checkbox" id="thSelectAll" class="custom-checkbox" title="全选当前页" />
+                    <input type="checkbox" id="thSelectAll" class="custom-checkbox" title="全选当前页" data-i18n-title="btn_select_page" />
                   </th>
                   <th data-i18n="th_name">餐馆名称</th>
                   <th data-i18n="th_region">区域</th>
@@ -555,7 +555,7 @@
                   </div>
                   <div style="display: flex; gap: 0.5rem;">
                     <input type="text" class="form-input" id="fsRouteAddRestInput" list="fsRestaurantsDatalist" style="flex: 1; min-width: 0;" data-i18n-placeholder="fs_route_search_placeholder" placeholder="搜索餐馆名称或地址加入路线...">
-                    <button class="btn btn-primary" id="fsRouteBtnAddRest" style="white-space: nowrap; flex-shrink: 0;">+ 添加</button>
+                    <button class="btn btn-primary" id="fsRouteBtnAddRest" style="white-space: nowrap; flex-shrink: 0;" data-i18n="btn_add">+ 添加</button>
                   </div>
                 </div>
               </div>
@@ -583,7 +583,7 @@
             <div class="fs-waypoints-container">
               <div class="fs-section-header">
                 <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--primary-dark);">
-                  <span>途经站点清单</span> (<span id="fsRouteStopsBadge">0</span> 家餐馆)
+                  <span data-i18n="fs_route_stops_title">途经站点清单</span> (<span id="fsRouteStopsBadge">0</span> <span data-i18n="fs_route_stops_unit">家餐馆</span>)
                 </h3>
               </div>
               <div class="fs-waypoints-list" id="fsRouteWaypointsList"></div>
@@ -599,17 +599,17 @@
               <div class="fs-records-filter-bar">
                 <div style="flex: 2; min-width: 200px;">
                   <label class="form-label" data-i18n="search_label">搜索记录</label>
-                  <input type="text" class="form-input" id="fsSearchRecordsInput" placeholder="搜索餐馆名、地址、备注或竞品...">
+                  <input type="text" class="form-input" id="fsSearchRecordsInput" data-i18n-placeholder="fs_search_records_placeholder" placeholder="搜索餐馆名、地址、备注或竞品...">
                 </div>
 
                 <div style="flex: 1; min-width: 140px;">
                   <label class="form-label" data-i18n="fs_record_outcome">销售结果</label>
                   <select class="form-select" id="fsFilterOutcome">
                     <option value="all" data-i18n="fs_filter_all">全部结果</option>
-                    <option value="contract_signed">签订合同</option>
-                    <option value="interested">有意向</option>
-                    <option value="rejected">拒绝</option>
-                    <option value="signed_others">已签其他</option>
+                    <option value="contract_signed" data-i18n="fs_outcome_contract">签订合同</option>
+                    <option value="interested" data-i18n="fs_outcome_interested">有意向</option>
+                    <option value="rejected" data-i18n="fs_outcome_rejected">拒绝</option>
+                    <option value="signed_others" data-i18n="fs_outcome_signed_others">已签其他</option>
                   </select>
                 </div>
 
@@ -617,8 +617,8 @@
                   <label class="form-label" data-i18n="fs_record_method">拜访方式</label>
                   <select class="form-select" id="fsFilterMethod">
                     <option value="all" data-i18n="fs_filter_all">全部方式</option>
-                    <option value="onsite">现场拜访</option>
-                    <option value="phone">电话沟通</option>
+                    <option value="onsite" data-i18n="fs_method_onsite">现场拜访</option>
+                    <option value="phone" data-i18n="fs_method_phone">电话沟通</option>
                   </select>
                 </div>
 
@@ -631,7 +631,7 @@
             </div>
 
             <div class="results-header">
-              <div class="results-count" id="fsRecordsCountText">共 0 条拜访记录</div>
+              <div class="results-count" id="fsRecordsCountText" data-i18n="fs_records_count" data-param-count="0">共 0 条拜访记录</div>
               <div class="view-controls">
                 <button class="view-toggle-btn active" id="fsBtnRecordsListView">
                   <span data-i18n="view_list">列表视图</span>
@@ -718,10 +718,10 @@
                   <thead>
                     <tr>
                       <th data-i18n="th_name">餐馆名称</th>
-                      <th>竞品供应商</th>
-                      <th>竞品报价 / 补贴</th>
-                      <th>合同到期日</th>
-                      <th>原因说明 / 纪要</th>
+                      <th data-i18n="fs_th_competitor_supplier">竞品供应商</th>
+                      <th data-i18n="fs_th_competitor_quote">竞品报价 / 补贴</th>
+                      <th data-i18n="fs_th_contract_expiry">合同到期日</th>
+                      <th data-i18n="fs_th_notes">原因说明 / 纪要</th>
                     </tr>
                   </thead>
                   <tbody id="fsCompetitorTableBody"></tbody>
@@ -797,35 +797,35 @@
               <!-- 2. Category Dropdown Filter -->
               <div class="toolbar-filter-item">
                 <select class="form-select toolbar-select" id="mapCategorySelect">
-                  <option value="全部">全部品类 (All Food)</option>
-                  <option value="中式/台式炸物小吃">中式/台式炸物</option>
-                  <option value="西式炸鸡/快餐/炸鸡翅">西式炸鸡快餐</option>
-                  <option value="韩式炸鸡">韩式炸鸡</option>
-                  <option value="炸鱼薯条">炸鱼薯条</option>
-                  <option value="日式炸物/炸猪排/天妇罗">日式炸物</option>
-                  <option value="热狗棒/吉事果/甜甜圈">热狗/甜甜圈</option>
+                  <option value="全部" data-i18n="cat_all">全部品类 (All Food)</option>
+                  <option value="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</option>
+                  <option value="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</option>
+                  <option value="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</option>
+                  <option value="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</option>
+                  <option value="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</option>
+                  <option value="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</option>
                 </select>
               </div>
 
               <!-- 3. Visited Filter Dropdown (是否拜访过) -->
               <div class="toolbar-filter-item">
                 <select class="form-select toolbar-select" id="mapVisitedSelect">
-                  <option value="all">是否拜访 (全部)</option>
-                  <option value="visited">已拜访</option>
-                  <option value="unvisited">未拜访</option>
+                  <option value="all" data-i18n="visited_all">是否拜访 (全部)</option>
+                  <option value="visited" data-i18n="visited_yes">已拜访</option>
+                  <option value="unvisited" data-i18n="visited_no">未拜访</option>
                 </select>
               </div>
 
               <!-- 4. Outcome Filter Dropdown (拜访结果) -->
               <div class="toolbar-filter-item">
                 <select class="form-select toolbar-select" id="mapOutcomeSelect">
-                  <option value="all">拜访结果 (全部)</option>
-                  <option value="签订合同">签订合同</option>
-                  <option value="有意向">有意向</option>
-                  <option value="考虑中">考虑中</option>
-                  <option value="暂无意向">暂无意向</option>
-                  <option value="拒绝">拒绝合作</option>
-                  <option value="已打烊">已打烊/关店</option>
+                  <option value="all" data-i18n="outcome_all">拜访结果 (全部)</option>
+                  <option value="签订合同" data-i18n="outcome_contract">签订合同</option>
+                  <option value="有意向" data-i18n="outcome_interested">有意向</option>
+                  <option value="考虑中" data-i18n="outcome_considering">考虑中</option>
+                  <option value="暂无意向" data-i18n="outcome_not_interested">暂无意向</option>
+                  <option value="拒绝" data-i18n="outcome_rejected">拒绝合作</option>
+                  <option value="已打烊" data-i18n="outcome_closed">已打烊/关店</option>
                 </select>
               </div>
 
@@ -964,7 +964,7 @@
       <div class="modal-body">
         
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-          <span class="status-badge status-open" id="modalRestStatus">营业中</span>
+          <span class="status-badge status-open" id="modalRestStatus" data-i18n="status_open">营业中</span>
           <span class="price-tag" id="modalRestPrice">$$</span>
           <span class="api-badge" id="modalRestRegion">万锦 (Markham)</span>
         </div>
@@ -1090,16 +1090,16 @@
           <div class="fs-form-row">
             <div class="form-group" style="flex: 1; margin-bottom: 0.5rem;">
               <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_phone">联系电话</label>
-              <input type="text" class="form-input" id="fsEditRestPhone" placeholder="电话号码">
+              <input type="text" class="form-input" id="fsEditRestPhone" data-i18n-placeholder="fs_rest_phone_placeholder" placeholder="电话号码">
             </div>
             <div class="form-group" style="flex: 1; margin-bottom: 0.5rem;">
               <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_contact">联系人 / 老板</label>
-              <input type="text" class="form-input" id="fsEditRestContact" placeholder="负责人姓名或称呼">
+              <input type="text" class="form-input" id="fsEditRestContact" data-i18n-placeholder="fs_rest_contact_placeholder" placeholder="负责人姓名或称呼">
             </div>
           </div>
           <div class="form-group" style="margin-bottom: 0.5rem;">
             <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_address">详细地址</label>
-            <input type="text" class="form-input" id="fsEditRestAddress" placeholder="详细街道地址与门牌">
+            <input type="text" class="form-input" id="fsEditRestAddress" data-i18n-placeholder="fs_rest_address_placeholder" placeholder="详细街道地址与门牌">
           </div>
           <label class="fs-checkbox-label" style="font-size: 0.8rem; color: var(--primary-dark);">
             <input type="checkbox" id="fsSyncRestToKv" class="custom-checkbox" checked>
@@ -1203,7 +1203,7 @@
         </div>
 
         <div class="modal-footer" style="padding: 1rem 0 0 0; margin-top: 1rem;">
-          <button type="button" class="btn btn-secondary btn-sm" id="fsRecordBtnCancel">取消</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="fsRecordBtnCancel" data-i18n="btn_cancel">取消</button>
           <button type="submit" class="btn btn-primary btn-sm" id="fsBtnSubmitRecord" style="background: #10b981; border: none; padding: 0.5rem 1.5rem;">
             <span data-i18n="fs_btn_save">保存拜访记录</span>
           </button>

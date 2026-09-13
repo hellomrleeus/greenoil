@@ -221,7 +221,7 @@ export const Restaurants = {
             FieldSales.addMultipleToRoute(this.currentPageData, false);
           });
         } else {
-          const msg = "请先在列表中勾选要规划路线的餐馆";
+          const msg = i18n.t("alert_select_first");
           if (window.showToast) window.showToast(msg);
           else alert(msg);
         }
@@ -350,6 +350,55 @@ export const Restaurants = {
     return { label: i18n.t("status_unknown"), cls: "status-unknown" };
   },
 
+  formatRegion(region) {
+    if (!region) return "";
+    const regLower = region.toLowerCase();
+    if (region.includes("万锦") || regLower.includes("markham")) return i18n.t("region_markham");
+    if (region.includes("士嘉堡") || regLower.includes("scarborough")) return i18n.t("region_scarborough");
+    if (region.includes("北约克") || regLower.includes("north york")) return i18n.t("region_north_york");
+    if (region.includes("列治文山") || regLower.includes("richmond hill")) return i18n.t("region_richmond_hill");
+    if (region.includes("市中心") || regLower.includes("downtown")) return i18n.t("region_downtown");
+    if (region.includes("密西沙加") || regLower.includes("mississauga")) return i18n.t("region_mississauga");
+    if (region.includes("旺市") || regLower.includes("vaughan")) return i18n.t("region_vaughan");
+    if (region.includes("全部") || regLower.includes("all gta")) return i18n.t("region_all");
+    return region;
+  },
+
+  formatCategory(cat) {
+    if (!cat) return "-";
+    if (cat.includes("中式") || cat.includes("台式")) return i18n.t("cat_chinese");
+    if (cat.includes("西式") || cat.includes("快餐") || cat.includes("炸鸡翅")) return i18n.t("cat_western");
+    if (cat.includes("韩式") || cat.includes("韩国")) return i18n.t("cat_korean");
+    if (cat.includes("炸鱼") || cat.includes("薯条")) return i18n.t("cat_fish_chips");
+    if (cat.includes("日式") || cat.includes("猪排") || cat.includes("天妇罗")) return i18n.t("cat_japanese");
+    if (cat.includes("热狗") || cat.includes("甜甜圈") || cat.includes("吉事果")) return i18n.t("cat_sweets");
+    return cat;
+  },
+
+  formatOutcome(outcome) {
+    if (!outcome) return i18n.t("visited_yes");
+    const map = {
+      "签订合同": "outcome_contract",
+      "contract_signed": "outcome_contract",
+      "有意向": "outcome_interested",
+      "interested": "outcome_interested",
+      "考虑中": "outcome_considering",
+      "considering": "outcome_considering",
+      "暂无意向": "outcome_not_interested",
+      "not_interested": "outcome_not_interested",
+      "拒绝": "outcome_rejected",
+      "拒绝合作": "outcome_rejected",
+      "rejected": "outcome_rejected",
+      "已打烊": "outcome_closed",
+      "已打烊/关店": "outcome_closed",
+      "closed": "outcome_closed",
+      "已拜访": "visited_yes",
+      "visited": "visited_yes"
+    };
+    const key = map[outcome];
+    return key ? i18n.t(key) : outcome;
+  },
+
   toggleSelect(restaurant) {
     const key = restaurant.placeId || restaurant.name;
     if (this.selectedMap.has(key)) {
@@ -405,14 +454,14 @@ export const Restaurants = {
     if (btnPlanRouteSelected) {
       const textSpan = btnPlanRouteSelected.querySelector("span:not(:first-child)");
       if (textSpan) {
-        textSpan.textContent = count > 0 ? `规划路线 (${count} 家)` : i18n.t("btn_plan_route");
+        textSpan.textContent = count > 0 ? i18n.t("plan_route_with_count", { count }) : i18n.t("btn_plan_route");
       }
     }
     const btnPlanRouteTop = document.getElementById("btnPlanRouteTop");
     if (btnPlanRouteTop) {
       const textSpan = btnPlanRouteTop.querySelector("span:not(:first-child)");
       if (textSpan) {
-        textSpan.textContent = count > 0 ? `规划路线 (${count} 家)` : i18n.t("btn_plan_route");
+        textSpan.textContent = count > 0 ? i18n.t("plan_route_with_count", { count }) : i18n.t("btn_plan_route");
       }
     }
 
@@ -510,7 +559,7 @@ export const Restaurants = {
             </div>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
               <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
-              ${r.isVisited ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 5px; border-radius:3px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">${this.escapeHtml(r.lastOutcome || '已拜访')}</span>` : ''}
+              ${r.isVisited ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 5px; border-radius:3px; font-weight:600;" title="${i18n.t("visited_recent_tooltip", { time: this.escapeHtml(r.lastVisitTime || '') })}">${this.escapeHtml(this.formatOutcome(r.lastOutcome))}</span>` : ''}
             </div>
           </div>
 
@@ -521,8 +570,8 @@ export const Restaurants = {
           </div>
 
           <div class="card-region-category">
-            <div>${this.escapeHtml(r.region)}</div>
-            <div class="card-category-text">${this.escapeHtml(r.categoriesRaw || '-')}</div>
+            <div>${this.escapeHtml(this.formatRegion(r.region))}</div>
+            <div class="card-category-text">${this.escapeHtml(this.formatCategory(r.categoriesRaw || '-'))}</div>
           </div>
 
           ${r.hubId && r.hubId !== "street_retail" ? `
@@ -598,7 +647,7 @@ export const Restaurants = {
             />
           </td>
           <td class="col-name">${this.escapeHtml(r.name)}</td>
-          <td>${this.escapeHtml(r.region)}</td>
+          <td>${this.escapeHtml(this.formatRegion(r.region))}</td>
           <td>
             ${r.hubId && r.hubId !== "street_retail" ? `
               <span class="hub-badge" title="${this.escapeHtml(hubName)}">
@@ -607,11 +656,11 @@ export const Restaurants = {
               </span>
             ` : '<span style="color: var(--text-light); font-size: 0.78rem;">-</span>'}
           </td>
-          <td class="col-category" title="${this.escapeHtml(r.categoriesRaw)}">${this.escapeHtml(r.categoriesRaw)}</td>
+          <td class="col-category" title="${this.escapeHtml(this.formatCategory(r.categoriesRaw))}">${this.escapeHtml(this.formatCategory(r.categoriesRaw))}</td>
           <td><b>★ ${r.rating ? r.rating.toFixed(1) : '-'}</b> (${r.reviews})</td>
           <td>
             <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
-            ${r.isVisited ? `<div style="margin-top: 3px;"><span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 4px; border-radius:3px; font-weight:600;" title="最近拜访: ${this.escapeHtml(r.lastVisitTime || '')}">${this.escapeHtml(r.lastOutcome || '已拜访')}</span></div>` : ''}
+            ${r.isVisited ? `<div style="margin-top: 3px;"><span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 4px; border-radius:3px; font-weight:600;" title="${i18n.t("visited_recent_tooltip", { time: this.escapeHtml(r.lastVisitTime || '') })}">${this.escapeHtml(this.formatOutcome(r.lastOutcome))}</span></div>` : ''}
           </td>
           <td>${this.escapeHtml(r.price)}</td>
           <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(r.address)}</td>
@@ -666,7 +715,7 @@ export const Restaurants = {
             <div class="hub-card-icon">${h.icon || '🏬'}</div>
             <div class="hub-card-titles">
               <h4 class="hub-card-name">${this.escapeHtml(hubName)}</h4>
-              <div class="hub-card-region">${this.escapeHtml(h.region)}</div>
+              <div class="hub-card-region">${this.escapeHtml(this.formatRegion(h.region))}</div>
             </div>
           </div>
 
@@ -677,7 +726,7 @@ export const Restaurants = {
             </div>
             <div class="hub-stat-item">
               <span class="hub-stat-label">${i18n.t("th_name")}</span>
-              <span class="hub-stat-val">${h.count} 家</span>
+              <span class="hub-stat-val">${i18n.t("hub_count_unit", { count: h.count })}</span>
             </div>
             <div class="hub-stat-item" style="grid-column: 1/-1;">
               <span class="hub-stat-label">${ucoLabel}</span>
@@ -695,8 +744,8 @@ export const Restaurants = {
             <button class="hub-card-btn" style="margin-top: 0; flex: 1;" onclick="event.stopPropagation(); window.selectHubAndFilter('${h.id}')">
               ${i18n.t("hub_card_btn")} (${h.count}) &rarr;
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.addHubToRoute('${h.id}', '${this.escapeHtml(hubName)}')" title="将本商圈所有餐馆批量加入路线规划" style="color: #2563eb; border-color: rgba(37,99,235,0.3); white-space: nowrap; font-size: 0.78rem; padding: 0.4rem 0.6rem;">
-              +路线
+            <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.addHubToRoute('${h.id}', '${this.escapeHtml(hubName)}')" title="${i18n.t("hub_btn_add_to_route_title")}" style="color: #2563eb; border-color: rgba(37,99,235,0.3); white-space: nowrap; font-size: 0.78rem; padding: 0.4rem 0.6rem;">
+              ${i18n.t("btn_add_to_route_short")}
             </button>
           </div>
         </div>
@@ -882,7 +931,7 @@ export const Restaurants = {
     }
 
     document.getElementById("modalRestName").textContent = r.name;
-    document.getElementById("modalRestRegion").textContent = r.region;
+    document.getElementById("modalRestRegion").textContent = this.formatRegion(r.region);
 
     const modalHub = document.getElementById("modalRestHub");
     if (modalHub) {
@@ -890,11 +939,11 @@ export const Restaurants = {
         const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
         modalHub.innerHTML = `<span class="hub-badge">${r.hubIcon || '🏬'} ${this.escapeHtml(hubName)}</span>`;
       } else {
-        modalHub.textContent = i18n.currentLang === 'en' ? "Street & Community Retail" : (i18n.currentLang === 'ko' ? "일반 거리 및 상가" : "沿街与社区广场");
+        modalHub.textContent = i18n.t("hub_street_retail");
       }
     }
 
-    document.getElementById("modalRestCategory").textContent = r.categoriesRaw || (r.categories ? r.categories.join(" | ") : "");
+    document.getElementById("modalRestCategory").textContent = this.formatCategory(r.categoriesRaw || (r.categories ? r.categories.join(" | ") : ""));
     document.getElementById("modalRestRating").innerHTML = `★ ${r.rating ? r.rating.toFixed(1) : '-'} <span style="color:var(--text-muted); font-weight:normal;">(${r.reviews})</span>`;
     document.getElementById("modalRestPrice").textContent = r.price || "-";
     document.getElementById("modalRestAddress").textContent = r.address || "-";
@@ -953,7 +1002,7 @@ export const Restaurants = {
 
   async addHubToRoute(hubId, hubName) {
     try {
-      this.showToast(`正在获取【${hubName}】商圈餐馆...`);
+      this.showToast(i18n.t("toast_loading_hub", { name: hubName }));
       const res = await Api.queryRestaurants({
         hub: hubId,
         pageSize: 300
@@ -963,13 +1012,13 @@ export const Restaurants = {
           FieldSales.addMultipleToRoute(res.data, false);
         });
       } else {
-        const msg = "未找到该商圈下的餐馆数据";
+        const msg = i18n.t("alert_hub_no_restaurants");
         if (window.showToast) window.showToast(msg);
         else alert(msg);
       }
     } catch (e) {
       console.error("Error fetching hub restaurants for route:", e);
-      const msg = "获取商圈餐馆数据失败";
+      const msg = i18n.t("alert_hub_fetch_failed");
       if (window.showToast) window.showToast(msg);
       else alert(msg);
     }
