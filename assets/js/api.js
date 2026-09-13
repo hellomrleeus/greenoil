@@ -294,6 +294,43 @@ export const Api = {
   },
 
   /**
+   * Get Persisted Route Waypoints from Cloudflare KV
+   */
+  async getRouteWaypoints() {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/route`, {
+        method: "GET",
+        headers: this.getAuthHeaders(),
+        credentials: "include"
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("getRouteWaypoints failed:", e);
+      return { success: false, error: e.message, data: { waypoints: [] } };
+    }
+  },
+
+  /**
+   * Save Route Waypoints to Cloudflare KV
+   */
+  async saveRouteWaypoints(waypoints = [], origin = "Green Oil Inc, Toronto, ON") {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/route`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ waypoints, origin })
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("saveRouteWaypoints failed:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  /**
    * Remote login against Cloudflare Worker backend
    */
   async login(username, password) {

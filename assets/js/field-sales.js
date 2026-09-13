@@ -21,8 +21,6 @@ export const FieldSales = {
   activeSubTab: "route", // route | records | analytics
   routeWaypoints: [],
   originAddress: DEFAULT_ORIGIN_ADDRESS,
-  useGpsOrigin: false,
-  userGps: null,
   cachedRestaurants: [],
   salesRecords: [],
   filterOutcome: "all",
@@ -31,18 +29,23 @@ export const FieldSales = {
   editingRecordId: null,
   selectedRestaurantForSale: null,
 
+  // Calendar View State
+  recordsViewMode: "list", // list | calendar
+  calendarYear: new Date().getFullYear(),
+  calendarMonth: new Date().getMonth(), // 0-11
+  selectedCalendarDate: new Date().toISOString().slice(0, 10),
+
   async init() {
     this.originAddress = localStorage.getItem(STORAGE_ORIGIN_KEY) || DEFAULT_ORIGIN_ADDRESS;
     this.bindSubTabEvents();
     this.bindRouteEvents();
     this.bindRecordEvents();
-    this.bindGmapSearchEvents();
     this.bindAnalyticsEvents();
 
     // Load initial data
     await this.loadSalesRecords();
     this.loadCachedRestaurants();
-    this.loadRouteWaypoints();
+    await this.loadRouteWaypoints();
     this.renderRouteWaypoints();
   },
 
@@ -118,32 +121,6 @@ export const FieldSales = {
     }
   },
 
-  requestUserLocation(showNotice = false) {
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        this.userGps = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
-        };
-        if (showNotice) {
-          alert(`✅ 已获取您的当前定位 (${this.userGps.lat.toFixed(4)}, ${this.userGps.lng.toFixed(4)})`);
-        }
-        if (this.useGpsOrigin) {
-          const originInput = document.getElementById("fsRouteOriginInput");
-          if (originInput) originInput.value = `GPS: ${this.userGps.lat.toFixed(4)}, ${this.userGps.lng.toFixed(4)}`;
-        }
-      },
-      (err) => {
-        if (showNotice) {
-          alert(`⚠️ 获取定位失败: ${err.message}`);
-        }
-      },
-      { timeout: 8000, enableHighAccuracy: true }
-    );
-  },
-
   // -------------------------------------------------------------
   // Sub-Module 1: Route Planning
   // -------------------------------------------------------------
@@ -154,21 +131,7 @@ export const FieldSales = {
       originInput.addEventListener("change", (e) => {
         this.originAddress = e.target.value.trim() || DEFAULT_ORIGIN_ADDRESS;
         localStorage.setItem(STORAGE_ORIGIN_KEY, this.originAddress);
-      });
-    }
-
-    const chkGps = document.getElementById("fsRouteUseGps");
-    if (chkGps) {
-      chkGps.addEventListener("change", (e) => {
-        this.useGpsOrigin = e.target.checked;
-        if (this.useGpsOrigin) {
-          this.requestUserLocation(true);
-          if (this.userGps && originInput) {
-            originInput.value = `GPS: ${this.userGps.lat.toFixed(4)}, ${this.userGps.lng.toFixed(4)}`;
-          }
-        } else {
-          if (originInput) originInput.value = this.originAddress;
-        }
+        this.saveRouteWaypoints();
       });
     }
 
@@ -241,7 +204,8 @@ export const FieldSales = {
     }
   },
 
-  loadRouteWaypoints() {
+  async loadRouteWaypoints() {
+    // 1. Load local cache first for immediate responsiveness
     try {
       const saved = localStorage.getItem(STORAGE_WAYPOINTS_KEY);
       if (saved) {
@@ -253,13 +217,44 @@ export const FieldSales = {
     } catch (e) {
       this.routeWaypoints = [];
     }
+
+    // 2. Fetch latest route waypoints and origin from Cloudflare Worker KV
+    try {
+      const res = await Api.getRouteWaypoints();
+      if (res && res.success && res.data) {
+        if (Array.isArray(res.data.waypoints)) {
+          this.routeWaypoints = res.data.waypoints;
+          try {
+            localStorage.setItem(STORAGE_WAYPOINTS_KEY, JSON.stringify(this.routeWaypoints));
+          } catch (e) {}
+        }
+        if (res.data.origin) {
+          this.originAddress = res.data.origin;
+          try {
+            localStorage.setItem(STORAGE_ORIGIN_KEY, this.originAddress);
+          } catch (e) {}
+          const originInput = document.getElementById("fsRouteOriginInput");
+          if (originInput) originInput.value = this.originAddress;
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch route waypoints from backend:", err);
+    }
   },
 
-  saveRouteWaypoints() {
+  async saveRouteWaypoints() {
+    // 1. Save to local storage
     try {
       localStorage.setItem(STORAGE_WAYPOINTS_KEY, JSON.stringify(this.routeWaypoints));
     } catch (e) {
-      console.warn("Failed to persist route waypoints:", e);
+      console.warn("Failed to persist route waypoints to local storage:", e);
+    }
+
+    // 2. Save to backend KV
+    try {
+      await Api.saveRouteWaypoints(this.routeWaypoints, this.originAddress);
+    } catch (err) {
+      console.warn("Failed to persist route waypoints to backend:", err);
     }
   },
 
@@ -331,9 +326,9 @@ export const FieldSales = {
       return;
     }
 
-    // Start location coordinates (default Downtown Toronto / Green Oil if GPS disabled)
-    let curLat = (this.useGpsOrigin && this.userGps) ? this.userGps.lat : 43.6532;
-    let curLng = (this.useGpsOrigin && this.userGps) ? this.userGps.lng : -79.3832;
+    // Start location coordinates (Downtown Toronto / Green Oil HQ)
+    let curLat = 43.6532;
+    let curLng = -79.3832;
 
     const remaining = [...this.routeWaypoints];
     const optimized = [];
@@ -366,14 +361,6 @@ export const FieldSales = {
   },
 
   getEffectiveOrigin() {
-    if (this.useGpsOrigin && this.userGps) {
-      return {
-        name: "当前GPS定位",
-        address: `${this.userGps.lat},${this.userGps.lng}`,
-        lat: this.userGps.lat,
-        lng: this.userGps.lng
-      };
-    }
     const originInput = document.getElementById("fsRouteOriginInput");
     const address = originInput ? originInput.value.trim() : this.originAddress;
     return {
@@ -493,6 +480,16 @@ export const FieldSales = {
     if (btnClose) btnClose.addEventListener("click", () => this.closeSalesRecordModal());
     if (btnCancel) btnCancel.addEventListener("click", () => this.closeSalesRecordModal());
 
+    // View toggle: List vs Calendar
+    const btnListView = document.getElementById("fsBtnRecordsListView");
+    const btnCalView = document.getElementById("fsBtnRecordsCalendarView");
+    if (btnListView) {
+      btnListView.addEventListener("click", () => this.switchRecordsViewMode("list"));
+    }
+    if (btnCalView) {
+      btnCalView.addEventListener("click", () => this.switchRecordsViewMode("calendar"));
+    }
+
     // Outcome change handler -> toggle conditional fields
     const outcomeRadios = document.querySelectorAll("input[name='fsOutcome']");
     outcomeRadios.forEach(radio => {
@@ -536,7 +533,7 @@ export const FieldSales = {
     }
   },
 
-  openSalesRecordModal(existingRecord = null, presetRestaurant = null) {
+  openSalesRecordModal(existingRecord = null, presetRestaurant = null, presetDate = null) {
     this.editingRecordId = existingRecord ? existingRecord.id : null;
     const modal = document.getElementById("fsRecordModalOverlay");
     const title = document.getElementById("fsRecordModalTitle");
@@ -547,10 +544,15 @@ export const FieldSales = {
 
     // Prefill form
     const now = new Date();
-    const localHour = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 13) + ":00";
+    let defaultTime;
+    if (presetDate) {
+      defaultTime = `${presetDate}T10:00`;
+    } else {
+      defaultTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 13) + ":00";
+    }
 
     const timeInput = document.getElementById("fsRecordTime");
-    if (timeInput) timeInput.value = existingRecord ? existingRecord.visitTime : localHour;
+    if (timeInput) timeInput.value = existingRecord ? existingRecord.visitTime : defaultTime;
 
     // Method
     const method = existingRecord ? existingRecord.method : "onsite";
@@ -691,7 +693,7 @@ export const FieldSales = {
     }
 
     if (!rest) {
-      alert("请选择要关联的餐馆，或通过 Google 地图搜索添加新餐馆");
+      alert("请选择要关联的餐馆");
       return;
     }
 
@@ -812,7 +814,33 @@ export const FieldSales = {
     await Api.deleteSale(recordId);
   },
 
+  switchRecordsViewMode(mode) {
+    this.recordsViewMode = mode;
+    const btnList = document.getElementById("fsBtnRecordsListView");
+    const btnCal = document.getElementById("fsBtnRecordsCalendarView");
+    const listEl = document.getElementById("fsRecordsList");
+    const calEl = document.getElementById("fsRecordsCalendarView");
+
+    if (btnList) btnList.classList.toggle("active", mode === "list");
+    if (btnCal) btnCal.classList.toggle("active", mode === "calendar");
+
+    if (mode === "list") {
+      if (listEl) listEl.style.display = "flex";
+      if (calEl) calEl.style.display = "none";
+      this.renderSalesRecords();
+    } else {
+      if (listEl) listEl.style.display = "none";
+      if (calEl) calEl.style.display = "block";
+      this.renderCalendarView();
+    }
+  },
+
   renderSalesRecords() {
+    if (this.recordsViewMode === "calendar") {
+      this.renderCalendarView();
+      return;
+    }
+
     const listEl = document.getElementById("fsRecordsList");
     const countDisplay = document.getElementById("fsRecordsCountText");
     if (!listEl) return;
@@ -843,63 +871,69 @@ export const FieldSales = {
       return;
     }
 
-    listEl.innerHTML = filtered.map(r => {
-      const outcomeBadge = this.getOutcomeBadge(r.outcome);
-      const methodBadge = r.method === "onsite" ? `<span class="fs-tag fs-tag-onsite">🚗 现场拜访</span>` : `<span class="fs-tag fs-tag-phone">📞 电话沟通</span>`;
-      const timeFormatted = r.visitTime ? r.visitTime.replace("T", " ") : "";
+    listEl.innerHTML = filtered.map(r => this.renderRecordCard(r)).join("");
+    this.bindRecordCardActions(listEl);
+  },
 
-      let detailsBlock = "";
-      if (r.outcome === "rejected" && (r.rejectionReason || r.rejectionReasonDetails)) {
-        detailsBlock = `
-          <div class="fs-record-rejection">
-            <span class="fs-reject-tag">拒绝原因：${r.rejectionReason || "未注明"}</span>
-            ${r.rejectionReasonDetails ? `<span class="fs-reject-desc">${r.rejectionReasonDetails}</span>` : ""}
-          </div>
-        `;
-      } else if (r.outcome === "signed_others") {
-        detailsBlock = `
-          <div class="fs-record-competitor">
-            <div class="fs-comp-title">🏢 签其他服务商：${r.signedOthersReason || "未注明原因"}</div>
-            ${r.competitorName ? `<div><strong>供应商：</strong>${r.competitorName}</div>` : ""}
-            ${r.competitorQuote ? `<div><strong>报价/政策：</strong>${r.competitorQuote}</div>` : ""}
-            ${r.contractExpiryDate ? `<div><strong>预计到期：</strong>${r.contractExpiryDate}</div>` : ""}
-          </div>
-        `;
-      }
+  renderRecordCard(r) {
+    const outcomeBadge = this.getOutcomeBadge(r.outcome);
+    const methodBadge = r.method === "onsite" ? `<span class="fs-tag fs-tag-onsite">🚗 现场拜访</span>` : `<span class="fs-tag fs-tag-phone">📞 电话沟通</span>`;
+    const timeFormatted = r.visitTime ? r.visitTime.replace("T", " ") : "";
 
-      return `
-        <div class="fs-record-card">
-          <div class="fs-rec-header">
-            <div class="fs-rec-rest-info">
-              <h4 class="fs-rec-name">${r.restaurantName}</h4>
-              <span class="fs-rec-region">${r.region || "GTA"}</span>
-            </div>
-            <div class="fs-rec-badges">
-              ${methodBadge}
-              ${outcomeBadge}
-            </div>
-          </div>
-
-          <div class="fs-rec-meta">
-            <span>🕒 ${timeFormatted}</span>
-            <span>📍 ${r.restaurantAddress || "无地址"}</span>
-            ${r.restaurantPhone ? `<span>📞 ${r.restaurantPhone}</span>` : ""}
-            <span>👤 业务员: ${r.salesRep || "greenoil"}</span>
-          </div>
-
-          ${detailsBlock}
-
-          ${r.notes ? `<div class="fs-rec-notes"><strong>沟通纪要：</strong>${r.notes}</div>` : ""}
-
-          <div class="fs-rec-actions">
-            <button class="btn btn-secondary btn-sm" data-action="edit" data-id="${r.id}">编辑</button>
-            <button class="btn btn-secondary btn-sm fs-btn-delete" data-action="delete" data-id="${r.id}">删除</button>
-          </div>
+    let detailsBlock = "";
+    if (r.outcome === "rejected" && (r.rejectionReason || r.rejectionReasonDetails)) {
+      detailsBlock = `
+        <div class="fs-record-rejection">
+          <span class="fs-reject-tag">拒绝原因：${r.rejectionReason || "未注明"}</span>
+          ${r.rejectionReasonDetails ? `<span class="fs-reject-desc">${r.rejectionReasonDetails}</span>` : ""}
         </div>
       `;
-    }).join("");
+    } else if (r.outcome === "signed_others") {
+      detailsBlock = `
+        <div class="fs-record-competitor">
+          <div class="fs-comp-title">🏢 签其他服务商：${r.signedOthersReason || "未注明原因"}</div>
+          ${r.competitorName ? `<div><strong>供应商：</strong>${r.competitorName}</div>` : ""}
+          ${r.competitorQuote ? `<div><strong>报价/政策：</strong>${r.competitorQuote}</div>` : ""}
+          ${r.contractExpiryDate ? `<div><strong>预计到期：</strong>${r.contractExpiryDate}</div>` : ""}
+        </div>
+      `;
+    }
 
-    listEl.querySelectorAll("button[data-action='edit']").forEach(btn => {
+    return `
+      <div class="fs-record-card">
+        <div class="fs-rec-header">
+          <div class="fs-rec-rest-info">
+            <h4 class="fs-rec-name">${r.restaurantName}</h4>
+            <span class="fs-rec-region">${r.region || "GTA"}</span>
+          </div>
+          <div class="fs-rec-badges">
+            ${methodBadge}
+            ${outcomeBadge}
+          </div>
+        </div>
+
+        <div class="fs-rec-meta">
+          <span>🕒 ${timeFormatted}</span>
+          <span>📍 ${r.restaurantAddress || "无地址"}</span>
+          ${r.restaurantPhone ? `<span>📞 ${r.restaurantPhone}</span>` : ""}
+          <span>👤 业务员: ${r.salesRep || "greenoil"}</span>
+        </div>
+
+        ${detailsBlock}
+
+        ${r.notes ? `<div class="fs-rec-notes"><strong>沟通纪要：</strong>${r.notes}</div>` : ""}
+
+        <div class="fs-rec-actions">
+          <button class="btn btn-secondary btn-sm" data-action="edit" data-id="${r.id}">编辑</button>
+          <button class="btn btn-secondary btn-sm fs-btn-delete" data-action="delete" data-id="${r.id}">删除</button>
+        </div>
+      </div>
+    `;
+  },
+
+  bindRecordCardActions(container) {
+    if (!container) return;
+    container.querySelectorAll("button[data-action='edit']").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.dataset.id;
         const item = this.salesRecords.find(r => r.id === id);
@@ -907,12 +941,210 @@ export const FieldSales = {
       });
     });
 
-    listEl.querySelectorAll("button[data-action='delete']").forEach(btn => {
+    container.querySelectorAll("button[data-action='delete']").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.dataset.id;
         this.deleteRecord(id);
       });
     });
+  },
+
+  renderCalendarView() {
+    const calContainer = document.getElementById("fsRecordsCalendarView");
+    const countDisplay = document.getElementById("fsRecordsCountText");
+    if (!calContainer) return;
+
+    let filteredRecords = [...this.salesRecords];
+    if (this.filterOutcome && this.filterOutcome !== "all") {
+      filteredRecords = filteredRecords.filter(r => r.outcome === this.filterOutcome);
+    }
+    if (this.filterMethod && this.filterMethod !== "all") {
+      filteredRecords = filteredRecords.filter(r => r.method === this.filterMethod);
+    }
+    if (this.searchKeyword) {
+      filteredRecords = filteredRecords.filter(r => {
+        const str = [r.restaurantName, r.restaurantAddress, r.notes, r.competitorName, r.rejectionReason].join(" ").toLowerCase();
+        return str.includes(this.searchKeyword);
+      });
+    }
+
+    if (countDisplay) {
+      countDisplay.textContent = i18n.t("fs_records_count", { count: filteredRecords.length });
+    }
+
+    const year = this.calendarYear;
+    const month = this.calendarMonth;
+
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+
+    const dateMap = {};
+    let monthTotalVisits = 0;
+
+    filteredRecords.forEach(r => {
+      if (!r.visitTime) return;
+      const dStr = r.visitTime.slice(0, 10);
+      const rYear = parseInt(dStr.slice(0, 4), 10);
+      const rMonth = parseInt(dStr.slice(5, 7), 10) - 1;
+      if (rYear === year && rMonth === month) {
+        monthTotalVisits++;
+      }
+      if (!dateMap[dStr]) dateMap[dStr] = [];
+      dateMap[dStr].push(r);
+    });
+
+    const todayObj = new Date();
+    const todayIso = todayObj.toISOString().slice(0, 10);
+    if (!this.selectedCalendarDate) {
+      this.selectedCalendarDate = todayIso;
+    }
+
+    const lang = i18n.currentLang || "zh";
+    const weekdaysZh = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    const weekdaysEn = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const weekdaysKo = ["일", "월", "화", "수", "목", "금", "토"];
+    const weekdays = lang === "en" ? weekdaysEn : (lang === "ko" ? weekdaysKo : weekdaysZh);
+
+    let monthTitle = `${year} 年 ${month + 1} 月`;
+    if (lang === "en") {
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      monthTitle = `${monthNames[month]} ${year}`;
+    } else if (lang === "ko") {
+      monthTitle = `${year}년 ${month + 1}월`;
+    }
+
+    let html = `
+      <div class="fs-calendar-header">
+        <div class="fs-cal-nav-group">
+          <button class="btn btn-secondary btn-sm" id="fsCalPrevMonth" title="${i18n.t("cal_prev_month") || "上个月"}">&lt;</button>
+          <div class="fs-cal-month-title">${monthTitle}</div>
+          <button class="btn btn-secondary btn-sm" id="fsCalNextMonth" title="${i18n.t("cal_next_month") || "下个月"}">&gt;</button>
+          <button class="btn btn-secondary btn-sm" id="fsCalToday" style="margin-left: 0.5rem;">${i18n.t("cal_today") || "今天"}</button>
+        </div>
+        <div class="fs-cal-month-stat">
+          ${i18n.t("cal_visits_count", { count: monthTotalVisits }) || `本月拜访: ${monthTotalVisits} 次`}
+        </div>
+      </div>
+
+      <div class="fs-calendar-grid">
+        ${weekdays.map(w => `<div class="fs-cal-week-header">${w}</div>`).join("")}
+    `;
+
+    for (let i = 0; i < firstDayIndex; i++) {
+      html += `<div class="fs-cal-cell is-empty"></div>`;
+    }
+
+    for (let d = 1; d <= totalDays; d++) {
+      const dayPad = String(d).padStart(2, "0");
+      const monthPad = String(month + 1).padStart(2, "0");
+      const dateKey = `${year}-${monthPad}-${dayPad}`;
+
+      const isToday = dateKey === todayIso;
+      const isSelected = dateKey === this.selectedCalendarDate;
+      const visits = dateMap[dateKey] || [];
+      const hasVisits = visits.length > 0;
+
+      let countBadge = "";
+      let outcomeDots = "";
+
+      if (hasVisits) {
+        countBadge = `<span class="fs-cal-day-count-badge">${visits.length}</span>`;
+        outcomeDots = `
+          <div class="fs-cal-day-outcomes">
+            ${visits.slice(0, 5).map(v => `<span class="fs-cal-outcome-dot ${v.outcome}" title="${this.getOutcomeText(v.outcome)}: ${v.restaurantName}"></span>`).join("")}
+            ${visits.length > 5 ? `<span style="font-size:0.65rem; color:#64748b;">+${visits.length - 5}</span>` : ""}
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="fs-cal-cell ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''} ${hasVisits ? 'has-visits' : ''}" data-date="${dateKey}">
+          <div class="fs-cal-day-header">
+            <span class="fs-cal-day-num">${d}</span>
+            ${countBadge}
+          </div>
+          ${outcomeDots}
+        </div>
+      `;
+    }
+
+    html += `</div>`;
+
+    const selRecords = dateMap[this.selectedCalendarDate] || [];
+    html += `
+      <div class="fs-calendar-day-panel">
+        <div class="fs-cal-panel-header">
+          <div class="fs-cal-panel-title">
+            📅 ${this.selectedCalendarDate} ${i18n.t("fs_tab_records") || "拜访记录"} (${selRecords.length})
+          </div>
+          <button class="btn btn-primary btn-sm" id="fsCalBtnAddVisit">
+            + ${i18n.t("cal_btn_add_visit") || "录入此日拜访"}
+          </button>
+        </div>
+        <div class="fs-cal-day-records-list">
+          ${selRecords.length === 0 
+            ? `<div class="fs-empty-notice" style="padding: 1.25rem;">${i18n.t("cal_no_visits") || "该日期暂无拜访记录，点击上方按钮可快速录入"}</div>` 
+            : selRecords.map(r => this.renderRecordCard(r)).join("")}
+        </div>
+      </div>
+    `;
+
+    calContainer.innerHTML = html;
+
+    const btnPrev = document.getElementById("fsCalPrevMonth");
+    const btnNext = document.getElementById("fsCalNextMonth");
+    const btnToday = document.getElementById("fsCalToday");
+    const btnAddVisit = document.getElementById("fsCalBtnAddVisit");
+
+    if (btnPrev) {
+      btnPrev.addEventListener("click", () => {
+        this.calendarMonth--;
+        if (this.calendarMonth < 0) {
+          this.calendarMonth = 11;
+          this.calendarYear--;
+        }
+        this.renderCalendarView();
+      });
+    }
+
+    if (btnNext) {
+      btnNext.addEventListener("click", () => {
+        this.calendarMonth++;
+        if (this.calendarMonth > 11) {
+          this.calendarMonth = 0;
+          this.calendarYear++;
+        }
+        this.renderCalendarView();
+      });
+    }
+
+    if (btnToday) {
+      btnToday.addEventListener("click", () => {
+        const now = new Date();
+        this.calendarYear = now.getFullYear();
+        this.calendarMonth = now.getMonth();
+        this.selectedCalendarDate = now.toISOString().slice(0, 10);
+        this.renderCalendarView();
+      });
+    }
+
+    if (btnAddVisit) {
+      btnAddVisit.addEventListener("click", () => {
+        this.openSalesRecordModal(null, null, this.selectedCalendarDate);
+      });
+    }
+
+    calContainer.querySelectorAll(".fs-cal-cell[data-date]").forEach(cell => {
+      cell.addEventListener("click", () => {
+        this.selectedCalendarDate = cell.dataset.date;
+        this.renderCalendarView();
+      });
+    });
+
+    const dayListEl = calContainer.querySelector(".fs-cal-day-records-list");
+    if (dayListEl) {
+      this.bindRecordCardActions(dayListEl);
+    }
   },
 
   getOutcomeBadge(outcome) {
@@ -928,132 +1160,6 @@ export const FieldSales = {
       default:
         return `<span class="fs-badge">${outcome}</span>`;
     }
-  },
-
-  // -------------------------------------------------------------
-  // Sub-Module 3: Google Maps Search & Add Modal
-  // -------------------------------------------------------------
-  bindGmapSearchEvents() {
-    const btnOpen = document.getElementById("fsBtnOpenGmapSearch");
-    const modal = document.getElementById("fsGmapModalOverlay");
-    const btnClose = document.getElementById("fsGmapModalClose");
-    const btnSearch = document.getElementById("fsGmapBtnSearch");
-    const inputQuery = document.getElementById("fsGmapSearchInput");
-
-    if (btnOpen) {
-      btnOpen.addEventListener("click", () => {
-        if (modal) modal.classList.add("active");
-        if (inputQuery) inputQuery.focus();
-      });
-    }
-
-    if (btnClose && modal) {
-      btnClose.addEventListener("click", () => modal.classList.remove("active"));
-    }
-
-    const doSearch = async () => {
-      const q = inputQuery ? inputQuery.value.trim() : "";
-      if (!q) return;
-      const loader = document.getElementById("fsGmapLoader");
-      const resultsContainer = document.getElementById("fsGmapResults");
-
-      if (loader) loader.style.display = "block";
-      if (resultsContainer) resultsContainer.innerHTML = "";
-
-      const res = await Api.searchGooglePlaces(q);
-      if (loader) loader.style.display = "none";
-
-      if (res && res.success && Array.isArray(res.places) && res.places.length > 0) {
-        this.renderGmapSearchResults(res.places);
-      } else {
-        if (resultsContainer) {
-          resultsContainer.innerHTML = `
-            <div class="fs-empty-notice">
-              ${res && res.error ? `<p style="color: #ef4444;">${res.error}</p>` : ""}
-              <p>${i18n.t("fs_gmap_no_results")}</p>
-              <button class="btn btn-primary btn-sm" id="fsBtnManualEntry" style="margin-top: 0.5rem;">手动录入此餐馆</button>
-            </div>
-          `;
-          const btnManual = document.getElementById("fsBtnManualEntry");
-          if (btnManual) {
-            btnManual.addEventListener("click", () => {
-              const newRest = {
-                name: q,
-                address: q,
-                region: "全部 (All GTA)",
-                phone: "无",
-                placeId: "manual_" + Date.now(),
-                latitude: 43.76,
-                longitude: -79.41
-              };
-              this.addAndSelectNewRestaurant(newRest);
-              if (modal) modal.classList.remove("active");
-            });
-          }
-        }
-      }
-    };
-
-    if (btnSearch) btnSearch.addEventListener("click", doSearch);
-    if (inputQuery) {
-      inputQuery.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          doSearch();
-        }
-      });
-    }
-  },
-
-  renderGmapSearchResults(places) {
-    const container = document.getElementById("fsGmapResults");
-    if (!container) return;
-
-    container.innerHTML = places.map((p, idx) => {
-      return `
-        <div class="fs-gmap-item">
-          <div class="fs-gmap-info">
-            <h4 class="fs-gmap-name">${p.name}</h4>
-            <div class="fs-gmap-addr">📍 ${p.address || "无地址"}</div>
-            <div class="fs-gmap-meta">
-              <span>⭐ ${p.rating || "4.2"} (${p.reviews || 0} 条评价)</span>
-              ${p.phone && p.phone !== "无" ? `<span>📞 ${p.phone}</span>` : ""}
-            </div>
-          </div>
-          <button class="btn btn-primary btn-sm fs-btn-select-gmap" data-idx="${idx}">
-            ${i18n.t("fs_gmap_btn_add")}
-          </button>
-        </div>
-      `;
-    }).join("");
-
-    container.querySelectorAll(".fs-btn-select-gmap").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const idx = parseInt(btn.dataset.idx, 10);
-        const selectedPlace = places[idx];
-        if (selectedPlace) {
-          this.addAndSelectNewRestaurant(selectedPlace);
-          const modal = document.getElementById("fsGmapModalOverlay");
-          if (modal) modal.classList.remove("active");
-        }
-      });
-    });
-  },
-
-  async addAndSelectNewRestaurant(restaurant) {
-    // 1. Add to backend Cloudflare KV
-    await Api.addRestaurant(restaurant);
-
-    // 2. Add to local cached restaurants
-    this.cachedRestaurants.unshift(restaurant);
-    this.populateRestaurantDatalist();
-
-    // 3. Select in current sales record modal
-    this.selectedRestaurantForSale = restaurant;
-    this.populateProximityRestaurantOptions(restaurant);
-    this.updateRestaurantEditInputs(restaurant);
-
-    alert(`🎉 已成功收录餐馆 “${restaurant.name}” 并同步至云端 KV 数据库！`);
   },
 
   // -------------------------------------------------------------

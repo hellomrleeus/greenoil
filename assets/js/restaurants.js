@@ -273,26 +273,6 @@ export const Restaurants = {
       });
     }
 
-    const btnModalImportCalc = document.getElementById("btnModalImportCalc");
-    if (btnModalImportCalc) {
-      btnModalImportCalc.addEventListener("click", () => {
-        if (this.selectedRestaurant && window.importRestaurantToCalculator) {
-          window.importRestaurantToCalculator(this.selectedRestaurant);
-          this.closeDetailModal();
-        }
-      });
-    }
-
-    const btnModalImportTrap = document.getElementById("btnModalImportTrap");
-    if (btnModalImportTrap) {
-      btnModalImportTrap.addEventListener("click", () => {
-        if (this.selectedRestaurant && window.importRestaurantToGreaseTrap) {
-          window.importRestaurantToGreaseTrap(this.selectedRestaurant);
-          this.closeDetailModal();
-        }
-      });
-    }
-
     const btnModalLogVisit = document.getElementById("btnModalLogVisit");
     if (btnModalLogVisit) {
       btnModalLogVisit.addEventListener("click", () => {
@@ -570,11 +550,8 @@ export const Restaurants = {
           <div class="card-footer-actions">
             <span style="font-size: 0.75rem; color: var(--text-light);">${i18n.t("btn_details")} &gt;</span>
             <div style="display: flex; gap: 0.35rem; align-items: center;">
-              <button class="btn-calc-oil" style="background: rgba(37,99,235,0.08); color: #2563eb; border: 1px solid rgba(37,99,235,0.25);" onclick="event.stopPropagation(); window.addRestaurantToRouteByIndex(${idx});" title="加入路线规划">
-                🗺️ +路线
-              </button>
-              <button class="btn-calc-oil" onclick="event.stopPropagation(); window.importRestaurantByIndex(${idx});">
-                ${i18n.t("btn_calc_oil")}
+              <button class="btn-calc-oil" style="background: rgba(37,99,235,0.08); color: #2563eb; border: 1px solid rgba(37,99,235,0.25);" onclick="event.stopPropagation(); window.addRestaurantToRouteByIndex(${idx});" title="${i18n.t("btn_add_to_route")}">
+                🗺️ ${i18n.t("btn_add_to_route")}
               </button>
             </div>
           </div>
@@ -585,7 +562,9 @@ export const Restaurants = {
     container.querySelectorAll(".restaurant-card").forEach(card => {
       card.addEventListener("click", () => {
         const idx = parseInt(card.dataset.idx, 10);
-        this.openDetailModal(this.currentPageData[idx]);
+        if (!isNaN(idx) && this.currentPageData[idx]) {
+          this.openDetailModal(this.currentPageData[idx]);
+        }
       });
     });
   },
@@ -595,7 +574,13 @@ export const Restaurants = {
     if (!tbody) return;
 
     if (this.currentPageData.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 2rem;">${i18n.t("no_matching_restaurants")}</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="11" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+            ${i18n.t("no_matching_restaurants")}
+          </td>
+        </tr>
+      `;
       return;
     }
 
@@ -606,8 +591,8 @@ export const Restaurants = {
       const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
 
       return `
-        <tr class="${isSelected ? 'is-selected' : ''}" data-idx="${idx}" data-key="${this.escapeHtml(key)}" style="cursor: pointer;" onclick="window.openRestaurantDetailByIndex(${idx})">
-          <td onclick="event.stopPropagation();" style="width: 40px; text-align: center;">
+        <tr class="${isSelected ? 'is-selected' : ''}" onclick="window.openRestaurantDetailModal(${idx});" style="cursor: pointer;">
+          <td style="text-align: center;" onclick="event.stopPropagation();">
             <input 
               type="checkbox" 
               class="custom-checkbox row-select-cb" 
@@ -636,11 +621,8 @@ export const Restaurants = {
           <td>${this.escapeHtml(r.phone)}</td>
           <td>
             <div style="display: flex; gap: 0.35rem; align-items: center;">
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.addRestaurantToRouteByIndex(${idx});" style="color: #2563eb; border-color: rgba(37,99,235,0.3); padding: 0.25rem 0.5rem; font-size: 0.78rem;" title="加入路线规划">
-                🗺️ +路线
-              </button>
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.importRestaurantByIndex(${idx});" style="padding: 0.25rem 0.5rem; font-size: 0.78rem;">
-                ${i18n.t("btn_calc_oil")}
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.addRestaurantToRouteByIndex(${idx});" style="color: #2563eb; border-color: rgba(37,99,235,0.3); padding: 0.25rem 0.5rem; font-size: 0.78rem;" title="${i18n.t("btn_add_to_route")}">
+                🗺️ ${i18n.t("btn_add_to_route")}
               </button>
             </div>
           </td>

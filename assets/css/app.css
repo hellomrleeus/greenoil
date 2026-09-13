@@ -3269,4 +3269,191 @@ body {
   }
 }
 
+/* ==========================================================================
+   Field Sales: Calendar View
+   ========================================================================== */
+.fs-calendar-container {
+  background: white;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.fs-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.fs-cal-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fs-cal-month-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  min-width: 140px;
+  text-align: center;
+}
+
+.fs-cal-month-stat {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: #f1f5f9;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+}
+
+.fs-cal-month-stat strong {
+  color: var(--primary-dark);
+}
+
+.fs-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.fs-cal-week-header {
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+  text-transform: uppercase;
+}
+
+.fs-cal-cell {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  min-height: 84px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.fs-cal-cell:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.fs-cal-cell.is-empty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+  min-height: 40px;
+}
+
+.fs-cal-cell.is-today {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.fs-cal-cell.is-today .fs-cal-day-num {
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.fs-cal-cell.is-selected {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  background: #ecfdf5;
+}
+
+.fs-cal-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.fs-cal-day-num {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.fs-cal-day-count-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: white;
+  background: #10b981;
+  border-radius: 999px;
+  padding: 1px 6px;
+  line-height: 1.2;
+}
+
+.fs-cal-day-outcomes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.fs-cal-outcome-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.fs-cal-outcome-dot.contract_signed { background: #10b981; }
+.fs-cal-outcome-dot.interested { background: #3b82f6; }
+.fs-cal-outcome-dot.rejected { background: #94a3b8; }
+.fs-cal-outcome-dot.signed_others { background: #f59e0b; }
+
+.fs-calendar-day-panel {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 2px solid #e2e8f0;
+}
+
+.fs-cal-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fs-cal-panel-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+@media (max-width: 768px) {
+  .fs-cal-cell {
+    min-height: 60px;
+    padding: 4px 4px;
+  }
+  .fs-cal-day-num {
+    font-size: 0.75rem;
+  }
+  .fs-cal-day-count-badge {
+    font-size: 0.65rem;
+    padding: 0 4px;
+  }
+  .fs-calendar-grid {
+    gap: 3px;
+  }
+}
+
 

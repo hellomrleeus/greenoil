@@ -16,6 +16,7 @@ const KV_CACHE_KEY = "gta_fried_food_restaurants";
 const KV_LAST_UPDATED_KEY = "last_updated_time";
 const KV_SALES_KEY = "field_sales_records";
 const KV_CUSTOM_REST_KEY = "custom_restaurants_patch";
+const KV_ROUTE_KEY = "field_sales_route_waypoints";
 
 export default {
   /**
@@ -104,7 +105,15 @@ export default {
         return await handlePlanRoute(request, env, corsHeaders);
       }
 
-      // 9. Google Maps Client Config (Frontend Key restricted to Website domain)
+      // 9. Route Waypoints Persistence API (Protected)
+      if (url.pathname === "/api/route" && request.method === "GET") {
+        return await handleGetRouteWaypoints(request, env, corsHeaders);
+      }
+      if (url.pathname === "/api/route" && request.method === "POST") {
+        return await handleSaveRouteWaypoints(request, env, corsHeaders);
+      }
+
+      // 10. Google Maps Client Config (Frontend Key restricted to Website domain)
       if (url.pathname === "/api/maps/config" && request.method === "GET") {
         return new Response(JSON.stringify({
           apiKey: env.GOOGLE_MAPS_FRONTEND_KEY || env.GOOGLE_MAPS_API_KEY || ""
@@ -1243,3 +1252,88 @@ function deriveKeywords(name, primaryType, matchedTerm = "") {
   }
   return kws;
 }
+
+/**
+ * Route Waypoints: Get persisted route waypoints from KV
+ */
+async function handleGetRouteWaypoints(request, env, corsHeaders) {
+  if (env.RESTAURANTS_KV) {
+    try {
+      const data = await env.RESTAURANTS_KV.get(KV_ROUTE_KEY, { type: "json" }) || {
+        waypoints: [],
+        origin: "Green Oil Inc, Toronto, ON",
+        updatedAt: null
+      };
+      return new Response(JSON.stringify({
+        success: true,
+        data
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ success: false, error: err.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({
+    success: true,
+    data: { waypoints: [], origin: "Green Oil Inc, Toronto, ON" }
+  }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
+}
+
+/**
+ * Route Waypoints: Save route waypoints to KV
+ */
+async function handleSaveRouteWaypoints(request, env, corsHeaders) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+
+  const waypoints = Array.isArray(body.waypoints) ? body.waypoints : [];
+  const origin = body.origin || "Green Oil Inc, Toronto, ON";
+  const now = new Date().toISOString();
+
+  const routeData = {
+    waypoints,
+    origin,
+    updatedAt: now
+  };
+
+  if (env.RESTAURANTS_KV) {
+    try {
+      await env.RESTAURANTS_KV.put(KV_ROUTE_KEY, JSON.stringify(routeData));
+      return new Response(JSON.stringify({
+        success: true,
+        message: "路线途径站点已成功保存到云端 KV",
+        data: routeData
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ success: false, error: err.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({ success: true, message: "Simulated route saved", data: routeData }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
+}
+

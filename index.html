@@ -530,13 +530,7 @@
               <div class="fs-route-config-grid">
                 <!-- Origin Config -->
                 <div class="form-group" style="margin-bottom: 0;">
-                  <div class="fs-origin-label-row">
-                    <label class="form-label" style="margin-bottom: 0;" data-i18n="fs_route_origin">起点地址 (Green Oil Inc)</label>
-                    <label class="fs-checkbox-label">
-                      <input type="checkbox" id="fsRouteUseGps" class="custom-checkbox">
-                      <span data-i18n="fs_route_use_gps">使用当前GPS位置为起点</span>
-                    </label>
-                  </div>
+                  <label class="form-label" for="fsRouteOriginInput" data-i18n="fs_route_origin">起点地址 (Green Oil Inc)</label>
                   <input type="text" class="form-input" id="fsRouteOriginInput" data-i18n-placeholder="fs_route_origin_placeholder" placeholder="Green Oil Inc, Toronto, ON">
                 </div>
 
@@ -627,9 +621,21 @@
 
             <div class="results-header">
               <div class="results-count" id="fsRecordsCountText">共 0 条拜访记录</div>
+              <div class="view-controls">
+                <button class="view-toggle-btn active" id="fsBtnRecordsListView">
+                  <span data-i18n="view_list">📋 列表视图</span>
+                </button>
+                <button class="view-toggle-btn" id="fsBtnRecordsCalendarView">
+                  <span data-i18n="view_calendar">📅 日历视图</span>
+                </button>
+              </div>
             </div>
 
+            <!-- List View Container -->
             <div class="fs-records-list" id="fsRecordsList"></div>
+
+            <!-- Calendar View Container -->
+            <div class="fs-calendar-container" id="fsRecordsCalendarView" style="display: none;"></div>
           </div>
 
           <!-- SUBVIEW 3: ANALYTICS & VISUAL REPORTS -->
@@ -872,8 +878,8 @@
                   <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669;" title="批量保存到KV">
                     <span>📥 +KV</span>
                   </button>
-                  <button class="btn btn-primary btn-sm" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb;" title="规划路线">
-                    <span>🗺️ 路线</span>
+                  <button class="btn btn-primary btn-sm" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb;" title="规划路线" data-i18n-title="btn_plan_route">
+                    <span>🗺️ <span data-i18n="btn_plan_route">规划路线</span></span>
                   </button>
                   <button class="btn btn-secondary btn-sm" id="mapBtnExportExcel" title="导出所选 Excel">
                     <span>📊</span>
@@ -994,16 +1000,10 @@
         <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modalBtnMaps">
           <span data-i18n="btn_modal_maps">Google 地图</span>
         </a>
-        <button class="btn btn-primary btn-sm" id="btnModalImportCalc">
-          <span data-i18n="btn_modal_import_oil">导入用油计算</span>
-        </button>
-        <button class="btn btn-secondary btn-sm" id="btnModalImportTrap" style="background: #065f46; color: white; border: none;">
-          <span data-i18n="btn_modal_import_trap">隔油池测算</span>
-        </button>
         <button class="btn btn-secondary btn-sm" id="btnModalLogVisit" style="background: #10b981; color: white; border: none;">
           <span>📝</span> <span data-i18n="btn_log_visit">记录拜访</span>
         </button>
-        <button class="btn btn-secondary btn-sm" id="btnModalAddToRoute" style="background: #2563eb; color: white; border: none;">
+        <button class="btn btn-primary btn-sm" id="btnModalAddToRoute" style="background: #2563eb; color: white; border: none;">
           <span>➕</span> <span data-i18n="btn_add_to_route">加入路线</span>
         </button>
       </div>
@@ -1049,14 +1049,9 @@
         
         <!-- Restaurant Selection & Proximity -->
         <div class="form-group">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-            <label class="form-label" style="margin-bottom: 0;" for="fsRecordRestSelect" data-i18n="fs_record_select_rest">关联餐馆</label>
-            <button type="button" class="btn btn-secondary btn-sm" id="fsBtnOpenGmapSearch" style="font-size: 0.78rem; padding: 0.25rem 0.5rem;">
-              <span>🔍</span> <span data-i18n="fs_record_btn_search_gmap">通过 Google 地图添加</span>
-            </button>
-          </div>
+          <label class="form-label" for="fsRecordRestSelect" data-i18n="fs_record_select_rest">关联餐馆</label>
           <select class="form-select" id="fsRecordRestSelect" required style="font-weight: 500;">
-            <!-- Populated via JS with nearest first -->
+            <!-- Populated via JS with route waypoints & KV restaurants -->
           </select>
           <div style="font-size: 0.78rem; color: #2563eb; margin-top: 0.25rem;" data-i18n="fs_record_route_prompt">
             🗺️ 优先推荐当前路线规划中的途经站点
@@ -1189,32 +1184,6 @@
         </div>
 
       </form>
-    </div>
-  </div>
-
-  <!-- GOOGLE MAPS SEARCH & ADD RESTAURANT MODAL -->
-  <div class="modal-overlay" id="fsGmapModalOverlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3 class="modal-title" data-i18n="fs_gmap_modal_title">通过 Google 地图搜索并添加新餐馆</h3>
-        <button class="modal-close-btn" id="fsGmapModalClose" aria-label="关闭">✕</button>
-      </div>
-
-      <div class="modal-body">
-        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-          <input type="text" class="form-input" id="fsGmapSearchInput" data-i18n-placeholder="fs_gmap_input_placeholder" placeholder="输入餐馆名称或地址 (例如 Popeyes Markham)...">
-          <button class="btn btn-primary" id="fsGmapBtnSearch" style="white-space: nowrap;" data-i18n="fs_gmap_btn_search">搜索 Google Maps</button>
-        </div>
-        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;" data-i18n="fs_gmap_search_hint">
-          将在大多伦多地区通过 Google Places 检索并自动解析
-        </div>
-
-        <div id="fsGmapLoader" style="display: none; text-align: center; padding: 1.5rem; color: var(--primary);">
-          <span>🔍</span> <span data-i18n="fs_gmap_searching">正在检索 Google Maps...</span>
-        </div>
-
-        <div id="fsGmapResults" class="fs-gmap-results-list"></div>
-      </div>
     </div>
   </div>
 

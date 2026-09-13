@@ -1511,8 +1511,8 @@ export const MapExplorer = {
 
             <div class="card-actions-row">
               ${saveKvBtn}
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="color:#2563eb; border-color:rgba(37,99,235,0.3); font-size:0.75rem; padding:0.25rem 0.5rem;" title="添加至外勤拜访路线">
-                🗺️ + 途径站点
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="color:#2563eb; border-color:rgba(37,99,235,0.3); font-size:0.75rem; padding:0.25rem 0.5rem;" title="${i18n.t("btn_add_waypoint")}">
+                🗺️ ${i18n.t("btn_add_waypoint")}
               </button>
               ${visitActionBtn}
               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="Google Maps 导航">
@@ -1593,7 +1593,7 @@ export const MapExplorer = {
         <div style="display:flex; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
           ${saveBtn}
           <button onclick="window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}')" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer;">
-            🗺️ + 途径站点
+            🗺️ ${i18n.t("btn_add_waypoint")}
           </button>
           <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; cursor:pointer;">
             🧭 导航
