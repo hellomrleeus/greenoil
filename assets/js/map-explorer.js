@@ -998,6 +998,8 @@ export const MapExplorer = {
         this.placesService = new google.maps.places.PlacesService(this.googleMap);
       }
 
+      this.pinZoomScale = this.getPinZoomScale(this.googleMap.getZoom());
+      this.googleMap.addListener("zoom_changed", () => this.animatePinZoom());
       this.infoWindow = new google.maps.InfoWindow();
       this.infoWindow.addListener("closeclick", () => { this.activePopupKey = null; this.poiRequestId++; });
       this.googleMap.addListener("click", event => {
@@ -1504,6 +1506,34 @@ export const MapExplorer = {
   },
 
   pinIconCache: new Map(),
+  zoomedPinIconCache: new WeakMap(),
+  pinZoomScale: 1,
+  pinZoomFrame: null,
+  highlightedPinKey: null,
+
+  getPinZoomScale(zoom) {
+    return Math.max(0.6, Math.min(1.4, 1 + ((zoom ?? 13) - 13) * 0.1));
+  },
+
+  animatePinZoom() {
+    this.stopMarkerGrowth();
+    if (this.pinZoomFrame !== null) cancelAnimationFrame(this.pinZoomFrame);
+    const from = this.pinZoomScale;
+    const target = this.getPinZoomScale(this.googleMap.getZoom());
+    const started = performance.now();
+    const duration = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 180;
+    const tick = now => {
+      const progress = duration ? Math.min(1, (now - started) / duration) : 1;
+      this.pinZoomScale = from + (target - from) * progress;
+      const places = new Map(this.filteredPlaces.map(place => [place.placeId || place.name, place]));
+      this.markersMap.forEach((marker, key) => {
+        const place = places.get(key);
+        if (place && marker.setIcon) marker.setIcon(this.getPinIcon(place, this.highlightedPinKey === key));
+      });
+      this.pinZoomFrame = progress < 1 ? requestAnimationFrame(tick) : null;
+    };
+    this.pinZoomFrame = requestAnimationFrame(tick);
+  },
 
   getPinIcon(r, isHighlight) {
     const key = r.placeId || r.name;
@@ -1547,10 +1577,24 @@ export const MapExplorer = {
         anchor: new google.maps.Point(size / 2, size - 4)
       });
     }
-    return this.pinIconCache.get(cacheKey);
+    const icon = this.pinIconCache.get(cacheKey);
+    // Quantize to 1% steps so all pins share a bounded set of scaled icons.
+    const step = Math.round(this.pinZoomScale * 100);
+    let sizes = this.zoomedPinIconCache.get(icon);
+    if (!sizes) { sizes = new Map(); this.zoomedPinIconCache.set(icon, sizes); }
+    if (!sizes.has(step)) {
+      const factor = step / 100;
+      sizes.set(step, { ...icon,
+        scaledSize: new google.maps.Size(icon.scaledSize.width * factor, icon.scaledSize.height * factor),
+        anchor: new google.maps.Point(icon.anchor.x * factor, icon.anchor.y * factor)
+      });
+    }
+    return sizes.get(step);
   },
 
   highlightMarker(key, highlight) {
+    if (highlight) this.highlightedPinKey = key;
+    else if (this.highlightedPinKey === key) this.highlightedPinKey = null;
     let marker = this.markersMap.get(key);
     const r = this.filteredPlaces.find(item => (item.placeId || item.name) === key);
     if (!r) return;
