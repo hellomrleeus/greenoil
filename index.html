@@ -190,8 +190,14 @@
 
                 <div class="filter-action-buttons">
                   <button class="btn btn-secondary" id="btnSelectAllPage">
-                    <span data-i18n="btn_select_page">全选本页</span>
+                    <span id="btnSelectAllPageText" data-i18n="btn_select_page">全选本页</span>
                   </button>
+                  <div class="selection-count-tag" id="selectionCountTag" style="display: none;">
+                    <span data-i18n="sel_selected">已选</span>
+                    <strong class="selection-count-badge" id="selectionCountBadge">0</strong>
+                    <span id="selectionCountSuffix" data-i18n="sel_count" data-param-count="">家餐馆</span>
+                    <button type="button" class="btn-clear-sel" id="btnClearSelection" data-i18n="btn_clear_selection">清空</button>
+                  </div>
                   <button class="btn btn-primary" id="btnPlanRouteTop" style="background: #2563eb; border-color: #2563eb;">
                     <span data-i18n="btn_plan_route">规划路线</span>
                   </button>
@@ -887,8 +893,14 @@
                 </div>
                 <div class="map-list-actions">
                   <button class="btn btn-secondary btn-sm" id="mapBtnSelectAll" title="全选当前餐馆" data-i18n-title="btn_select_all">
-                    <span data-i18n="btn_select_all">全选</span>
+                    <span id="mapBtnSelectAllText" data-i18n="btn_select_all">全选</span>
                   </button>
+                  <div class="selection-count-tag map-selection-tag" id="mapSelectionCountTag" style="display: none;">
+                    <span data-i18n="sel_selected">已选</span>
+                    <strong class="selection-count-badge" id="mapSelectedCountNum">0</strong>
+                    <span data-i18n="sel_count" data-param-count="">家</span>
+                    <button type="button" class="btn-clear-sel" id="mapBtnClearSelection" data-i18n="btn_clear_selection">清空</button>
+                  </div>
                   <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669;" title="批量保存到KV" data-i18n-title="btn_batch_add_to_kv">
                     <span data-i18n="btn_batch_add_to_kv">保存至KV</span>
                   </button>
@@ -921,25 +933,7 @@
     </div>
   </div>
 
-  <!-- FLOATING MULTI-SELECTION ACTION BAR -->
-  <div class="selection-bar" id="selectionBar">
-    <div class="selection-info">
-      <span data-i18n="sel_selected">已选</span>
-      <span class="selection-count-badge" id="selectionCountBadge">0</span>
-      <span data-i18n="sel_count" data-param-count="" id="selectionCountSuffix">家餐馆</span>
-    </div>
-    <div class="selection-actions">
-      <button class="btn btn-secondary btn-sm" id="btnPlanRouteSelected" style="color: white; border-color: rgba(255,255,255,0.25); background: #2563eb;">
-        <span data-i18n="btn_plan_route">规划路线</span>
-      </button>
-      <button class="btn btn-secondary btn-sm" id="btnClearSelection" style="color: white; border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.15);" data-i18n="btn_clear_selection">
-        清空
-      </button>
-      <button class="btn btn-primary btn-sm" id="btnExportSelected" style="background: #10b981; border: none;">
-        <span id="btnExportSelectedText">导出所选 (0 家)</span>
-      </button>
-    </div>
-  </div>
+
 
   <!-- RESTAURANT DETAIL MODAL -->
   <div class="modal-overlay" id="detailModalOverlay">

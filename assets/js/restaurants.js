@@ -436,46 +436,46 @@ export const Restaurants = {
 
   updateSelectionUI() {
     const count = this.selectedMap.size;
-    const selectionBar = document.getElementById("selectionBar");
+    const countTag = document.getElementById("selectionCountTag");
     const countSpan = document.getElementById("selectionCountBadge");
     const suffixSpan = document.getElementById("selectionCountSuffix");
-    const exportBtnText = document.getElementById("btnExportSelectedText");
+    const exportBtn = document.getElementById("btnExportCsv");
 
     if (countSpan) countSpan.textContent = count;
     if (suffixSpan) {
       const formatted = i18n.t("sel_count", { count: "" }).trim();
       suffixSpan.textContent = formatted;
     }
-    if (exportBtnText) {
-      exportBtnText.textContent = i18n.t("btn_export_selection", { count });
+    if (countTag) {
+      countTag.style.display = count > 0 ? "inline-flex" : "none";
     }
 
-    const btnPlanRouteSelected = document.getElementById("btnPlanRouteSelected");
-    if (btnPlanRouteSelected) {
-      const textSpan = btnPlanRouteSelected.querySelector("span:not(:first-child)");
-      if (textSpan) {
-        textSpan.textContent = count > 0 ? i18n.t("plan_route_with_count", { count }) : i18n.t("btn_plan_route");
+    if (exportBtn) {
+      const span = exportBtn.querySelector("span");
+      if (span) {
+        span.textContent = count > 0 ? `${i18n.t("btn_export_csv")} (${count})` : i18n.t("btn_export_csv");
       }
     }
+
     const btnPlanRouteTop = document.getElementById("btnPlanRouteTop");
     if (btnPlanRouteTop) {
-      const textSpan = btnPlanRouteTop.querySelector("span:not(:first-child)");
-      if (textSpan) {
-        textSpan.textContent = count > 0 ? i18n.t("plan_route_with_count", { count }) : i18n.t("btn_plan_route");
+      const span = btnPlanRouteTop.querySelector("span");
+      if (span) {
+        span.textContent = count > 0 ? i18n.t("plan_route_with_count", { count }) : i18n.t("btn_plan_route");
       }
     }
 
-    if (selectionBar) {
-      if (count > 0) {
-        selectionBar.classList.add("active");
-      } else {
-        selectionBar.classList.remove("active");
+    const allCurrentSelected = this.currentPageData.length > 0 && this.currentPageData.every(r => this.selectedMap.has(r.placeId || r.name));
+    const btnSelectAllPage = document.getElementById("btnSelectAllPage");
+    if (btnSelectAllPage) {
+      const span = btnSelectAllPage.querySelector("span");
+      if (span) {
+        span.textContent = allCurrentSelected ? i18n.t("btn_deselect_page") : i18n.t("btn_select_page");
       }
     }
 
     const thSelectAll = document.getElementById("thSelectAll");
     if (thSelectAll) {
-      const allCurrentSelected = this.currentPageData.length > 0 && this.currentPageData.every(r => this.selectedMap.has(r.placeId || r.name));
       thSelectAll.checked = allCurrentSelected;
       thSelectAll.indeterminate = !allCurrentSelected && this.currentPageData.some(r => this.selectedMap.has(r.placeId || r.name));
     }

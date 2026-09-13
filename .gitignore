@@ -11,6 +11,9 @@ Thumbs.db
 # Wrangler
 .wrangler/
 
+# playwright-cli
+.playwright-cli/
+
 # Exports & Raw Data
 greenoil_restaurants_*.xlsx
 scripts/output/

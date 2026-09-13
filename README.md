@@ -82,4 +82,4 @@ python3 -m http.server 8080
 
 - 城市边界：Statistics Canada 2021 Census subdivisions，经 Esri Canada 公共镜像读取；来源与版本保存在 `assets/data/official_municipalities.json`。运行 `python3 scripts/build_gta_municipalities.py` 可重建。
 - 社区边界：City of Toronto Open Data 的 158 个官方社区，运行 `python3 scripts/build_gta_neighbourhoods.py` 可重建。
-- 其他城市目前仅展示官方城市边界，不再使用手绘商圈代替行政区划。全部区域显示各城市真实边界。
+- 密西沙加支持官方社区；列治文山、万锦、旺市支持官方 Ward 行政选区（明确标注，不等同于社区）。`python3 scripts/build_gta_subareas.py` 重建数据，来源随每个区划保存。全部区域显示各城市真实边界。

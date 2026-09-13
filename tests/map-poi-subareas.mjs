@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { MapExplorer as map } from '../assets/js/map-explorer.js';
+import { Api } from '../assets/js/api.js';
+import worker from '../worker/index.js';
+
+globalThis.fetch = async path => ({ ok: true, json: async () => JSON.parse(fs.readFileSync(path)) });
+await map.loadNeighbourhoodsGeoJson();
+for (const city of ['toronto','markham','richmond_hill','mississauga','vaughan']) {
+  const children = map.getAllNeighborhoods().filter(n => n.parentCityId === city);
+  assert(children.length > 0, `${city} supports drill-down`);
+  assert(children.every(n => n.geometry && n.bbox.length === 4));
+}
+assert.equal(map.getAllNeighborhoods().filter(n=>n.parentCityId==='richmond_hill').length,6);
+let html='';
+map.infoWindow={setContent(content){html=content},setPosition(){},open(){}};
+map.googleMap={};
+map.getPopupHtml=restaurant=>`${restaurant.name}: save ${restaurant.placeId}; route ${restaurant.placeId}`;
+Api.getGooglePlaceDetails=async placeId=>({success:true,place:{placeId,name:placeId}});
+await map.openGooglePoi('native-poi',{});
+assert.equal(map.findPlace('native-poi').name,'native-poi');
+assert(html.includes('save native-poi') && html.includes('route native-poi'));
+let release;
+Api.getGooglePlaceDetails=placeId=>placeId==='slow' ? new Promise(resolve=>release=resolve) : Promise.resolve({success:true,place:{placeId,name:placeId}});
+const slow=map.openGooglePoi('slow',{});await map.openGooglePoi('fast',{});
+release({success:true,place:{placeId:'slow',name:'slow'}});await slow;
+assert(html.startsWith('fast'), 'Old request must not replace the active popup');
+Api.addRestaurant=async restaurant=>({success:restaurant.placeId==='native-poi'});
+map.renderMarkers=map.renderPlacesCards=map.updateResultsSummary=map.highlightMarker=()=>{};
+globalThis.alert=()=>{};
+await map.addSingleToKv('native-poi');assert(map.findPlace('native-poi').inKV);
+const env={WORKER_USERNAME:'fixture',GOOGLE_MAPS_API_KEY:'test-key'};
+const headers={Authorization:`Bearer ${btoa(JSON.stringify({user:'fixture',timestamp:Date.now()}))}`};
+let called=false;
+globalThis.fetch=async (url,options)=>{called=true;assert(url.endsWith('/fixture-place'));assert(options.headers['X-Goog-FieldMask'].includes('location'));return Response.json({id:'fixture-place',displayName:{text:'Fixture Restaurant'},location:{latitude:43.8,longitude:-79.4},addressComponents:[{types:['locality'],longText:'Richmond Hill'}]})};
+const request=path=>new Request('https://example.test'+path,{headers});
+const result=await worker.fetch(request('/api/places/details?placeId=fixture-place'),env);
+const data=await result.json();assert(data.success);assert.equal(data.place.region,'Richmond Hill');assert(called);
+assert.equal((await worker.fetch(request('/api/places/details?placeId=../bad'),env)).status,400);
+assert.equal((await worker.fetch(new Request('https://example.test/api/places/details?placeId=fixture-place'),env)).status,401);
+console.log('PASS: five-city drill-down, native POI lookup/save, popup race handling, details normalization/auth/validation');

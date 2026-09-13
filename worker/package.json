@@ -2,6 +2,7 @@
   "name": "greenoil-worker",
   "version": "1.0.0",
   "description": "Cloudflare Worker backend for Green Oil workbench",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "wrangler dev",

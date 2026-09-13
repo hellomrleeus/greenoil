@@ -1749,57 +1749,56 @@ body {
   }
 }
 
-/* Cross-Page Multi-Selection Floating Action Bar */
-.selection-bar {
-  position: fixed;
-  bottom: 1.5rem;
-  left: 50%;
-  transform: translateX(-50%) translateY(120%);
-  background: #0f172a;
-  color: white;
-  padding: 0.85rem 1.25rem;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-  display: flex;
+/* Selection Count Tag (Adjacent to Select All) */
+.selection-count-tag {
+  display: inline-flex;
   align-items: center;
-  gap: 1rem;
-  z-index: 50;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-  opacity: 0;
-  pointer-events: none;
-  max-width: 90vw;
-  width: auto;
-}
-
-.selection-bar.active {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.selection-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  gap: 0.35rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
   font-weight: 500;
   white-space: nowrap;
 }
 
-.selection-count-badge {
-  background: var(--primary);
-  color: white;
-  padding: 0.2rem 0.65rem;
-  border-radius: var(--radius-full);
-  font-weight: 700;
-  font-size: 0.85rem;
+.selection-count-tag.map-selection-tag {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.76rem;
+  border-radius: 5px;
 }
 
-.selection-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+.selection-count-tag .selection-count-badge {
+  background: #2563eb;
+  color: #ffffff;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.selection-count-tag .btn-clear-sel {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 0 0.25rem;
+  margin-left: 0.2rem;
+  transition: opacity 0.15s;
+}
+
+.selection-count-tag .btn-clear-sel:hover {
+  opacity: 0.8;
+}
+
+.selection-bar {
+  display: none !important;
 }
 
 /* Checkboxes & Selection states */
@@ -3409,6 +3408,26 @@ body {
   border-color: #16a34a !important;
   box-shadow: 0 0 0 2px #22c55e, 0 4px 12px rgba(34, 197, 94, 0.25) !important;
   background: #f0fdf4 !important;
+}
+
+.map-place-card.is-selected {
+  border-color: #2563eb !important;
+  background: #f0f7ff !important;
+  box-shadow: 0 0 0 1.5px #2563eb, 0 3px 10px rgba(37, 99, 235, 0.15) !important;
+}
+
+.map-card-select-cb {
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+  accent-color: #2563eb;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: transform 0.12s ease;
+}
+
+.map-card-select-cb:hover {
+  transform: scale(1.12);
 }
 
 .map-place-card .card-thumb {

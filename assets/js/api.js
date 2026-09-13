@@ -257,6 +257,17 @@ export const Api = {
   /**
    * Search Google Maps Places by Keyword (Proxy)
    */
+  async getGooglePlaceDetails(placeId) {
+    try {
+      const response = await fetch(`${this.getWorkerUrl()}/api/places/details?placeId=${encodeURIComponent(placeId)}`, {
+        headers: this.getAuthHeaders(), credentials: "include"
+      });
+      return await response.json();
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  },
+
   async searchGooglePlaces(query) {
     const workerUrl = this.getWorkerUrl();
     try {

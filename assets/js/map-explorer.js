@@ -91,6 +91,9 @@ export const MapExplorer = {
   allRestaurants: [],
   displayedPlaces: [],
   selectedMap: new Map(), // key -> Restaurant
+  poiPlaces: new Map(),
+  activePopupKey: null,
+  poiRequestId: 0,
   googlePhotosCache: new Map(), // placeId -> Google Places photo URL
   googleApiKey: "",
 
@@ -198,6 +201,7 @@ export const MapExplorer = {
       if (Array.isArray(data) && data.length > 0) {
         this.allRestaurants = data.map(r => {
           r.inKV = true;
+      if (this.activePopupKey === key) this.infoWindow?.setContent(this.getPopupHtml(r));
           if (r.placeId) this.kvPlaceIdsSet.add(r.placeId);
           if (r.name) this.kvNormalizedNamesSet.add(r.name.trim().toLowerCase());
           return r;
@@ -228,6 +232,11 @@ export const MapExplorer = {
       const resp = await fetch("assets/data/gta_neighbourhoods.json");
       if (resp.ok) {
         this.neighbourhoodsGeoJson = await resp.json();
+        const subareasResponse = await fetch("assets/data/official_subareas.json");
+        if (!subareasResponse.ok) throw new Error("Official subareas unavailable");
+        const subareas = await subareasResponse.json();
+        this.neighbourhoodsGeoJson.features.push(...subareas.features);
+        this.neighbourhoodsGeoJson.totalCount = this.neighbourhoodsGeoJson.features.length;
         if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
           this.neighbourhoodsMap.clear();
           this.neighbourhoodsGeoJson.features.forEach(ft => {
@@ -291,6 +300,7 @@ export const MapExplorer = {
         nameZh: ft.nameZh || ft.name,
         nameEn: ft.nameEn || ft.name,
         nameKo: ft.nameKo || ft.name,
+        boundaryType: ft.boundaryType || "neighbourhood",
         cityId: ft.cityId,
         cityName: ft.cityName,
         cityNameZh: ft.cityNameZh,
@@ -324,6 +334,7 @@ export const MapExplorer = {
         nameZh: ft.nameZh || ft.name,
         nameEn: ft.nameEn || ft.name,
         nameKo: ft.nameKo || ft.name,
+        boundaryType: ft.boundaryType || "neighbourhood",
         cityId: ft.cityId,
         cityName: ft.cityName,
         cityNameZh: ft.cityNameZh,
@@ -474,6 +485,11 @@ export const MapExplorer = {
     if (nbPillsRow) {
       const isAllCity = this.activeCityIds.has("all");
       const candidateNbs = isAllCity ? allNbs : allNbs.filter(nb => this.activeCityIds.has(nb.parentCityId));
+      const title = nbSection?.querySelector(".popover-section-title");
+      if (title) {
+        const wardsOnly = candidateNbs.length && candidateNbs.every(nb => nb.boundaryType === "ward");
+        title.textContent = wardsOnly ? ({zh:"官方行政选区 (Wards)",en:"Official wards",ko:"공식 선거구"}[lang]) : i18n.t("map_filter_neighborhood");
+      }
 
       let html = "";
       candidateNbs.forEach(nb => {
@@ -591,6 +607,9 @@ export const MapExplorer = {
   },
 
   toggleCity(cityId) {
+    this.popoverSearchQuery = "";
+    const search = document.getElementById("popoverSearchInput");
+    if (search) search.value = "";
     if (cityId === "all") {
       this.activeCityIds = new Set(["all"]);
       this.activeNeighborhoodIds.clear();
@@ -956,6 +975,12 @@ export const MapExplorer = {
       }
 
       this.infoWindow = new google.maps.InfoWindow();
+      this.infoWindow.addListener("closeclick", () => { this.activePopupKey = null; this.poiRequestId++; });
+      this.googleMap.addListener("click", event => {
+        if (!event.placeId) return;
+        event.stop();
+        this.openGooglePoi(event.placeId, event.latLng);
+      });
 
     } catch (err) {
       console.warn("Google Maps instantiation failed:", err);
@@ -1014,6 +1039,8 @@ export const MapExplorer = {
   // Area Google Places Fetching & KV Joining
   // -------------------------------------------------------------
   async loadPlacesForCurrentArea() {
+    this.selectedMap.clear();
+    this.updateSelectionUI();
     const container = document.getElementById("mapPlacesCardsContainer");
     const lang = this.getCurrentLanguage();
     const loadingMsg = lang === "en" ? "Fetching Google Maps restaurants..." :
@@ -1192,9 +1219,18 @@ export const MapExplorer = {
     this.filteredPlaces = result;
     this.currentPage = 1;
 
+    // Prune selections that no longer match current filtered results
+    const validKeys = new Set(result.map(r => r.placeId || r.name));
+    for (const key of this.selectedMap.keys()) {
+      if (!validKeys.has(key)) {
+        this.selectedMap.delete(key);
+      }
+    }
+
     this.updateResultsSummary();
     this.renderMarkers();
     this.renderPlacesCards();
+    this.updateSelectionUI();
   },
 
   updateResultsSummary() {
@@ -1294,6 +1330,15 @@ export const MapExplorer = {
       }
     });
 
+    // A2. Selected items (guarantees cross-page selected items are always on map)
+    this.selectedMap.forEach(r => {
+      const key = r.placeId || r.name;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        markerPlaces.push(r);
+      }
+    });
+
     // B. Google Places (unsaved)
     this.filteredPlaces.forEach(r => {
       if (!r.inKV) {
@@ -1322,6 +1367,7 @@ export const MapExplorer = {
       if (isNaN(lat) || isNaN(lng)) return;
 
       const key = r.placeId || r.name;
+      const isSelected = this.selectedMap.has(key);
 
       if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
         const marker = new google.maps.Marker({
@@ -1329,7 +1375,7 @@ export const MapExplorer = {
           map: this.googleMap,
           title: r.name,
           icon: this.getPinIcon(r, false),
-          zIndex: !r.inKV ? 30 : 10
+          zIndex: isSelected ? 50 : (!r.inKV ? 30 : 10)
         });
 
         marker.addListener("click", () => {
@@ -1339,12 +1385,12 @@ export const MapExplorer = {
 
         this.markersMap.set(key, marker);
       } else if (this.fallbackMap && this.fallbackLayerGroup && window.L) {
-        const color = !r.inKV ? "#f59e0b" : "#10b981";
+        const color = isSelected ? "#2563eb" : (!r.inKV ? "#f59e0b" : "#10b981");
         const marker = L.circleMarker([lat, lng], {
-          radius: !r.inKV ? 8 : 7,
+          radius: isSelected ? 9 : (!r.inKV ? 8 : 7),
           fillColor: color,
-          color: "#ffffff",
-          weight: 2,
+          color: isSelected ? "#1d4ed8" : "#ffffff",
+          weight: isSelected ? 3 : 2,
           opacity: 1,
           fillOpacity: 0.95
         });
@@ -1361,14 +1407,17 @@ export const MapExplorer = {
   },
 
   getPinIcon(r, isHighlight) {
+    const key = r.placeId || r.name;
+    const isSelected = this.selectedMap.has(key);
     const color = !r.inKV ? "#f59e0b" : "#10b981";
-    const scale = isHighlight ? 1.7 : 1.35;
-    const strokeColor = isHighlight ? "#2563eb" : "#ffffff";
-    const strokeWeight = isHighlight ? 2.8 : 1.8;
+    const scale = isHighlight ? 1.7 : (isSelected ? 1.55 : 1.35);
+    const strokeColor = isHighlight ? "#2563eb" : (isSelected ? "#1d4ed8" : "#ffffff");
+    const strokeWeight = isHighlight ? 2.8 : (isSelected ? 2.5 : 1.8);
+    const fillColor = isHighlight ? "#2563eb" : (isSelected ? "#2563eb" : color);
 
     return {
       path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
-      fillColor: isHighlight ? "#2563eb" : color,
+      fillColor: fillColor,
       fillOpacity: 1,
       strokeWeight: strokeWeight,
       strokeColor: strokeColor,
@@ -1612,14 +1661,21 @@ export const MapExplorer = {
       ` : "";
 
       return `
-        <div class="map-place-card" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
+        <div class="map-place-card ${isSelected ? 'is-selected' : ''}" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
           <div class="card-thumb" style="${photoInfo.url ? '' : 'display:none'}">
             <img ${photoInfo.url ? `src="${this.escapeHtml(photoInfo.url)}"` : ''} alt="${this.escapeHtml(r.name)}" loading="lazy" class="card-img" onload="this.parentElement.style.display=''" onerror="this.parentElement.style.display='none'" />
           </div>
           <div class="card-main">
-            <div class="card-title-row">
-              <h4 class="card-title" title="${this.escapeHtml(r.name)}">${this.escapeHtml(r.name)}</h4>
-              <span style="font-size: 0.78rem; font-weight: 700; color: #475569;">${this.escapeHtml(r.price || "$$")}</span>
+            <div class="card-title-row" style="display: flex; align-items: center; gap: 0.5rem;">
+              <input 
+                type="checkbox" 
+                class="custom-checkbox map-card-select-cb" 
+                ${isSelected ? 'checked' : ''} 
+                onclick="event.stopPropagation(); window.mapExplorerToggleSelect('${this.escapeQuotes(key)}');" 
+                title="${isSelected ? (i18n.t("btn_clear_selection") || '取消勾选') : (i18n.t("btn_select_all") || '勾选餐馆')}" 
+              />
+              <h4 class="card-title" title="${this.escapeHtml(r.name)}" style="flex: 1; margin: 0;">${this.escapeHtml(r.name)}</h4>
+              <span style="font-size: 0.78rem; font-weight: 700; color: #475569; flex-shrink: 0;">${this.escapeHtml(r.price || "$$")}</span>
             </div>
 
             <div class="card-meta-row">
@@ -1655,6 +1711,7 @@ export const MapExplorer = {
 
     this.renderPagination(total);
     this.resolveVisibleGooglePhotos(pageItems);
+    this.updateSelectionUI();
   },
 
   renderPagination(total) {
@@ -1753,6 +1810,33 @@ export const MapExplorer = {
     `;
   },
 
+  findPlace(key) {
+    return this.poiPlaces.get(key) || this.displayedPlaces.find(r => (r.placeId || r.name) === key) || this.filteredPlaces?.find(r => (r.placeId || r.name) === key);
+  },
+
+  async openGooglePoi(placeId, position) {
+    const requestId = ++this.poiRequestId;
+    this.activePopupKey = placeId;
+    this.infoWindow.setContent(`<div style="padding:8px">${i18n.t("map_poi_loading")}</div>`);
+    if (position) this.infoWindow.setPosition(position);
+    this.infoWindow.open({ map: this.googleMap });
+    let restaurant = this.findPlace(placeId);
+    if (!restaurant) {
+      const result = await Api.getGooglePlaceDetails(placeId);
+      if (requestId !== this.poiRequestId) return;
+      if (!result.success || !result.place) {
+        const message = { zh: "店铺详情加载失败，请重新点击重试", en: "Unable to load this place. Click it again to retry.", ko: "장소 정보를 불러올 수 없습니다. 다시 클릭해 주세요." };
+        this.infoWindow.setContent(`<div style="padding:8px">${message[this.getCurrentLanguage()] || message.en}</div>`);
+        return;
+      }
+      restaurant = result.place;
+    }
+    if (requestId !== this.poiRequestId) return;
+    restaurant.inKV = this.checkIsInKv(restaurant);
+    this.poiPlaces.set(placeId, restaurant);
+    this.infoWindow.setContent(this.getPopupHtml(restaurant));
+  },
+
   showInfoWindow(r, marker) {
     if (this.isFallbackMode && marker && marker.openPopup) {
       marker.openPopup();
@@ -1761,13 +1845,15 @@ export const MapExplorer = {
 
     if (!this.infoWindow || !this.googleMap) return;
 
+    this.poiRequestId++;
+    this.activePopupKey = r.placeId || r.name;
     this.infoWindow.setContent(this.getPopupHtml(r));
     this.infoWindow.open(this.googleMap, marker);
 
     // Asynchronously resolve authentic Google photo for popup if not cached yet
     if (r.placeId && r.placeId.startsWith("ChIJ") && !r.photoUrl && !this.googlePhotosCache.has(r.placeId)) {
       this.fetchGooglePhotoForPlace(r.placeId).then(photoUrl => {
-        if (photoUrl && this.infoWindow) {
+        if (photoUrl && this.infoWindow && this.activePopupKey === (r.placeId || r.name)) {
           r.photoUrl = photoUrl;
           this.infoWindow.setContent(this.getPopupHtml(r));
         }
@@ -1779,7 +1865,7 @@ export const MapExplorer = {
   // Actions: Add to KV, Batch Add to KV, Add to Route
   // -------------------------------------------------------------
   async addSingleToKv(key) {
-    const r = this.displayedPlaces.find(item => (item.placeId || item.name) === key);
+    const r = this.findPlace(key);
     if (!r) return;
     const lang = this.getCurrentLanguage();
 
@@ -1810,19 +1896,130 @@ export const MapExplorer = {
     }
   },
 
+  // -------------------------------------------------------------
+  // Multi-Selection Logic & Handlers (Cross-Page Support)
+  // -------------------------------------------------------------
+  toggleSelect(key) {
+    const r = this.findPlace(key);
+    if (!r) return;
+    if (this.selectedMap.has(key)) {
+      this.selectedMap.delete(key);
+    } else {
+      this.selectedMap.set(key, r);
+    }
+    this.updateSelectionUI();
+    this.updateCardSelectionStyles();
+    this.renderMarkers();
+  },
+
+  toggleSelectCurrentPage() {
+    const startIdx = (this.currentPage - 1) * this.pageSize;
+    const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
+    if (pageItems.length === 0) return;
+
+    const allSelected = pageItems.every(r => this.selectedMap.has(r.placeId || r.name));
+    if (allSelected) {
+      pageItems.forEach(r => this.selectedMap.delete(r.placeId || r.name));
+    } else {
+      pageItems.forEach(r => this.selectedMap.set(r.placeId || r.name, r));
+    }
+    this.updateSelectionUI();
+    this.updateCardSelectionStyles();
+    this.renderMarkers();
+  },
+
+  clearSelection() {
+    this.selectedMap.clear();
+    this.updateSelectionUI();
+    this.updateCardSelectionStyles();
+    this.renderMarkers();
+  },
+
+  updateSelectionUI() {
+    const count = this.selectedMap.size;
+    const countTag = document.getElementById("mapSelectionCountTag");
+    const countNum = document.getElementById("mapSelectedCountNum");
+    const selectAllText = document.getElementById("mapBtnSelectAllText");
+
+    if (countNum) countNum.textContent = count;
+    if (countTag) {
+      countTag.style.display = count > 0 ? "inline-flex" : "none";
+    }
+
+    const startIdx = (this.currentPage - 1) * this.pageSize;
+    const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
+    const allCurrentSelected = pageItems.length > 0 && pageItems.every(r => this.selectedMap.has(r.placeId || r.name));
+
+    if (selectAllText) {
+      selectAllText.textContent = allCurrentSelected ? i18n.t("btn_deselect_page") : i18n.t("btn_select_all");
+    }
+
+    const planRouteBtn = document.getElementById("mapBtnPlanRoute");
+    if (planRouteBtn) {
+      const span = planRouteBtn.querySelector("span");
+      if (span) {
+        span.textContent = count > 0 ? `${i18n.t("btn_plan_route")} (${count})` : i18n.t("btn_plan_route");
+      }
+    }
+
+    const exportBtn = document.getElementById("mapBtnExportExcel");
+    if (exportBtn) {
+      const span = exportBtn.querySelector("span");
+      if (span) {
+        span.textContent = count > 0 ? `${i18n.t("btn_export_excel")} (${count})` : i18n.t("btn_export_excel");
+      }
+    }
+
+    const batchAddBtn = document.getElementById("mapBtnBatchAddToKv");
+    if (batchAddBtn) {
+      const span = batchAddBtn.querySelector("span");
+      if (span) {
+        const unsavedSelected = Array.from(this.selectedMap.values()).filter(r => !r.inKV).length;
+        span.textContent = count > 0
+          ? `${i18n.t("btn_batch_add_to_kv")} (${unsavedSelected})`
+          : i18n.t("btn_batch_add_to_kv");
+      }
+    }
+  },
+
+  updateCardSelectionStyles() {
+    const container = document.getElementById("mapPlacesCardsContainer");
+    if (!container) return;
+    container.querySelectorAll(".map-place-card").forEach(card => {
+      const key = card.dataset.key;
+      const isSel = this.selectedMap.has(key);
+      card.classList.toggle("is-selected", isSel);
+      const cb = card.querySelector(".map-card-select-cb");
+      if (cb) cb.checked = isSel;
+    });
+  },
+
   async batchAddToKv() {
     const lang = this.getCurrentLanguage();
-    const unsaved = this.filteredPlaces.filter(r => !r.inKV);
+    const hasSelection = this.selectedMap.size > 0;
+    const candidates = hasSelection ? Array.from(this.selectedMap.values()) : this.filteredPlaces;
+    const unsaved = candidates.filter(r => !r.inKV);
+
     if (unsaved.length === 0) {
-      alert(lang === "en" ? "All restaurants in current view are already in KV database!" :
-            lang === "ko" ? "현재 목록의 모든 매장이 이미 KV 데이터베이스에 등록되어 있습니다!" :
-            "当前列表中的所有餐馆都已存在于 KV 数据库中，无需重复添加！");
+      if (hasSelection) {
+        alert(lang === "en" ? "All selected restaurants are already in KV database!" :
+              lang === "ko" ? "선택한 모든 매장이 이미 KV 데이터베이스에 등록되어 있습니다!" :
+              "所选餐馆均已存在于 KV 数据库中，无需重复添加！");
+      } else {
+        alert(lang === "en" ? "All restaurants in current view are already in KV database!" :
+              lang === "ko" ? "현재 목록의 모든 매장이 이미 KV 데이터베이스에 등록되어 있습니다!" :
+              "当前列表中的所有餐馆都已存在于 KV 数据库中，无需重复添加！");
+      }
       return;
     }
 
-    const confirmMsg = lang === "en" ? `Found ${unsaved.length} restaurants not in KV database.\nBatch save all ${unsaved.length} restaurants to KV database?` :
-                       lang === "ko" ? `KV 미등록 매장 ${unsaved.length}개가 발견되었습니다.\n${unsaved.length}개 매장을 클라우드 KV 데이터베이스에 일괄 저장하시겠습니까?` :
-                       `检测到当前列表共有 ${unsaved.length} 家未在KV库餐馆。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到云端 KV 数据库？`;
+    const confirmMsg = hasSelection
+      ? (lang === "en" ? `Found ${unsaved.length} selected restaurants not in KV database.\nBatch save these ${unsaved.length} restaurants to KV database?` :
+         lang === "ko" ? `선택한 매장 중 KV 미등록 매장 ${unsaved.length}개가 발견되었습니다.\n클라우드 KV 데이터베이스에 일괄 저장하시겠습니까?` :
+         `检测到所选项中有 ${unsaved.length} 家未在KV库餐馆。\n是否将这 ${unsaved.length} 家餐馆批量保存到云端 KV 数据库？`)
+      : (lang === "en" ? `Found ${unsaved.length} restaurants not in KV database.\nBatch save all ${unsaved.length} restaurants to KV database?` :
+         lang === "ko" ? `KV 미등록 매장 ${unsaved.length}개가 발견되었습니다.\n${unsaved.length}개 매장을 클라우드 KV 데이터베이스에 일괄 저장하시겠습니까?` :
+         `检测到当前列表共有 ${unsaved.length} 家未在KV库餐馆。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到云端 KV 数据库？`);
 
     if (!confirm(confirmMsg)) {
       return;
@@ -1840,6 +2037,7 @@ export const MapExplorer = {
         this.renderMarkers();
         this.renderPlacesCards();
         this.updateResultsSummary();
+        this.updateSelectionUI();
         const successMsg = lang === "en" ? `🎉 Successfully batch saved ${unsaved.length} restaurants to cloud KV database!` :
                            lang === "ko" ? `🎉 매장 ${unsaved.length}개가 클라우드 KV 데이터베이스에 일괄 저장되었습니다!` :
                            `🎉 成功将 ${unsaved.length} 家餐馆批量保存至云端 KV 数据库！`;
@@ -2009,7 +2207,8 @@ export const MapExplorer = {
     const planRouteBtn = document.getElementById("mapBtnPlanRoute");
     if (planRouteBtn) {
       planRouteBtn.addEventListener("click", () => {
-        const places = this.filteredPlaces.slice(0, 10);
+        const selectedList = Array.from(this.selectedMap.values());
+        const places = selectedList.length > 0 ? selectedList : this.filteredPlaces.slice(0, 10);
         if (places.length === 0) {
           const msg = "当前列表暂无餐馆可规划路线";
           if (window.showToast) window.showToast(msg);
@@ -2022,24 +2221,26 @@ export const MapExplorer = {
       });
     }
 
-    // Select All
+    // Select All (Toggle Current Page)
     const selectAllBtn = document.getElementById("mapBtnSelectAll");
     if (selectAllBtn) {
-      selectAllBtn.addEventListener("click", () => {
-        const pageItems = this.filteredPlaces.slice((this.currentPage - 1) * this.pageSize, this.currentPage * this.pageSize);
-        pageItems.forEach(r => this.selectedMap.set(r.placeId || r.name, r));
-        const msg = `已选择 ${pageItems.length} 家餐馆`;
-        if (window.showToast) window.showToast(msg);
-        else alert(msg);
-      });
+      selectAllBtn.addEventListener("click", () => this.toggleSelectCurrentPage());
+    }
+
+    // Clear Selection
+    const clearSelectionBtn = document.getElementById("mapBtnClearSelection");
+    if (clearSelectionBtn) {
+      clearSelectionBtn.addEventListener("click", () => this.clearSelection());
     }
 
     // Export Excel
     const exportExcelBtn = document.getElementById("mapBtnExportExcel");
     if (exportExcelBtn) {
       exportExcelBtn.addEventListener("click", () => {
-        if (window.XLSX && this.filteredPlaces.length > 0) {
-          const rows = this.filteredPlaces.map(r => ({
+        const selectedList = Array.from(this.selectedMap.values());
+        const candidates = selectedList.length > 0 ? selectedList : this.filteredPlaces;
+        if (window.XLSX && candidates.length > 0) {
+          const rows = candidates.map(r => ({
             "餐馆名称": r.name,
             "地址": r.address,
             "电话": r.phone || "",
@@ -2087,7 +2288,7 @@ if (typeof window !== "undefined") {
   };
 
   window.mapExplorerCardClick = function(key) {
-    const r = MapExplorer.filteredPlaces.find(item => (item.placeId || item.name) === key);
+    const r = MapExplorer.findPlace(key);
     if (!r) return;
     const lat = parseFloat(r.latitude);
     const lng = parseFloat(r.longitude);
@@ -2121,7 +2322,7 @@ if (typeof window !== "undefined") {
   };
 
   window.mapExplorerAddSingleToRoute = function(key) {
-    const r = MapExplorer.filteredPlaces.find(item => (item.placeId || item.name) === key);
+    const r = MapExplorer.findPlace(key);
     if (!r) return;
     import("./field-sales.js").then(({ FieldSales }) => {
       FieldSales.addMultipleToRoute([r], false);
@@ -2129,7 +2330,7 @@ if (typeof window !== "undefined") {
   };
 
   window.mapExplorerLogVisit = function(key) {
-    const r = MapExplorer.filteredPlaces.find(item => (item.placeId || item.name) === key);
+    const r = MapExplorer.findPlace(key);
     if (!r) return;
     import("./field-sales.js").then(({ FieldSales }) => {
       FieldSales.openSalesRecordModal(null, r);
@@ -2162,5 +2363,13 @@ if (typeof window !== "undefined") {
 
   window.mapExplorerRemoveNeighborhood = function(nbId) {
     MapExplorer.removeNeighborhood(nbId);
+  };
+
+  window.mapExplorerToggleSelect = function(key) {
+    MapExplorer.toggleSelect(key);
+  };
+
+  window.mapExplorerClearSelection = function() {
+    MapExplorer.clearSelection();
   };
 }
