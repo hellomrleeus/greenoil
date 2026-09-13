@@ -2051,7 +2051,7 @@ export const MapExplorer = {
     const pageItems = this.filteredPlaces.slice(startIdx, startIdx + this.pageSize);
 
     const txtInKv = lang === "en" ? "✓ In KV" : (lang === "ko" ? "✓ KV 등록" : "✓ 已在KV库");
-    const txtNewPlace = lang === "en" ? "Google New" : (lang === "ko" ? "Google 신규" : "Google新店");
+    const txtNewPlace = lang === "en" ? "Not in KV" : (lang === "ko" ? "KV 미등록" : "未在KV库");
     const txtVisited = lang === "en" ? "Visited" : (lang === "ko" ? "방문 완료" : "已拜访");
     const txtUnvisited = lang === "en" ? "Unvisited" : (lang === "ko" ? "미방문" : "未拜访");
     const txtLogged = lang === "en" ? "Logged" : (lang === "ko" ? "기록됨" : "已记录");
@@ -2193,7 +2193,7 @@ export const MapExplorer = {
 
     const kvBadge = r.inKV 
       ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:600;">✓ ${lang === "en" ? "In KV" : (lang === "ko" ? "KV 등록" : "已在KV")}</span>`
-      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">${lang === "en" ? "Not in KV" : (lang === "ko" ? "미등록" : "未入库")}</span>`;
+      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">${lang === "en" ? "Not in KV" : (lang === "ko" ? "KV 미등록" : "未在KV库")}</span>`;
 
     const saveText = lang === "en" ? "Save to KV" : (lang === "ko" ? "KV 저장" : "保存至KV");
     const navText = lang === "en" ? "Directions" : (lang === "ko" ? "길찾기" : "导航");
@@ -2287,9 +2287,9 @@ export const MapExplorer = {
       return;
     }
 
-    const confirmMsg = lang === "en" ? `Found ${unsaved.length} unsaved restaurants.\nBatch save all ${unsaved.length} restaurants to KV database?` :
-                       lang === "ko" ? `미등록 신규 매장 ${unsaved.length}개가 발견되었습니다.\n${unsaved.length}개 매장을 클라우드 KV 데이터베이스에 일괄 저장하시겠습니까?` :
-                       `检测到当前列表共有 ${unsaved.length} 家未入库新店。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到云端 KV 数据库？`;
+    const confirmMsg = lang === "en" ? `Found ${unsaved.length} restaurants not in KV database.\nBatch save all ${unsaved.length} restaurants to KV database?` :
+                       lang === "ko" ? `KV 미등록 매장 ${unsaved.length}개가 발견되었습니다.\n${unsaved.length}개 매장을 클라우드 KV 데이터베이스에 일괄 저장하시겠습니까?` :
+                       `检测到当前列表共有 ${unsaved.length} 家未在KV库餐馆。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到云端 KV 数据库？`;
 
     if (!confirm(confirmMsg)) {
       return;
@@ -2526,7 +2526,7 @@ export const MapExplorer = {
             "电话": r.phone || "",
             "评分": r.rating || "",
             "评价数": r.reviews || "",
-            "KV状态": r.inKV ? "已在KV" : "未入库新店",
+            "KV状态": r.inKV ? "已在KV" : "未在KV库",
             "拜访状态": r.isVisited ? `已拜访 (${r.lastOutcome})` : "未拜访"
           }));
           const ws = window.XLSX.utils.json_to_sheet(rows);
