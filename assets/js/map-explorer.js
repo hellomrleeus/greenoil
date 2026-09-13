@@ -1322,8 +1322,52 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   markerRenderGeneration: 0,
   markerBatchTimer: null,
+  growingMarkers: new Map(),
+  markerGrowthFrame: null,
+  growthIconCache: new WeakMap(),
+
+  stopMarkerGrowth() {
+    if (this.markerGrowthFrame !== null) cancelAnimationFrame(this.markerGrowthFrame);
+    this.markerGrowthFrame = null;
+    this.growingMarkers.forEach((entry, marker) => marker.setIcon(entry.icon));
+    this.growingMarkers.clear();
+  },
+
+  growMarker(marker, icon) {
+    if (!icon.url || typeof requestAnimationFrame !== "function" ||
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || this.growingMarkers.size >= 80) return;
+    let frames = this.growthIconCache.get(icon);
+    if (!frames) {
+      frames = Array.from({ length: 13 }, (_, i) => {
+        const progress = i / 12;
+        const height = 0.08 + 0.92 * (1 - (1 - progress) ** 3);
+        return { ...icon,
+          scaledSize: new google.maps.Size(icon.scaledSize.width, icon.scaledSize.height * height),
+          anchor: new google.maps.Point(icon.anchor.x, icon.anchor.y * height)
+        };
+      });
+      this.growthIconCache.set(icon, frames);
+    }
+    marker.setIcon(frames[0]);
+    this.growingMarkers.set(marker, { icon, frames, started: performance.now(), frame: 0 });
+    if (this.markerGrowthFrame !== null) return;
+    const tick = now => {
+      this.markerGrowthFrame = null;
+      this.growingMarkers.forEach((entry, item) => {
+        const frame = Math.min(12, Math.floor((now - entry.started) / 280 * 12));
+        if (frame !== entry.frame) {
+          item.setIcon(frame === 12 ? entry.icon : entry.frames[frame]);
+          entry.frame = frame;
+        }
+        if (frame === 12) this.growingMarkers.delete(item);
+      });
+      if (this.growingMarkers.size) this.markerGrowthFrame = requestAnimationFrame(tick);
+    };
+    this.markerGrowthFrame = requestAnimationFrame(tick);
+  },
 
   cancelMarkerBatches() {
+    this.stopMarkerGrowth();
     this.markerRenderGeneration++;
     if (this.markerBatchTimer !== null) clearTimeout(this.markerBatchTimer);
     this.markerBatchTimer = null;
@@ -1417,6 +1461,7 @@ export const MapExplorer = {
         });
 
         this.markersMap.set(key, marker);
+        this.growMarker(marker, this.getPinIcon(r, false));
       } else if (this.fallbackMap && this.fallbackLayerGroup && window.L) {
         const color = isSelected ? "#2563eb" : (!r.inKV ? "#f59e0b" : "#10b981");
         const marker = L.circleMarker([lat, lng], {
@@ -1532,6 +1577,7 @@ export const MapExplorer = {
     }
 
     if (!marker) return;
+    this.growingMarkers.delete(marker);
 
     if (this.googleMap && !this.isFallbackMode && marker.setIcon) {
       marker.setIcon(this.getPinIcon(r, highlight));
