@@ -626,11 +626,12 @@ export const FieldSales = {
         placeId: existingRecord.restaurantId,
         region: existingRecord.region
       };
-    } else if (!targetRest && this.routeWaypoints && this.routeWaypoints.length > 0) {
+    } else if ((!targetRest || !this.routeWaypoints.some(w => (w.placeId || w.name) === (targetRest.placeId || targetRest.name))) && this.routeWaypoints && this.routeWaypoints.length > 0) {
       // Prioritize the first unvisited stop in the route planning list
       targetRest = this.routeWaypoints.find(w => !w.visited) || this.routeWaypoints[0];
     }
 
+    if (!existingRecord && !this.routeWaypoints.some(w => (w.placeId || w.name) === (targetRest?.placeId || targetRest?.name))) targetRest = null;
     this.selectedRestaurantForSale = targetRest;
     this.populateProximityRestaurantOptions(targetRest);
     this.updateRestaurantEditInputs(targetRest);
@@ -667,21 +668,9 @@ export const FieldSales = {
       html += `</optgroup>`;
     }
 
-    // 2. Group: Other Restaurants from Database (Excluding already listed route stops)
-    const routeKeys = new Set(this.routeWaypoints.map(w => w.placeId || w.name));
-    const otherRestaurants = (this.cachedRestaurants || []).filter(r => !routeKeys.has(r.placeId || r.name));
-
-    if (otherRestaurants.length > 0) {
-      html += `<optgroup label="${i18n.t("fs_optgroup_other")}">`;
-      otherRestaurants.slice(0, 100).forEach(r => {
-        const isSelected = selectedRest && (
-          (selectedRest.placeId && r.placeId && selectedRest.placeId === r.placeId) ||
-          (selectedRest.name && r.name && selectedRest.name === r.name)
-        );
-        const val = r.placeId || r.name;
-        html += `<option value="${val}" ${isSelected ? "selected" : ""}>${r.name} (${Restaurants.formatRegion(r.region) || "GTA"})</option>`;
-      });
-      html += `</optgroup>`;
+    // Preserve the original restaurant when editing a historical record.
+    if (this.editingRecordId && selectedRest && !this.routeWaypoints.some(w => (w.placeId || w.name) === (selectedRest.placeId || selectedRest.name))) {
+      html += `<option value="${Restaurants.escapeHtml(selectedRest.placeId || selectedRest.name)}" selected>${Restaurants.escapeHtml(selectedRest.name)}</option>`;
     }
 
     selectEl.innerHTML = html;
@@ -690,13 +679,9 @@ export const FieldSales = {
     selectEl.onchange = (e) => {
       const key = e.target.value;
       let found = this.routeWaypoints.find(w => (w.placeId && w.placeId === key) || w.name === key);
-      if (!found) {
-        found = this.cachedRestaurants.find(r => (r.placeId && r.placeId === key) || r.name === key);
-      }
-      if (found) {
-        this.selectedRestaurantForSale = found;
-        this.updateRestaurantEditInputs(found);
-      }
+      if (!found && this.editingRecordId && selectedRest && key === (selectedRest.placeId || selectedRest.name)) found = selectedRest;
+      this.selectedRestaurantForSale = found || null;
+      this.updateRestaurantEditInputs(found || null);
     };
   },
 
@@ -722,9 +707,9 @@ export const FieldSales = {
     const selectEl = document.getElementById("fsRecordRestSelect");
     const selectedKey = selectEl ? selectEl.value : "";
 
-    let rest = this.selectedRestaurantForSale;
-    if (!rest && selectedKey) {
-      rest = this.cachedRestaurants.find(r => (r.placeId && r.placeId === selectedKey) || r.name === selectedKey);
+    let rest = this.routeWaypoints.find(w => (w.placeId || w.name) === selectedKey);
+    if (!rest && this.editingRecordId && this.selectedRestaurantForSale && selectedKey === (this.selectedRestaurantForSale.placeId || this.selectedRestaurantForSale.name)) {
+      rest = this.selectedRestaurantForSale;
     }
 
     if (!rest) {

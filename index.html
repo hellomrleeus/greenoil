@@ -749,19 +749,18 @@
 
                 <!-- Floating Popover Modal (Screenshot 2) -->
                 <div class="area-popover-panel" id="areaPopoverPanel" style="display: none;">
-                  <div class="popover-top-bar">
-                    <div class="popover-tags-row" id="popoverActiveTagsRow">
-                      <!-- Selected tags rendered dynamically with ✕ -->
-                    </div>
-                    <button type="button" class="btn-clear-all" id="popoverClearAllBtn" data-i18n="popover_clear_all">Clear All</button>
-                  </div>
-                  
                   <div class="popover-search-input-wrap">
                     <span class="popover-search-icon">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </span>
                     <input type="text" id="popoverSearchInput" class="popover-search-input" placeholder="输入城市或商圈社区名称过滤..." data-i18n-placeholder="popover_search_placeholder" />
-                    <button type="button" class="popover-search-submit" id="popoverSearchSubmit" data-i18n="btn_search">搜索</button>
+                  </div>
+
+                  <div class="popover-top-bar">
+                    <div class="popover-tags-row" id="popoverActiveTagsRow">
+                      <!-- Selected tags rendered dynamically with ✕ -->
+                    </div>
+                    <button type="button" class="btn-clear-all" id="popoverClearAllBtn" data-i18n="popover_clear_all">Clear All</button>
                   </div>
 
                   <div class="popover-location-action" id="popoverCurrentLocationBtn">
@@ -834,17 +833,6 @@
                 <input type="text" class="form-input toolbar-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." data-i18n-placeholder="map_search_placeholder" />
                 <button class="btn btn-primary btn-sm" id="mapBtnSearchGmap" title="搜索 Google Maps" data-i18n-title="btn_search">
                   <span data-i18n="btn_search">搜索</span>
-                </button>
-              </div>
-
-              <!-- 6. Viewport follow checkbox & Reset view button -->
-              <div class="toolbar-actions-wrap" style="display: flex; align-items: center; gap: 0.5rem;">
-                <label class="form-checkbox-label" title="跟随地图视野实时筛选" data-i18n-title="map_follow_bounds" style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; cursor: pointer; user-select: none; margin: 0; white-space: nowrap;">
-                  <input type="checkbox" id="mapFollowBounds" class="custom-checkbox" />
-                  <span data-i18n="map_follow_bounds">视野筛选</span>
-                </label>
-                <button class="btn btn-secondary btn-sm" id="mapResetViewBtn" title="重置视角" data-i18n-title="btn_reset_view">
-                  <span data-i18n="btn_reset_view">重置视角</span>
                 </button>
               </div>
 
@@ -1082,10 +1070,10 @@
         <div class="form-group">
           <label class="form-label" for="fsRecordRestSelect" data-i18n="fs_record_select_rest">关联餐馆</label>
           <select class="form-select" id="fsRecordRestSelect" required style="font-weight: 500;">
-            <!-- Populated via JS with route waypoints & KV restaurants -->
+            <!-- Populated via JS with route waypoints only -->
           </select>
           <div style="font-size: 0.78rem; color: #2563eb; margin-top: 0.25rem;" data-i18n="fs_record_route_prompt">
-            优先推荐当前路线规划中的途经站点
+            仅可选择当前路线规划中的途经站点
           </div>
         </div>
 

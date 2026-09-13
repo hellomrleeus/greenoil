@@ -111,14 +111,11 @@ export const MapExplorer = {
   activeCityIds: new Set(["all"]),
   activeNeighborhoodIds: new Set(),
   polygonsMap: new Map(), // Boundary polygons
-  localityFeatureLayer: null,
   activeCategory: "全部",
   activeVisited: "all", // "all", "visited", "unvisited"
   activeOutcome: "all",
   searchKeyword: "",
   popoverSearchQuery: "",
-  followBounds: false,
-  boundsDebounceTimer: null,
   resizeObserver: null,
 
   // Pagination for right list
@@ -353,37 +350,15 @@ export const MapExplorer = {
     if (!summaryEl) return;
 
     const lang = this.getCurrentLanguage();
-    const sep = lang === "zh" ? "、" : ", ";
 
     const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
     const allNbs = this.getAllNeighborhoods();
     const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
-    let label = this.getLocalizedAllGta();
-    if (selectedNbs.length > 0) {
-      if (selectedNbs.length === 1) {
-        label = this.getLocalizedName(selectedNbs[0]);
-      } else if (selectedNbs.length === 2) {
-        label = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])}`;
-      } else {
-        label = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
-      }
-    } else if (!isAll && selectedCities.length > 0) {
-      if (selectedCities.length === 1) {
-        label = this.getLocalizedName(selectedCities[0]);
-      } else if (selectedCities.length === 2) {
-        label = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])}`;
-      } else {
-        label = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
-      }
-    }
-
-    summaryEl.innerHTML = `
-      <span class="area-tag-pill active">
-        ${this.escapeHtml(label)}
-      </span>
-    `;
+    const selected = selectedNbs.length ? selectedNbs : selectedCities;
+    const labels = selected.length ? selected.map(item => this.getLocalizedName(item)) : [this.getLocalizedAllGta()];
+    summaryEl.innerHTML = labels.map(label => `<span class="area-tag-pill active">${this.escapeHtml(label)}</span>`).join("");
   },
 
   renderPopover() {
@@ -791,17 +766,6 @@ export const MapExplorer = {
     }
   },
 
-  setupLocalityFeatureLayer() {
-    if (!this.googleMap || this.isFallbackMode || !window.google || !window.google.maps) return;
-    try {
-      if (typeof this.googleMap.getFeatureLayer === "function" && google.maps.FeatureType && google.maps.FeatureType.LOCALITY) {
-        this.localityFeatureLayer = this.googleMap.getFeatureLayer(google.maps.FeatureType.LOCALITY);
-      }
-    } catch (e) {
-      console.warn("Locality FeatureLayer not available:", e);
-    }
-  },
-
   clearBoundaries() {
     this.polygonsMap.forEach(poly => {
       if (poly.setMap) {
@@ -812,11 +776,7 @@ export const MapExplorer = {
     });
     this.polygonsMap.clear();
 
-    if (this.localityFeatureLayer) {
-      try {
-        this.localityFeatureLayer.style = null;
-      } catch (e) {}
-    }
+
   },
 
   extractGooglePolygonPaths(geometry) {
@@ -848,7 +808,7 @@ export const MapExplorer = {
           if (ft && ft.geometry) {
             const polygonRingsList = this.extractGooglePolygonPaths(ft.geometry);
             polygonRingsList.forEach((polyRings, idx) => {
-              const poly = new google.maps.Polygon({
+              const poly = new google.maps.Polygon({ clickable: false,
                 paths: polyRings,
                 strokeColor: "#16a34a",
                 strokeOpacity: 1.0,
@@ -861,7 +821,7 @@ export const MapExplorer = {
               this.polygonsMap.set(`${nb.id}_${idx}`, poly);
             });
           } else if (Array.isArray(nb.polygonPaths)) {
-            const poly = new google.maps.Polygon({
+            const poly = new google.maps.Polygon({ clickable: false,
               paths: nb.polygonPaths,
               strokeColor: "#16a34a",
               strokeOpacity: 1.0,
@@ -878,7 +838,7 @@ export const MapExplorer = {
         selectedNbs.forEach(nb => {
           const ft = this.neighbourhoodsMap?.get(nb.id) || nb;
           if (ft && ft.geometry) {
-            const layer = L.geoJSON(ft, {
+            const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: ft.geometry }, { interactive: false,
               style: {
                 color: "#16a34a",
                 weight: 2.5,
@@ -890,7 +850,7 @@ export const MapExplorer = {
             this.polygonsMap.set(nb.id, layer);
           } else if (Array.isArray(nb.polygonPaths)) {
             const latLngs = nb.polygonPaths.map(pt => [pt.lat, pt.lng]);
-            const poly = L.polygon(latLngs, {
+            const poly = L.polygon(latLngs, { interactive: false,
               color: "#16a34a",
               weight: 2.5,
               opacity: 1.0,
@@ -909,13 +869,13 @@ export const MapExplorer = {
     cities.filter(c => c.geometry).forEach(city => {
       if (this.googleMap && !this.isFallbackMode && window.google?.maps) {
         this.extractGooglePolygonPaths(city.geometry).forEach((paths, index) => {
-          const poly = new google.maps.Polygon({ paths, strokeColor: "#16a34a",
+          const poly = new google.maps.Polygon({ clickable: false, paths, strokeColor: "#16a34a",
             strokeOpacity: 0.85, strokeWeight: 2, fillColor: "#22c55e", fillOpacity: 0.10, zIndex: 5 });
           poly.setMap(this.googleMap);
           this.polygonsMap.set(`${city.id}_${index}`, poly);
         });
       } else if (this.fallbackMap && window.L) {
-        const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: city.geometry }, {
+        const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: city.geometry }, { interactive: false,
           style: { color: "#16a34a", weight: 2, opacity: 0.85, fillColor: "#22c55e", fillOpacity: 0.10 }
         }).addTo(this.fallbackMap);
         this.polygonsMap.set(city.id, layer);
@@ -990,7 +950,6 @@ export const MapExplorer = {
         zoomControl: true
       });
 
-      this.setupLocalityFeatureLayer();
 
       if (google.maps.places) {
         this.placesService = new google.maps.places.PlacesService(this.googleMap);
@@ -998,14 +957,6 @@ export const MapExplorer = {
 
       this.infoWindow = new google.maps.InfoWindow();
 
-      this.googleMap.addListener("idle", () => {
-        if (this.followBounds) {
-          clearTimeout(this.boundsDebounceTimer);
-          this.boundsDebounceTimer = setTimeout(() => {
-            this.filterAndRenderPlaces();
-          }, 250);
-        }
-      });
     } catch (err) {
       console.warn("Google Maps instantiation failed:", err);
       this.triggerFallbackMode();
@@ -1238,27 +1189,6 @@ export const MapExplorer = {
       });
     }
 
-    // 5. Follow Bounds Filter
-    if (this.followBounds) {
-      if (this.googleMap && !this.isFallbackMode && this.googleMap.getBounds()) {
-        const bounds = this.googleMap.getBounds();
-        result = result.filter(r => {
-          const lat = parseFloat(r.latitude);
-          const lng = parseFloat(r.longitude);
-          if (isNaN(lat) || isNaN(lng)) return false;
-          return bounds.contains(new google.maps.LatLng(lat, lng));
-        });
-      } else if (this.fallbackMap && this.fallbackMap.getBounds()) {
-        const bounds = this.fallbackMap.getBounds();
-        result = result.filter(r => {
-          const lat = parseFloat(r.latitude);
-          const lng = parseFloat(r.longitude);
-          if (isNaN(lat) || isNaN(lng)) return false;
-          return bounds.contains([lat, lng]);
-        });
-      }
-    }
-
     this.filteredPlaces = result;
     this.currentPage = 1;
 
@@ -1277,7 +1207,6 @@ export const MapExplorer = {
     const unsaved = this.filteredPlaces.filter(r => !r.inKV).length;
 
     const lang = this.getCurrentLanguage();
-    const sep = lang === "zh" ? "、" : ", ";
 
     const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
@@ -1974,16 +1903,6 @@ export const MapExplorer = {
       });
     }
 
-    const popoverSearchSubmit = document.getElementById("popoverSearchSubmit");
-    if (popoverSearchSubmit) {
-      popoverSearchSubmit.addEventListener("click", () => {
-        if (popoverSearch) {
-          this.popoverSearchQuery = popoverSearch.value.trim();
-        }
-        this.renderPopover();
-      });
-    }
-
     // Popover City Pills Click Handler
     const cityPillsRow = document.getElementById("popoverCityPills");
     if (cityPillsRow) {
@@ -2077,23 +1996,6 @@ export const MapExplorer = {
     if (searchInput) {
       searchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") doSearch();
-      });
-    }
-
-    // Reset View Button
-    const resetViewBtn = document.getElementById("mapResetViewBtn");
-    if (resetViewBtn) {
-      resetViewBtn.addEventListener("click", () => {
-        this.drawSelectedBoundaries();
-      });
-    }
-
-    // Follow Viewport Bounds
-    const followBoundsCb = document.getElementById("mapFollowBounds");
-    if (followBoundsCb) {
-      followBoundsCb.addEventListener("change", (e) => {
-        this.followBounds = e.target.checked;
-        this.filterAndRenderPlaces();
       });
     }
 

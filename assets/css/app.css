@@ -3159,14 +3159,6 @@ body {
   color: var(--text);
 }
 
-.popover-search-submit {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9rem;
-  color: #64748b;
-  padding: 2px 4px;
-}
 
 .popover-location-action {
   display: flex;
@@ -3742,3 +3734,21 @@ body {
 }
 
 
+
+/* Keep selected areas readable at every toolbar width. */
+.area-search-pill-container { min-width: 0; max-width: 100%; }
+.area-search-pill-btn { height: auto; min-height: 38px; border-radius: 20px; }
+.area-active-tags-summary { flex: 1; min-width: 0; flex-wrap: wrap; overflow: visible; white-space: normal; }
+.area-tag-pill { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.area-tag-pill .tag-remove, .area-pill-chevron { flex-shrink: 0; }
+.area-popover-panel { max-height: min(75vh, 720px); overflow-y: auto; box-sizing: border-box; }
+.popover-top-bar { align-items: flex-start; }
+.popover-tags-row { flex: 1; min-width: 0; max-height: none; overflow: visible; }
+.popover-search-input { min-width: 0; }
+.toolbar-search-wrap { flex: 1 1 240px; min-width: min(240px, 100%); }
+.toolbar-search-wrap .toolbar-input { flex: 1; min-width: 0; width: 0; }
+#mapBtnSearchGmap { flex-shrink: 0; white-space: nowrap; word-break: keep-all; }
+
+@media (max-width: 600px) {
+  .area-popover-panel { position: fixed; left: 12px; right: 12px; top: 120px; width: auto; max-width: none; max-height: calc(100dvh - 144px); }
+}
