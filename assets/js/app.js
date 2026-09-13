@@ -6,6 +6,7 @@ import { Auth } from "./auth.js";
 import { Restaurants } from "./restaurants.js";
 import { Calculator } from "./calculator.js";
 import { GreaseTrap } from "./grease-trap.js";
+import { FieldSales } from "./field-sales.js";
 import { i18n } from "./i18n.js";
 
 export function initApp() {
@@ -18,6 +19,7 @@ export function initApp() {
   Restaurants.init();
   Calculator.init();
   GreaseTrap.init();
+  FieldSales.init();
 }
 
 function setupLanguageSwitcher() {

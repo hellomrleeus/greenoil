@@ -1,6 +1,7 @@
 /**
  * Green Oil API Client & Data Provider
  * Queries backend cached endpoints with server-side pagination, search, and filtering.
+ * Provides Field Sales CRUD, Google Maps proxy, and Route Planning.
  */
 
 const DEFAULT_WORKER_URL = "https://greenoil-api.ydxhjw4j5w.workers.dev";
@@ -12,6 +13,14 @@ export const Api = {
 
   setWorkerUrl(url) {
     // No-op or optional override
+  },
+
+  getAuthHeaders() {
+    const token = localStorage.getItem("greenoil_session_token") || "";
+    return {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    };
   },
 
   /**
@@ -77,6 +86,51 @@ export const Api = {
   },
 
   /**
+   * Fetch all/large batch of restaurants for proximity and search lookup
+   */
+  async queryAllRestaurants(limit = 1000) {
+    return await this.queryRestaurants({ page: 1, pageSize: limit, region: "全部 (All GTA)" });
+  },
+
+  /**
+   * Update restaurant info in Cloudflare KV
+   */
+  async updateRestaurant(placeId, name, updates) {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/restaurants/update`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ placeId, name, updates })
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("updateRestaurant failed:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  /**
+   * Add a newly discovered restaurant into Cloudflare KV
+   */
+  async addRestaurant(restaurant) {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/restaurants/add`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ restaurant })
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("addRestaurant failed:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  /**
    * Get GTA Commercial Hubs & Shopping Malls summary
    */
   async getHubs() {
@@ -98,6 +152,122 @@ export const Api = {
       console.warn("Worker getHubs failed:", e);
     }
     return { success: false, total: 0, data: [] };
+  },
+
+  /**
+   * Field Sales: Fetch all sales visit records
+   */
+  async getSales() {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/sales`, {
+        method: "GET",
+        headers: this.getAuthHeaders(),
+        credentials: "include"
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.success) return data;
+      }
+    } catch (e) {
+      console.warn("getSales failed:", e);
+    }
+    return { success: false, total: 0, data: [] };
+  },
+
+  /**
+   * Field Sales: Create a new visit record
+   */
+  async createSale(record) {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/sales`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ record })
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("createSale failed:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  /**
+   * Field Sales: Update a visit record
+   */
+  async updateSale(id, updates) {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/sales`, {
+        method: "PUT",
+        headers: this.getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ id, updates })
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("updateSale failed:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  /**
+   * Field Sales: Delete a visit record
+   */
+  async deleteSale(id) {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/sales?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: this.getAuthHeaders(),
+        credentials: "include"
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("deleteSale failed:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  /**
+   * Search Google Maps Places (Proxy)
+   */
+  async searchGooglePlaces(query) {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const url = new URL(`${workerUrl}/api/places/search`);
+      url.searchParams.set("query", query);
+      const resp = await fetch(url.toString(), {
+        method: "GET",
+        headers: this.getAuthHeaders(),
+        credentials: "include"
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("searchGooglePlaces failed:", e);
+      return { success: false, error: e.message, places: [] };
+    }
+  },
+
+  /**
+   * Plan Route with Google Routes API or Fallback
+   */
+  async planRoute(origin, destination, waypoints = []) {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/routes/plan`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ origin, destination, waypoints })
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("planRoute failed:", e);
+      return { success: false, error: e.message };
+    }
   },
 
   /**

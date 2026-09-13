@@ -188,6 +188,20 @@ export const Restaurants = {
       btnExportSelected.addEventListener("click", () => this.exportSelectedExcel());
     }
 
+    const btnPlanRouteSelected = document.getElementById("btnPlanRouteSelected");
+    if (btnPlanRouteSelected) {
+      btnPlanRouteSelected.addEventListener("click", () => {
+        const selectedList = Array.from(this.selectedMap.values());
+        if (selectedList.length > 0) {
+          import("./field-sales.js").then(({ FieldSales }) => {
+            FieldSales.addMultipleToRoute(selectedList);
+          });
+        } else {
+          alert("请先在列表中勾选要规划路线的餐馆！");
+        }
+      });
+    }
+
     const btnExportTop = document.getElementById("btnExportCsv");
     if (btnExportTop) {
       btnExportTop.addEventListener("click", () => this.exportSelectedExcel());
@@ -238,6 +252,34 @@ export const Restaurants = {
         if (this.selectedRestaurant && window.importRestaurantToGreaseTrap) {
           window.importRestaurantToGreaseTrap(this.selectedRestaurant);
           this.closeDetailModal();
+        }
+      });
+    }
+
+    const btnModalLogVisit = document.getElementById("btnModalLogVisit");
+    if (btnModalLogVisit) {
+      btnModalLogVisit.addEventListener("click", () => {
+        if (this.selectedRestaurant) {
+          const r = this.selectedRestaurant;
+          this.closeDetailModal();
+          window.switchTab("tab-fieldsale");
+          import("./field-sales.js").then(({ FieldSales }) => {
+            FieldSales.switchSubTab("records");
+            FieldSales.openSalesRecordModal(null, r);
+          });
+        }
+      });
+    }
+
+    const btnModalAddToRoute = document.getElementById("btnModalAddToRoute");
+    if (btnModalAddToRoute) {
+      btnModalAddToRoute.addEventListener("click", () => {
+        if (this.selectedRestaurant) {
+          const r = this.selectedRestaurant;
+          this.closeDetailModal();
+          import("./field-sales.js").then(({ FieldSales }) => {
+            FieldSales.addMultipleToRoute([r]);
+          });
         }
       });
     }

@@ -1683,3 +1683,820 @@ body {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
 }
+
+/* ==========================================================================
+   FIELD SALE WORKBENCH STYLES
+   ========================================================================== */
+
+/* Sub-Tab Navigation Bar */
+.fs-subtab-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  background: var(--surface);
+  padding: 0.35rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+
+.fs-subtab-btn {
+  flex: 1;
+  min-width: 110px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.fs-subtab-btn:hover {
+  color: var(--text-main);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.fs-subtab-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.fs-subtab-icon {
+  font-size: 1.1rem;
+}
+
+/* Sub-Views */
+.fs-subview {
+  display: none;
+}
+
+.fs-subview.active {
+  display: block;
+}
+
+/* Route Planning Layout */
+.fs-route-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .fs-route-config-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fs-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.fs-route-toolbar {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Waypoints List */
+.fs-waypoints-container {
+  margin-top: 1rem;
+}
+
+.fs-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.fs-waypoints-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.fs-waypoint-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  background: var(--surface);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.fs-waypoint-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.fs-wp-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.fs-wp-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.fs-wp-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.fs-wp-name {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 0.98rem;
+}
+
+.fs-wp-region {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  background: #f1f5f9;
+  color: var(--text-muted);
+  border-radius: 4px;
+}
+
+.fs-wp-address {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-wp-meta {
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.fs-wp-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.fs-btn-icon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-size: 0.95rem;
+}
+
+.fs-btn-icon:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+.fs-btn-icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.fs-btn-log {
+  background: var(--primary-light);
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+.fs-empty-notice {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+  font-size: 0.9rem;
+}
+
+/* Sales Records View */
+.fs-records-filter-bar {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.fs-records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.fs-record-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.15rem;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+
+.fs-record-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #cbd5e1;
+}
+
+.fs-rec-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fs-rec-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fs-rec-region {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: #f1f5f9;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-weight: normal;
+}
+
+.fs-rec-badges {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.fs-rec-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.fs-record-rejection {
+  background: #fef2f2;
+  border-left: 3px solid #ef4444;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.65rem;
+  font-size: 0.85rem;
+  color: #991b1b;
+}
+
+.fs-reject-tag {
+  font-weight: 700;
+  margin-right: 0.5rem;
+}
+
+.fs-reject-desc {
+  color: #b91c1c;
+}
+
+.fs-record-competitor {
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.65rem;
+  font-size: 0.85rem;
+  color: #92400e;
+  line-height: 1.45;
+}
+
+.fs-comp-title {
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.fs-rec-notes {
+  background: #f8fafc;
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  margin-bottom: 0.65rem;
+  line-height: 1.45;
+}
+
+.fs-rec-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.fs-btn-delete {
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.fs-btn-delete:hover {
+  background: #fef2f2 !important;
+}
+
+/* Badges & Tags */
+.fs-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.fs-badge-signed {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+.fs-badge-interested {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+
+.fs-badge-rejected {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.fs-badge-others {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+.fs-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.fs-tag-onsite {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.fs-tag-phone {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.fs-tag-others {
+  background: #fffbeb;
+  color: #b45309;
+  font-weight: 700;
+}
+
+/* Sales Modal Styling */
+.fs-modal-card {
+  max-width: 640px;
+}
+
+.fs-edit-rest-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.fs-edit-rest-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 0.5rem;
+}
+
+.fs-form-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  .fs-form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+.fs-radio-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.fs-radio-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  background: var(--surface);
+  transition: all var(--transition);
+}
+
+.fs-radio-btn input {
+  margin-right: 0.25rem;
+}
+
+.fs-radio-btn:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+/* Outcome Selector Radio Cards */
+.fs-outcome-selector {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.fs-outcome-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: var(--surface);
+  transition: all var(--transition);
+}
+
+.fs-outcome-btn input {
+  margin-right: 0.2rem;
+}
+
+.fs-outcome-btn:has(input:checked) {
+  border-width: 2px;
+}
+
+.fs-outcome-signed:has(input:checked) {
+  border-color: #10b981;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.fs-outcome-interested:has(input:checked) {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.fs-outcome-rejected:has(input:checked) {
+  border-color: #64748b;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.fs-outcome-others:has(input:checked) {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.fs-competitor-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* Google Maps Search Modal */
+.fs-gmap-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 380px;
+  overflow-y: auto;
+  margin-top: 0.75rem;
+}
+
+.fs-gmap-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  gap: 0.75rem;
+}
+
+.fs-gmap-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fs-gmap-name {
+  margin: 0 0 0.2rem 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.fs-gmap-addr {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.fs-gmap-meta {
+  font-size: 0.78rem;
+  color: #d97706;
+  margin-top: 0.2rem;
+  display: flex;
+  gap: 0.65rem;
+}
+
+/* Analytics KPIs */
+.fs-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.fs-kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.15rem;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.fs-kpi-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+  font-weight: 500;
+}
+
+.fs-kpi-val {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+}
+
+/* Charts Grid */
+.fs-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .fs-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fs-chart-card {
+  padding: 1.25rem;
+  min-height: 280px;
+}
+
+.fs-chart-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 1rem;
+}
+
+.fs-chart-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.fs-chart-empty {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+/* Donut Chart Component */
+.fs-donut-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.fs-donut-svg-wrap {
+  flex-shrink: 0;
+}
+
+.fs-donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fs-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.fs-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.fs-legend-text {
+  color: var(--text-main);
+  min-width: 70px;
+}
+
+.fs-legend-val {
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+/* Bar Chart Component */
+.fs-barchart-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 220px;
+  justify-content: space-between;
+}
+
+.fs-bars-container {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 170px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.5rem;
+  gap: 1rem;
+}
+
+.fs-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.fs-bar-columns {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.35rem;
+  width: 100%;
+  justify-content: center;
+  height: 100%;
+}
+
+.fs-bar-col {
+  width: 28px;
+  border-radius: 4px 4px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 0.25rem;
+  transition: height 0.5s ease;
+}
+
+.fs-bar-onsite {
+  background: #10b981;
+}
+
+.fs-bar-phone {
+  background: #3b82f6;
+}
+
+.fs-bar-col-val {
+  font-size: 0.72rem;
+  color: white;
+  font-weight: 700;
+}
+
+.fs-bar-group-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.fs-bar-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+}
+
+/* Horizontal Bars Component */
+.fs-hbars-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.fs-hbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+}
+
+.fs-hbar-label {
+  width: 70px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.fs-hbar-track {
+  flex: 1;
+  background: #f1f5f9;
+  height: 18px;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.fs-hbar-fill {
+  background: linear-gradient(90deg, #10b981, #059669);
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.6s ease;
+}
+
+.fs-hbar-val {
+  width: 45px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
