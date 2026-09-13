@@ -40,15 +40,18 @@ export const Calculator = {
 
     this.setupPureNumberInput("freqDays", (val) => {
       this.frequency.days = Math.max(1, parseInt(val, 10) || 1);
+      this.calculate();
     });
 
     this.setupPureNumberInput("freqTimes", (val) => {
       this.frequency.times = Math.max(1, parseInt(val, 10) || 1);
+      this.calculate();
     });
 
     this.setupPureNumberInput("freqFryers", (val) => {
       this.frequency.fryerCount = Math.max(1, parseInt(val, 10) || 1);
       this.validateFryerCount();
+      this.calculate();
     });
 
     const btnCalculate = document.getElementById("btnCalculateOil");
@@ -85,12 +88,20 @@ export const Calculator = {
   },
 
   addFryer(capacity = 20) {
+    const prevCount = this.fryers.length;
     this.fryers.push({
       id: this.nextFryerId++,
       capacity: capacity
     });
+    // When adding a fryer, if user was replacing all fryers, automatically increment fryerCount
+    if (this.frequency.fryerCount >= prevCount) {
+      this.frequency.fryerCount = this.fryers.length;
+      const input = document.getElementById("freqFryers");
+      if (input) input.value = this.fryers.length;
+    }
     this.renderFryers();
     this.validateFryerCount();
+    this.calculate();
   },
 
   removeFryer(id) {
@@ -98,16 +109,24 @@ export const Calculator = {
       alert(i18n.t("alert_at_least_one_fryer"));
       return;
     }
+    const prevCount = this.fryers.length;
     this.fryers = this.fryers.filter(f => f.id !== id);
+    if (this.frequency.fryerCount >= prevCount || this.frequency.fryerCount > this.fryers.length) {
+      this.frequency.fryerCount = this.fryers.length;
+      const input = document.getElementById("freqFryers");
+      if (input) input.value = this.fryers.length;
+    }
     this.renderFryers();
     this.validateFryerCount();
+    this.calculate();
   },
 
   updateCapacity(id, value) {
-    const num = Math.max(1, parseFloat(value) || 0);
+    const num = Math.max(0, parseFloat(value) || 0);
     const fryer = this.fryers.find(f => f.id === id);
     if (fryer) {
       fryer.capacity = num;
+      this.calculate();
     }
   },
 
@@ -174,6 +193,66 @@ export const Calculator = {
     this.validateFryerCount();
   },
 
+  determineContainerConfig(ucoRecoveryLiters) {
+    if (ucoRecoveryLiters <= 200) {
+      return {
+        type: "drum",
+        spec: "200L Drum",
+        capacity: 200,
+        count: 1,
+        badgeHtml: `<span style="color: #0284c7; font-weight: 700;">🛢️ 200L Drum</span>`,
+        advice: i18n.t("advice_drum_200")
+      };
+    } else if (ucoRecoveryLiters <= 400) {
+      return {
+        type: "bin",
+        spec: "400L Bin",
+        capacity: 400,
+        count: 1,
+        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 400L Bin</span>`,
+        advice: i18n.t("advice_bin_400")
+      };
+    } else if (ucoRecoveryLiters <= 600) {
+      return {
+        type: "bin",
+        spec: "600L Bin",
+        capacity: 600,
+        count: 1,
+        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 600L Bin</span>`,
+        advice: i18n.t("advice_bin_600")
+      };
+    } else if (ucoRecoveryLiters <= 800) {
+      return {
+        type: "bin",
+        spec: "800L Bin",
+        capacity: 800,
+        count: 1,
+        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 800L Bin</span>`,
+        advice: i18n.t("advice_bin_800")
+      };
+    } else if (ucoRecoveryLiters <= 1000) {
+      return {
+        type: "bin",
+        spec: "1000L Bin",
+        capacity: 1000,
+        count: 1,
+        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 1000L Bin</span>`,
+        advice: i18n.t("advice_bin_1000")
+      };
+    } else {
+      const count = Math.ceil(ucoRecoveryLiters / 1000);
+      const spec = `${count} × 1000L Bin`;
+      return {
+        type: "bin",
+        spec: spec,
+        capacity: 1000,
+        count: count,
+        badgeHtml: `<span style="color: #059669; font-weight: 700;">📦 ${spec}</span>`,
+        advice: i18n.t("advice_bin_multi", { count })
+      };
+    }
+  },
+
   calculate(isUserClick = false) {
     const { days, times, fryerCount } = this.frequency;
 
@@ -192,14 +271,8 @@ export const Calculator = {
 
     const standardDrums = (totalMonthlyLiters / 16).toFixed(1);
     const ucoRecoveryLiters = Math.round(totalMonthlyLiters * 0.75);
-    const recyclingDrums200L = (ucoRecoveryLiters / 200).toFixed(1);
 
-    let pickupAdvice = i18n.t("advice_1");
-    if (ucoRecoveryLiters >= 600) {
-      pickupAdvice = i18n.t("advice_3");
-    } else if (ucoRecoveryLiters >= 250) {
-      pickupAdvice = i18n.t("advice_2");
-    }
+    const containerConfig = this.determineContainerConfig(ucoRecoveryLiters);
 
     const resMonthly = document.getElementById("resMonthlyOil");
     if (resMonthly) resMonthly.textContent = totalMonthlyLiters.toLocaleString();
@@ -210,27 +283,20 @@ export const Calculator = {
     const resUco = document.getElementById("resUcoRecovery");
     if (resUco) resUco.textContent = `${ucoRecoveryLiters.toLocaleString()} ${i18n.t("calc_unit_liter")}`;
 
-    const res200L = document.getElementById("res200LDrums");
-    if (res200L) {
-      const currentLang = i18n.getLanguage();
-      if (currentLang === "en") {
-        res200L.textContent = `~ ${recyclingDrums200L} drums`;
-      } else if (currentLang === "ko") {
-        res200L.textContent = `약 ${recyclingDrums200L}통`;
-      } else {
-        res200L.textContent = `约 ${recyclingDrums200L} 桶`;
-      }
+    const resContainer = document.getElementById("res200LDrums");
+    if (resContainer) {
+      resContainer.innerHTML = containerConfig.badgeHtml;
     }
 
     const resAdvice = document.getElementById("resPickupAdvice");
-    if (resAdvice) resAdvice.textContent = pickupAdvice;
+    if (resAdvice) resAdvice.textContent = containerConfig.advice;
 
     this.latestResult = {
       totalMonthlyLiters,
       standardDrums,
       ucoRecoveryLiters,
-      recyclingDrums200L,
-      pickupAdvice,
+      containerConfig,
+      pickupAdvice: containerConfig.advice,
       avgCap,
       restaurantName: this.currentRestaurant ? this.currentRestaurant.name : ""
     };
@@ -298,7 +364,7 @@ export const Calculator = {
       totalMonthlyLiters, 
       standardDrums, 
       ucoRecoveryLiters, 
-      recyclingDrums200L,
+      containerConfig,
       pickupAdvice, 
       avgCap,
       restaurantName 
@@ -317,7 +383,8 @@ export const Calculator = {
         `· Fryer Setup: ${this.fryers.length} deep fryers (Avg capacity: ${avgCap.toFixed(0)} L)`,
         `· Oil Change Frequency: Every ${this.frequency.days} days, ${this.frequency.times} times (${this.frequency.fryerCount} fryers each time)`,
         `· Est. Monthly Oil Consumption: ${totalMonthlyLiters} L (~ ${standardDrums} jugs of 16L commercial oil)`,
-        `· Est. Monthly UCO Recovery: ${ucoRecoveryLiters} L (~ ${recyclingDrums200L} standard 200L recycling drums)`,
+        `· Est. Monthly UCO Recovery: ${ucoRecoveryLiters} L (75% recovery)`,
+        `· Recommended Container Setup: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· Recommended Pickup Plan: ${pickupAdvice}`,
         `----------------------------------------`,
         `* Estimates are for reference only. Actual specifications are subject to on-site inspection and service agreement.`
@@ -333,7 +400,8 @@ export const Calculator = {
         `· 튀김기 구성: ${this.fryers.length}대 (평균 용량: ${avgCap.toFixed(0)} L)`,
         `· 기름 교체 주기: ${this.frequency.days}일마다 ${this.frequency.times}회 (회당 ${this.frequency.fryerCount}대 교체)`,
         `· 예상 월간 식용유 사용량: ${totalMonthlyLiters} L (약 ${standardDrums}캔 16L 업소용 식용유)`,
-        `· 예상 월간 폐식용유 수거량: ${ucoRecoveryLiters} L (약 ${recyclingDrums200L}통 200L 표준 수거통)`,
+        `· 예상 월간 폐식용유 수거량: ${ucoRecoveryLiters} L (회수율 75%)`,
+        `· 권장 수거용기 구성: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· 권장 수거 솔루션: ${pickupAdvice}`,
         `----------------------------------------`,
         `* 본 산정 결과는 참고용이며, 실제 조건은 현장 실사 및 서비스 계약서에 따릅니다.`
@@ -349,7 +417,8 @@ export const Calculator = {
         `· 炸锅配置：${this.fryers.length} 个炸锅 (均容 ${avgCap.toFixed(0)} 升)`,
         `· 更换频率：每 ${this.frequency.days} 天 ${this.frequency.times} 次 (每次换 ${this.frequency.fryerCount} 锅)`,
         `· 预计月用油：${totalMonthlyLiters} 升 (约 ${standardDrums} 桶 16L 商用油)`,
-        `· 预计月废油回收：${ucoRecoveryLiters} 升 (约 ${recyclingDrums200L} 桶 200L 标准回收桶)`,
+        `· 预计月废油回收：${ucoRecoveryLiters} 升 (出油率 75%)`,
+        `· 推荐回收设备配置：${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· 建议回收方案：${pickupAdvice}`,
         `----------------------------------------`,
         `* 测算数据仅供参考，实际以现场勘测及回收服务协议为准。`
