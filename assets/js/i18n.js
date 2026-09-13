@@ -314,6 +314,15 @@ export const TRANSLATIONS = {
     map_follow_bounds: "跟随地图视野实时筛选",
     map_reset_view: "重置视角",
     map_select_area: "全选当前筛选",
+    btn_search: "搜索",
+    btn_reset_view: "重置视角",
+    btn_select_all: "全选",
+    btn_batch_add_to_kv: "保存至KV",
+    btn_plan_route: "规划路线",
+    btn_export_excel: "导出Excel",
+    popover_clear_all: "清空",
+    popover_reset_all_gta: "重置为多伦多大区中心 (All GTA)",
+    popover_search_placeholder: "输入城市或商圈社区名称过滤...",
     th_kv_status: "KV状态",
     filter_visited: "是否拜访",
     filter_outcome: "拜访结果",
@@ -639,6 +648,15 @@ export const TRANSLATIONS = {
     map_follow_bounds: "Filter by map viewport",
     map_reset_view: "Reset View",
     map_select_area: "Select All Filtered",
+    btn_search: "Search",
+    btn_reset_view: "Reset View",
+    btn_select_all: "Select All",
+    btn_batch_add_to_kv: "Save to KV",
+    btn_plan_route: "Plan Route",
+    btn_export_excel: "Export Excel",
+    popover_clear_all: "Clear All",
+    popover_reset_all_gta: "Reset to GTA Center (All GTA)",
+    popover_search_placeholder: "Type city or neighborhood to filter...",
     th_kv_status: "KV Status",
     filter_visited: "Visited Status",
     filter_outcome: "Visit Outcome",
@@ -964,6 +982,15 @@ export const TRANSLATIONS = {
     map_follow_bounds: "지도 시야 실시간 필터",
     map_reset_view: "시점 초기화",
     map_select_area: "현재 필터 전체 선택",
+    btn_search: "검색",
+    btn_reset_view: "화면 초기화",
+    btn_select_all: "전체 선택",
+    btn_batch_add_to_kv: "KV에 저장",
+    btn_plan_route: "경로 계획",
+    btn_export_excel: "엑셀 내보내기",
+    popover_clear_all: "모두 지우기",
+    popover_reset_all_gta: "광역 토론토 중심으로 초기화",
+    popover_search_placeholder: "도시 또는 지역명으로 검색...",
     th_kv_status: "KV 상태",
     filter_visited: "방문 여부",
     filter_outcome: "방문 결과",
@@ -1037,7 +1064,10 @@ class I18nManager {
     document.querySelectorAll("[data-i18n]").forEach(el => {
       const key = el.getAttribute("data-i18n");
       if (key) {
-        el.textContent = this.t(key);
+        const val = this.t(key);
+        if (val && val !== key) {
+          el.textContent = val;
+        }
       }
     });
 

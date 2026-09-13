@@ -18,42 +18,48 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="appSidebar">
       <div class="sidebar-header">
-        <div class="logo-icon">🌿</div>
+        <div class="logo-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13C4 8.5 7.5 4 13 4c2.5 0 5 1 7 3-1 3.5-3 5.5-6 6.5-1.5.5-3 0-3 0"></path><path d="M11 20c1.5-3 3-5 6-6.5"></path></svg>
+        </div>
         <div class="brand-text-wrap">
           <div class="brand-title">Green Oil</div>
         </div>
-        <button class="sidebar-collapse-toggle desktop-only" id="sidebarCollapseBtn" title="折叠/展开侧边栏" aria-label="折叠/展开侧边栏">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="9" y1="3" x2="9" y2="21"></line>
-            <polyline points="14 9 11 12 14 15"></polyline>
-          </svg>
-        </button>
+        <button class="sidebar-collapse-btn desktop-only" id="sidebarCollapseBtn" title="折叠侧边栏" aria-label="折叠侧边栏">&lt;</button>
       </div>
 
       <nav class="sidebar-nav">
         <button class="nav-item active" data-tab="tab-restaurants" data-title="餐馆查询" data-title-key="page_title_restaurants" title="餐馆查询">
-          <span class="nav-icon">🏪</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </span>
           <span data-i18n="nav_restaurants">餐馆查询</span>
         </button>
 
         <button class="nav-item" data-tab="tab-mapexplorer" data-title="地图找店" data-title-key="page_title_mapexplorer" title="地图找店">
-          <span class="nav-icon">🗺️</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+          </span>
           <span data-i18n="nav_mapexplorer">地图找店</span>
         </button>
 
         <button class="nav-item" data-tab="tab-calculator" data-title="用油计算器" data-title-key="page_title_calculator" title="用油计算器">
-          <span class="nav-icon">⚡</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M8 10h.01"></path><path d="M12 10h.01"></path><path d="M16 10h.01"></path><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path></svg>
+          </span>
           <span data-i18n="nav_calculator">用油计算器</span>
         </button>
 
         <button class="nav-item" data-tab="tab-greasetrap" data-title="Grease Trap" data-title-key="page_title_greasetrap" title="Grease Trap">
-          <span class="nav-icon">🛢️</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+          </span>
           <span data-i18n="nav_greasetrap">Grease Trap</span>
         </button>
 
         <button class="nav-item" data-tab="tab-fieldsale" data-title="外勤销售" data-title-key="page_title_fieldsale" title="外勤销售">
-          <span class="nav-icon">💼</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+          </span>
           <span data-i18n="nav_fieldsale">外勤销售</span>
         </button>
       </nav>
@@ -78,18 +84,7 @@
       <header class="topbar">
         <div class="topbar-left">
           <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="菜单">☰</button>
-          <button class="sidebar-toggle-btn desktop-only" id="sidebarToggleBtn" title="折叠/展开侧边栏" aria-label="折叠/展开侧边栏">
-            <svg class="icon-collapse" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="9" y1="3" x2="9" y2="21"></line>
-              <polyline points="14 9 11 12 14 15"></polyline>
-            </svg>
-            <svg class="icon-expand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="9" y1="3" x2="9" y2="21"></line>
-              <polyline points="12 9 15 12 12 15"></polyline>
-            </svg>
-          </button>
+          <button class="sidebar-toggle-btn desktop-only" id="sidebarToggleBtn" title="折叠侧边栏" aria-label="折叠侧边栏">&lt;</button>
           <h1 class="page-title" id="currentPageTitle" data-i18n="page_title_restaurants">餐馆查询</h1>
         </div>
 
@@ -758,25 +753,33 @@
                     <div class="popover-tags-row" id="popoverActiveTagsRow">
                       <!-- Selected tags rendered dynamically with ✕ -->
                     </div>
-                    <button type="button" class="btn-clear-all" id="popoverClearAllBtn">Clear All</button>
+                    <button type="button" class="btn-clear-all" id="popoverClearAllBtn" data-i18n="popover_clear_all">Clear All</button>
                   </div>
                   
                   <div class="popover-search-input-wrap">
                     <span class="popover-search-icon">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </span>
-                    <input type="text" id="popoverSearchInput" class="popover-search-input" placeholder="输入大区城市名称过滤..." />
-                    <button type="button" class="popover-search-submit" id="popoverSearchSubmit">搜索</button>
+                    <input type="text" id="popoverSearchInput" class="popover-search-input" placeholder="输入城市或商圈社区名称过滤..." data-i18n-placeholder="popover_search_placeholder" />
+                    <button type="button" class="popover-search-submit" id="popoverSearchSubmit" data-i18n="btn_search">搜索</button>
                   </div>
 
                   <div class="popover-location-action" id="popoverCurrentLocationBtn">
-                    <span>重置为多伦多大区中心 (All GTA)</span>
+                    <span data-i18n="popover_reset_all_gta">重置为多伦多大区中心 (All GTA)</span>
                   </div>
 
                   <!-- Cities Pills Section -->
                   <div class="popover-section">
-                    <div class="popover-section-title">大区城市 (CITIES)</div>
+                    <div class="popover-section-title" data-i18n="map_filter_city">大区城市 (CITIES)</div>
                     <div class="popover-pills-row" id="popoverCityPills">
+                      <!-- Rendered dynamically -->
+                    </div>
+                  </div>
+
+                  <!-- Neighborhoods Pills Section -->
+                  <div class="popover-section" id="popoverNeighborhoodSection">
+                    <div class="popover-section-title" data-i18n="map_filter_neighborhood">细分社区 / 商圈 (NEIGHBORHOODS)</div>
+                    <div class="popover-pills-row" id="popoverNeighborhoodPills">
                       <!-- Rendered dynamically -->
                     </div>
                   </div>

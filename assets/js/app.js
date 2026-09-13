@@ -117,8 +117,10 @@ function setupSidebarCollapse() {
   const toggleBtns = document.querySelectorAll("#sidebarToggleBtn, #sidebarCollapseBtn");
 
   function updateToggleIcons(isCollapsed) {
-    document.querySelectorAll(".icon-collapse").forEach(el => el.style.display = isCollapsed ? "none" : "block");
-    document.querySelectorAll(".icon-expand").forEach(el => el.style.display = isCollapsed ? "block" : "none");
+    toggleBtns.forEach(btn => {
+      btn.textContent = isCollapsed ? ">" : "<";
+      btn.title = isCollapsed ? "展开侧边栏" : "折叠侧边栏";
+    });
   }
 
   const savedState = localStorage.getItem("greenoil_sidebar_collapsed");

@@ -696,8 +696,11 @@ export const MapExplorer = {
   kvPlaceIdsSet: new Set(),
   kvNormalizedNamesSet: new Set(),
   
-  // Filter States (Locality / Cities Multi-Select)
+  // Filter States (Locality / Cities Multi-Select & Neighborhoods)
   activeCityIds: new Set(["all"]),
+  activeNeighborhoodIds: new Set(),
+  polygonsMap: new Map(), // Boundary polygons
+  localityFeatureLayer: null,
   activeCategory: "全部",
   activeVisited: "all", // "all", "visited", "unvisited"
   activeOutcome: "all",
@@ -720,6 +723,14 @@ export const MapExplorer = {
     this.setupResizeObserver();
     this.renderPopover();
     this.updateAreaSummaryBtn();
+
+    if (window.i18n && window.i18n.onLanguageChange) {
+      window.i18n.onLanguageChange(() => {
+        this.updateAreaSummaryBtn();
+        this.renderPopover();
+        this.updateResultsSummary();
+      });
+    }
 
     // 1. Fetch Google Maps API Key and initialize map
     await this.initGoogleMap();
@@ -800,21 +811,72 @@ export const MapExplorer = {
     }
   },
 
+  getLocalizedName(item) {
+    if (!item) return "";
+    const lang = (window.i18n && window.i18n.getLanguage) ? window.i18n.getLanguage() : "zh";
+    if (lang === "en") {
+      return item.nameEn || item.name.split(" (")[0];
+    }
+    if (lang === "ko") {
+      return item.nameKo || item.nameEn || item.name.split(" (")[0];
+    }
+    return item.name.split(" (")[0];
+  },
+
+  getLocalizedAllGta() {
+    const lang = (window.i18n && window.i18n.getLanguage) ? window.i18n.getLanguage() : "zh";
+    if (lang === "en") return "All GTA";
+    if (lang === "ko") return "광역 토론토 전체";
+    return "全部大区 (All GTA)";
+  },
+
+  getAllNeighborhoods() {
+    const list = [];
+    GTA_COMMUNITIES.forEach(c => {
+      if (Array.isArray(c.neighborhoods)) {
+        c.neighborhoods.forEach(nb => {
+          list.push({ ...nb, parentCityId: c.id, parentCityName: c.name });
+        });
+      }
+    });
+    return list;
+  },
+
+  getNeighborhoodById(nbId) {
+    for (const c of GTA_COMMUNITIES) {
+      if (Array.isArray(c.neighborhoods)) {
+        const found = c.neighborhoods.find(n => n.id === nbId);
+        if (found) return { ...found, parentCityId: c.id, parentCityName: c.name };
+      }
+    }
+    return null;
+  },
+
   updateAreaSummaryBtn() {
     const summaryEl = document.getElementById("areaActiveTagsSummary");
     if (!summaryEl) return;
 
-    const isAll = this.activeCityIds.has("all");
-    const selected = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const allNbs = this.getAllNeighborhoods();
+    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
-    let label = "全部大区 (All GTA)";
-    if (!isAll && selected.length > 0) {
-      if (selected.length === 1) {
-        label = selected[0].name.split(" (")[0];
-      } else if (selected.length === 2) {
-        label = `${selected[0].name.split(" (")[0]}、${selected[1].name.split(" (")[0]}`;
+    let label = this.getLocalizedAllGta();
+    if (selectedNbs.length > 0) {
+      if (selectedNbs.length === 1) {
+        label = this.getLocalizedName(selectedNbs[0]);
+      } else if (selectedNbs.length === 2) {
+        label = `${this.getLocalizedName(selectedNbs[0])}、${this.getLocalizedName(selectedNbs[1])}`;
       } else {
-        label = `${selected[0].name.split(" (")[0]}、${selected[1].name.split(" (")[0]} (+${selected.length - 2})`;
+        label = `${this.getLocalizedName(selectedNbs[0])}、${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
+      }
+    } else if (!isAll && selectedCities.length > 0) {
+      if (selectedCities.length === 1) {
+        label = this.getLocalizedName(selectedCities[0]);
+      } else if (selectedCities.length === 2) {
+        label = `${this.getLocalizedName(selectedCities[0])}、${this.getLocalizedName(selectedCities[1])}`;
+      } else {
+        label = `${this.getLocalizedName(selectedCities[0])}、${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
       }
     }
 
@@ -829,46 +891,96 @@ export const MapExplorer = {
     // 1. Render Active Tags Row
     const tagsRow = document.getElementById("popoverActiveTagsRow");
     if (tagsRow) {
-      const isAll = this.activeCityIds.has("all");
-      const selected = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+      const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+      const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+      const allNbs = this.getAllNeighborhoods();
+      const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
       let html = "";
-      if (isAll || selected.length === 0) {
-        html = `<span class="area-tag-pill active">全部大区 (All GTA)</span>`;
+      if (isAll || (selectedCities.length === 0 && selectedNbs.length === 0)) {
+        html = `<span class="area-tag-pill active">${this.escapeHtml(this.getLocalizedAllGta())}</span>`;
       } else {
-        html = selected.map(c => `
+        // Render city tags
+        const cityTags = selectedCities.map(c => `
           <span class="area-tag-pill active" data-city-id="${c.id}">
-            ${this.escapeHtml(c.name.split(" (")[0])}
+            ${this.escapeHtml(this.getLocalizedName(c))}
             <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveCity('${c.id}');" title="移除此区划">✕</span>
           </span>
         `).join("");
+
+        // Render neighborhood tags
+        const nbTags = selectedNbs.map(nb => `
+          <span class="area-tag-pill active" style="background:#2563eb; color:#ffffff; border-color:#1d4ed8;" data-nb-id="${nb.id}">
+            ${this.escapeHtml(this.getLocalizedName(nb))}
+            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}');" title="移除此社区">✕</span>
+          </span>
+        `).join("");
+
+        html = cityTags + nbTags;
       }
       tagsRow.innerHTML = html;
     }
 
+    const q = (this.popoverSearchQuery || "").toLowerCase();
+
     // 2. Render Cities Pills (Administrative Locality)
     const cityPillsRow = document.getElementById("popoverCityPills");
     if (cityPillsRow) {
-      const q = (this.popoverSearchQuery || "").toLowerCase();
       let html = "";
       GTA_COMMUNITIES.forEach(c => {
-        const title = c.name;
-        if (q && !title.toLowerCase().includes(q) && !(c.nameEn && c.nameEn.toLowerCase().includes(q))) return;
+        const titleZh = c.name || "";
+        const titleEn = c.nameEn || "";
+        const titleKo = c.nameKo || "";
+        if (q && !titleZh.toLowerCase().includes(q) && !titleEn.toLowerCase().includes(q) && !titleKo.toLowerCase().includes(q)) return;
         const isActive = this.activeCityIds.has(c.id);
-        const shortName = c.name.split(" (")[0];
+        const localizedLabel = this.getLocalizedName(c);
         html += `
           <button type="button" class="popover-pill-btn ${isActive ? 'active' : ''}" data-city="${c.id}">
-            ${isActive ? '✓ ' : '+ '}${this.escapeHtml(shortName)}
+            ${isActive ? '✓ ' : '+ '}${this.escapeHtml(localizedLabel)}
           </button>
         `;
       });
       cityPillsRow.innerHTML = html;
+    }
+
+    // 3. Render Neighborhoods Pills (Sub-districts / Commercial Hubs)
+    const nbPillsRow = document.getElementById("popoverNeighborhoodPills");
+    const nbSection = document.getElementById("popoverNeighborhoodSection");
+    if (nbPillsRow) {
+      const allNbs = this.getAllNeighborhoods();
+      const isAll = this.activeCityIds.has("all");
+      const candidateNbs = isAll ? allNbs : allNbs.filter(nb => this.activeCityIds.has(nb.parentCityId));
+
+      let html = "";
+      candidateNbs.forEach(nb => {
+        const titleZh = nb.name || "";
+        const titleEn = nb.nameEn || "";
+        const titleKo = nb.nameKo || "";
+        const kwMatch = Array.isArray(nb.keywords) && nb.keywords.some(k => k.toLowerCase().includes(q));
+        if (q && !titleZh.toLowerCase().includes(q) && !titleEn.toLowerCase().includes(q) && !titleKo.toLowerCase().includes(q) && !kwMatch) return;
+
+        const isActive = this.activeNeighborhoodIds.has(nb.id);
+        const localizedLabel = this.getLocalizedName(nb);
+        html += `
+          <button type="button" class="popover-pill-btn ${isActive ? 'active' : ''}" data-neighborhood="${nb.id}">
+            ${isActive ? '✓ ' : '+ '}${this.escapeHtml(localizedLabel)}
+          </button>
+        `;
+      });
+
+      if (candidateNbs.length === 0) {
+        if (nbSection) nbSection.style.display = "none";
+      } else {
+        if (nbSection) nbSection.style.display = "block";
+        nbPillsRow.innerHTML = html || `<span style="font-size: 0.8rem; color: var(--text-muted); padding: 0.25rem 0.5rem;">未找到匹配社区</span>`;
+      }
     }
   },
 
   toggleCity(cityId) {
     if (cityId === "all") {
       this.activeCityIds = new Set(["all"]);
+      this.activeNeighborhoodIds.clear();
     } else {
       if (this.activeCityIds.has("all")) {
         this.activeCityIds.clear();
@@ -876,7 +988,11 @@ export const MapExplorer = {
       } else {
         if (this.activeCityIds.has(cityId)) {
           this.activeCityIds.delete(cityId);
-          if (this.activeCityIds.size === 0) {
+          // Remove child neighborhoods of this unselected city
+          const nbsOfCity = this.getAllNeighborhoods().filter(n => n.parentCityId === cityId);
+          nbsOfCity.forEach(n => this.activeNeighborhoodIds.delete(n.id));
+
+          if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
             this.activeCityIds.add("all");
           }
         } else {
@@ -893,7 +1009,52 @@ export const MapExplorer = {
   removeCity(cityId) {
     if (this.activeCityIds.has(cityId)) {
       this.activeCityIds.delete(cityId);
-      if (this.activeCityIds.size === 0) {
+      const nbsOfCity = this.getAllNeighborhoods().filter(n => n.parentCityId === cityId);
+      nbsOfCity.forEach(n => this.activeNeighborhoodIds.delete(n.id));
+
+      if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
+        this.activeCityIds.add("all");
+      }
+      this.renderPopover();
+      this.updateAreaSummaryBtn();
+      this.panToSelectedArea();
+      this.loadPlacesForCurrentArea();
+    }
+  },
+
+  toggleNeighborhood(nbId) {
+    const nb = this.getNeighborhoodById(nbId);
+    if (!nb) return;
+
+    if (this.activeCityIds.has("all")) {
+      this.activeCityIds.clear();
+      if (nb.parentCityId && nb.parentCityId !== "all") {
+        this.activeCityIds.add(nb.parentCityId);
+      }
+    }
+
+    if (this.activeNeighborhoodIds.has(nbId)) {
+      this.activeNeighborhoodIds.delete(nbId);
+      if (this.activeNeighborhoodIds.size === 0 && this.activeCityIds.size === 0) {
+        this.activeCityIds.add("all");
+      }
+    } else {
+      this.activeNeighborhoodIds.add(nbId);
+      if (nb.parentCityId && nb.parentCityId !== "all") {
+        this.activeCityIds.add(nb.parentCityId);
+      }
+    }
+
+    this.renderPopover();
+    this.updateAreaSummaryBtn();
+    this.panToSelectedArea();
+    this.loadPlacesForCurrentArea();
+  },
+
+  removeNeighborhood(nbId) {
+    if (this.activeNeighborhoodIds.has(nbId)) {
+      this.activeNeighborhoodIds.delete(nbId);
+      if (this.activeNeighborhoodIds.size === 0 && this.activeCityIds.size === 0) {
         this.activeCityIds.add("all");
       }
       this.renderPopover();
@@ -907,10 +1068,28 @@ export const MapExplorer = {
   // Pan and Focus on Selected Locality / City (Administrative Level)
   // -------------------------------------------------------------
   panToSelectedArea() {
-    const isAll = this.activeCityIds.has("all");
-    const selected = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const allNbs = this.getAllNeighborhoods();
+    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
-    if (isAll || selected.length === 0) {
+    // If specific neighborhood(s) are selected, prioritize them
+    if (selectedNbs.length > 0) {
+      if (selectedNbs.length === 1) {
+        const nb = selectedNbs[0];
+        if (this.googleMap && !this.isFallbackMode) {
+          this.googleMap.panTo(nb.center);
+          this.googleMap.setZoom(nb.zoom || 15);
+        } else if (this.fallbackMap) {
+          this.fallbackMap.setView([nb.center.lat, nb.center.lng], nb.zoom || 15);
+        }
+        return;
+      }
+      this.fitItemsToBounds(selectedNbs);
+      return;
+    }
+
+    if (isAll || selectedCities.length === 0) {
       const allItem = GTA_COMMUNITIES.find(c => c.id === "all") || GTA_COMMUNITIES[0];
       if (this.googleMap && !this.isFallbackMode) {
         this.googleMap.panTo(allItem.center);
@@ -921,8 +1100,8 @@ export const MapExplorer = {
       return;
     }
 
-    if (selected.length === 1) {
-      const c = selected[0];
+    if (selectedCities.length === 1) {
+      const c = selectedCities[0];
       if (this.googleMap && !this.isFallbackMode) {
         this.googleMap.panTo(c.center);
         this.googleMap.setZoom(c.zoom || 13);
@@ -933,24 +1112,30 @@ export const MapExplorer = {
     }
 
     // Multiple cities selected: fit bounds to encompass all selected cities
+    this.fitItemsToBounds(selectedCities);
+  },
+
+  fitItemsToBounds(items) {
     if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
       const bounds = new google.maps.LatLngBounds();
-      selected.forEach(c => {
-        if (c.center) bounds.extend(c.center);
-        if (Array.isArray(c.polygonPaths)) {
-          c.polygonPaths.forEach(pt => bounds.extend(pt));
+      items.forEach(it => {
+        if (it.center) bounds.extend(it.center);
+        if (Array.isArray(it.polygonPaths)) {
+          it.polygonPaths.forEach(pt => bounds.extend(pt));
         }
       });
       this.googleMap.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
     } else if (this.fallbackMap && window.L) {
       const latLngs = [];
-      selected.forEach(c => {
-        if (c.center) latLngs.push([c.center.lat, c.center.lng]);
-        if (Array.isArray(c.polygonPaths)) {
-          c.polygonPaths.forEach(pt => latLngs.push([pt.lat, pt.lng]));
+      items.forEach(it => {
+        if (it.center) latLngs.push([it.center.lat, it.center.lng]);
+        if (Array.isArray(it.polygonPaths)) {
+          it.polygonPaths.forEach(pt => latLngs.push([pt.lat, pt.lng]));
         }
       });
-      this.fallbackMap.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
+      if (latLngs.length > 0) {
+        this.fallbackMap.fitBounds(L.latLngBounds(latLngs), { padding: [50, 50] });
+      }
     }
   },
 
@@ -981,12 +1166,107 @@ export const MapExplorer = {
     }
   },
 
+  setupLocalityFeatureLayer() {
+    if (!this.googleMap || this.isFallbackMode || !window.google || !window.google.maps) return;
+    try {
+      if (typeof this.googleMap.getFeatureLayer === "function" && google.maps.FeatureType && google.maps.FeatureType.LOCALITY) {
+        this.localityFeatureLayer = this.googleMap.getFeatureLayer(google.maps.FeatureType.LOCALITY);
+      }
+    } catch (e) {
+      console.warn("Locality FeatureLayer not available:", e);
+    }
+  },
+
   clearBoundaries() {
-    // No-op (polygons removed)
+    this.polygonsMap.forEach(poly => {
+      if (poly.setMap) {
+        poly.setMap(null);
+      } else if (poly.remove) {
+        poly.remove();
+      }
+    });
+    this.polygonsMap.clear();
+
+    if (this.localityFeatureLayer) {
+      try {
+        this.localityFeatureLayer.style = null;
+      } catch (e) {}
+    }
   },
 
   drawSelectedBoundaries() {
-    this.panToSelectedArea();
+    this.clearBoundaries();
+
+    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const allNbs = this.getAllNeighborhoods();
+    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
+
+    // 1. Google Maps FeatureLayer Administrative Boundaries styling
+    if (this.localityFeatureLayer) {
+      try {
+        this.localityFeatureLayer.style = () => {
+          return {
+            strokeColor: "#059669",
+            strokeWeight: 2,
+            strokeOpacity: 0.8,
+            fillColor: "#10b981",
+            fillOpacity: isAll ? 0.05 : 0.12
+          };
+        };
+      } catch (e) {
+        console.warn("Error setting localityFeatureLayer style:", e);
+      }
+    }
+
+    // 2. High-precision vector Polygons for selected cities & neighborhoods
+    const itemsToDraw = [];
+    if (isAll) {
+      const allItem = GTA_COMMUNITIES.find(c => c.id === "all");
+      if (allItem && Array.isArray(allItem.polygonPaths)) {
+        itemsToDraw.push({ id: "all", paths: allItem.polygonPaths, isNb: false });
+      }
+    } else {
+      selectedCities.forEach(c => {
+        if (Array.isArray(c.polygonPaths)) {
+          itemsToDraw.push({ id: c.id, paths: c.polygonPaths, isNb: false });
+        }
+      });
+    }
+
+    selectedNbs.forEach(nb => {
+      if (Array.isArray(nb.polygonPaths)) {
+        itemsToDraw.push({ id: nb.id, paths: nb.polygonPaths, isNb: true });
+      }
+    });
+
+    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+      itemsToDraw.forEach(item => {
+        const poly = new google.maps.Polygon({
+          paths: item.paths,
+          strokeColor: item.isNb ? "#2563eb" : "#059669",
+          strokeOpacity: item.isNb ? 0.95 : 0.85,
+          strokeWeight: item.isNb ? 2.5 : 2,
+          fillColor: item.isNb ? "#3b82f6" : "#10b981",
+          fillOpacity: item.isNb ? 0.22 : 0.12,
+          zIndex: item.isNb ? 10 : 5
+        });
+        poly.setMap(this.googleMap);
+        this.polygonsMap.set(item.id, poly);
+      });
+    } else if (this.fallbackMap && window.L) {
+      itemsToDraw.forEach(item => {
+        const latLngs = item.paths.map(pt => [pt.lat, pt.lng]);
+        const poly = L.polygon(latLngs, {
+          color: item.isNb ? "#2563eb" : "#059669",
+          weight: item.isNb ? 2.5 : 2,
+          opacity: item.isNb ? 0.95 : 0.85,
+          fillColor: item.isNb ? "#3b82f6" : "#10b981",
+          fillOpacity: item.isNb ? 0.22 : 0.12
+        }).addTo(this.fallbackMap);
+        this.polygonsMap.set(item.id, poly);
+      });
+    }
   },
 
   // -------------------------------------------------------------
@@ -1054,6 +1334,8 @@ export const MapExplorer = {
         fullscreenControl: true,
         zoomControl: true
       });
+
+      this.setupLocalityFeatureLayer();
 
       if (google.maps.places) {
         this.placesService = new google.maps.places.PlacesService(this.googleMap);
@@ -1127,23 +1409,35 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   async loadPlacesForCurrentArea() {
     const container = document.getElementById("mapPlacesCardsContainer");
+    const lang = (window.i18n && window.i18n.getLanguage) ? window.i18n.getLanguage() : "zh";
+    const loadingMsg = lang === "en" ? "Fetching Google Maps restaurants..." :
+                       lang === "ko" ? "Google Maps 음식점 목록을 가져오는 중..." :
+                       "正在获取区域 Google Maps 餐馆列表...";
+
     if (container) {
       container.innerHTML = `
         <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
           <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⏳</div>
-          <div style="font-weight: 600;">正在获取区域 Google Maps 餐馆列表...</div>
+          <div style="font-weight: 600;">${loadingMsg}</div>
         </div>
       `;
     }
 
-    const isAll = this.activeCityIds.has("all");
+    this.drawSelectedBoundaries();
+
+    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const allNbs = this.getAllNeighborhoods();
+    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
     let areaQuery = "";
     if (this.searchKeyword) {
       areaQuery = this.searchKeyword;
+    } else if (selectedNbs.length > 0) {
+      const nbNames = selectedNbs.map(nb => nb.nameEn || nb.name.split(" (")[0]).join(" ");
+      areaQuery = `restaurants in ${nbNames} Toronto Ontario`;
     } else if (!isAll && selectedCities.length > 0) {
-      const cityNames = selectedCities.map(c => c.name.split(" (")[0]).join(" ");
+      const cityNames = selectedCities.map(c => c.nameEn || c.name.split(" (")[0]).join(" ");
       areaQuery = `restaurants in ${cityNames} Ontario`;
     } else {
       areaQuery = "restaurants in Toronto Ontario";
@@ -1161,7 +1455,23 @@ export const MapExplorer = {
 
     // Merge with known KV restaurants in this area
     let localMatches = this.allRestaurants;
-    if (!isAll && selectedCities.length > 0) {
+    if (selectedNbs.length > 0) {
+      const keywords = [];
+      selectedNbs.forEach(nb => {
+        if (Array.isArray(nb.keywords)) {
+          nb.keywords.forEach(kw => keywords.push(kw.toLowerCase()));
+        }
+        if (nb.nameEn) keywords.push(nb.nameEn.toLowerCase());
+        const cn = nb.name.split(" (")[0];
+        if (cn) keywords.push(cn.toLowerCase());
+      });
+
+      localMatches = localMatches.filter(r => {
+        const reg = (r.region || "").toLowerCase();
+        const addr = (r.address || "").toLowerCase();
+        return keywords.some(kw => reg.includes(kw) || addr.includes(kw));
+      });
+    } else if (!isAll && selectedCities.length > 0) {
       const keywords = [];
       selectedCities.forEach(c => {
         const cn = c.name.split(" (")[0];
@@ -1297,22 +1607,42 @@ export const MapExplorer = {
     if (countEl) countEl.textContent = total.toLocaleString();
     if (unsavedCountEl) unsavedCountEl.textContent = unsaved.toLocaleString();
 
-    const isAll = this.activeCityIds.has("all");
-    const selected = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const allNbs = this.getAllNeighborhoods();
+    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
-    let titleText = "全部大区 (All GTA)";
-    if (!isAll && selected.length > 0) {
-      if (selected.length === 1) {
-        titleText = selected[0].name.split(" (")[0];
-      } else if (selected.length === 2) {
-        titleText = `${selected[0].name.split(" (")[0]}、${selected[1].name.split(" (")[0]}`;
+    let titleText = this.getLocalizedAllGta();
+    if (selectedNbs.length > 0) {
+      if (selectedNbs.length === 1) {
+        titleText = this.getLocalizedName(selectedNbs[0]);
+      } else if (selectedNbs.length === 2) {
+        titleText = `${this.getLocalizedName(selectedNbs[0])}、${this.getLocalizedName(selectedNbs[1])}`;
       } else {
-        titleText = `${selected[0].name.split(" (")[0]}、${selected[1].name.split(" (")[0]} (+${selected.length - 2})`;
+        titleText = `${this.getLocalizedName(selectedNbs[0])}、${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
+      }
+    } else if (!isAll && selectedCities.length > 0) {
+      if (selectedCities.length === 1) {
+        titleText = this.getLocalizedName(selectedCities[0]);
+      } else if (selectedCities.length === 2) {
+        titleText = `${this.getLocalizedName(selectedCities[0])}、${this.getLocalizedName(selectedCities[1])}`;
+      } else {
+        titleText = `${this.getLocalizedName(selectedCities[0])}、${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
       }
     }
 
+    const lang = (window.i18n && window.i18n.getLanguage) ? window.i18n.getLanguage() : "zh";
+    let formattedRegionTitle = "";
+    if (lang === "en") {
+      formattedRegionTitle = `${titleText} Restaurants (${total})`;
+    } else if (lang === "ko") {
+      formattedRegionTitle = `${titleText} 음식점 목록 (${total}개)`;
+    } else {
+      formattedRegionTitle = `${titleText} 餐馆列表 (${total} 家)`;
+    }
+
     if (regionTitleEl) {
-      regionTitleEl.textContent = `${titleText}餐馆列表 (${total} 家)`;
+      regionTitleEl.textContent = formattedRegionTitle;
     }
   },
 
@@ -1761,6 +2091,7 @@ export const MapExplorer = {
     if (clearAllBtn) {
       clearAllBtn.addEventListener("click", () => {
         this.activeCityIds = new Set(["all"]);
+        this.activeNeighborhoodIds.clear();
         this.renderPopover();
         this.updateAreaSummaryBtn();
         this.panToSelectedArea();
@@ -1773,6 +2104,22 @@ export const MapExplorer = {
     if (popoverSearch) {
       popoverSearch.addEventListener("input", (e) => {
         this.popoverSearchQuery = e.target.value.trim();
+        this.renderPopover();
+      });
+      popoverSearch.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          this.popoverSearchQuery = e.target.value.trim();
+          this.renderPopover();
+        }
+      });
+    }
+
+    const popoverSearchSubmit = document.getElementById("popoverSearchSubmit");
+    if (popoverSearchSubmit) {
+      popoverSearchSubmit.addEventListener("click", () => {
+        if (popoverSearch) {
+          this.popoverSearchQuery = popoverSearch.value.trim();
+        }
         this.renderPopover();
       });
     }
@@ -1790,11 +2137,25 @@ export const MapExplorer = {
       });
     }
 
+    // Popover Neighborhood Pills Click Handler
+    const neighborhoodPillsRow = document.getElementById("popoverNeighborhoodPills");
+    if (neighborhoodPillsRow) {
+      neighborhoodPillsRow.addEventListener("click", (e) => {
+        const btn = e.target.closest(".popover-pill-btn");
+        if (!btn) return;
+        const nbId = btn.dataset.neighborhood;
+        if (!nbId) return;
+
+        this.toggleNeighborhood(nbId);
+      });
+    }
+
     // Reset To Central GTA Shortcut
     const resetCenterBtn = document.getElementById("popoverCurrentLocationBtn");
     if (resetCenterBtn) {
       resetCenterBtn.addEventListener("click", () => {
         this.activeCityIds = new Set(["all"]);
+        this.activeNeighborhoodIds.clear();
         this.renderPopover();
         this.updateAreaSummaryBtn();
         this.panToSelectedArea();
@@ -2013,6 +2374,7 @@ if (typeof window !== "undefined") {
 
   window.mapExplorerResetToAllGta = function() {
     MapExplorer.activeCityIds = new Set(["all"]);
+    MapExplorer.activeNeighborhoodIds.clear();
     MapExplorer.renderPopover();
     MapExplorer.updateAreaSummaryBtn();
     MapExplorer.panToSelectedArea();
@@ -2021,5 +2383,9 @@ if (typeof window !== "undefined") {
 
   window.mapExplorerRemoveCity = function(cityId) {
     MapExplorer.removeCity(cityId);
+  };
+
+  window.mapExplorerRemoveNeighborhood = function(nbId) {
+    MapExplorer.removeNeighborhood(nbId);
   };
 }
