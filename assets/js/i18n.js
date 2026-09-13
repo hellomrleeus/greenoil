@@ -224,7 +224,7 @@ export const TRANSLATIONS = {
     fs_record_title_edit: "编辑拜访记录",
     fs_record_select_rest: "关联餐馆",
     fs_record_gps_prompt: "🗺️ 优先推荐当前路线规划中的途经站点",
-    fs_record_route_prompt: "🗺️ 优先推荐当前路线规划中的途经站点（可直接从排线列表中记录）",
+    fs_record_route_prompt: "🗺️ 优先推荐当前路线规划中的途经站点",
     fs_record_rest_not_found: "列表中未收录？",
     fs_record_btn_search_gmap: "通过 Google 地图添加",
     fs_record_method: "销售方式",
