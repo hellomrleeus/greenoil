@@ -247,6 +247,70 @@ export const Calculator = {
     }
   },
 
+  determineUcoPricing(ucoRecoveryLiters) {
+    const currentLang = i18n.getLanguage ? i18n.getLanguage() : "zh";
+
+    if (ucoRecoveryLiters < 100) {
+      const rate = 0.25;
+      const monthlyEstimate = Math.round(ucoRecoveryLiters * rate * 100) / 100;
+      return {
+        tierIndex: 0,
+        rate,
+        rateDisplay: "$0.25 / L",
+        rateShort: "$0.25/L",
+        tierRange: "< 100 L / month",
+        isOrMore: false,
+        monthlyEstimate,
+        monthlyEstimateDisplay: `$${monthlyEstimate.toFixed(2)}`
+      };
+    } else if (ucoRecoveryLiters < 200) {
+      const rate = 0.30;
+      const monthlyEstimate = Math.round(ucoRecoveryLiters * rate * 100) / 100;
+      return {
+        tierIndex: 1,
+        rate,
+        rateDisplay: "$0.30 / L",
+        rateShort: "$0.30/L",
+        tierRange: "100–200 L / month",
+        isOrMore: false,
+        monthlyEstimate,
+        monthlyEstimateDisplay: `$${monthlyEstimate.toFixed(2)}`
+      };
+    } else if (ucoRecoveryLiters < 300) {
+      const rate = 0.35;
+      const monthlyEstimate = Math.round(ucoRecoveryLiters * rate * 100) / 100;
+      return {
+        tierIndex: 2,
+        rate,
+        rateDisplay: "$0.35 / L",
+        rateShort: "$0.35/L",
+        tierRange: "200–300 L / month",
+        isOrMore: false,
+        monthlyEstimate,
+        monthlyEstimateDisplay: `$${monthlyEstimate.toFixed(2)}`
+      };
+    } else {
+      const rate = 0.40;
+      const monthlyEstimate = Math.round(ucoRecoveryLiters * rate * 100) / 100;
+      let orMoreText = "$0.40/L or more";
+      if (currentLang === "zh") {
+        orMoreText = "$0.40/L 或更高";
+      } else if (currentLang === "ko") {
+        orMoreText = "$0.40/L 이상";
+      }
+      return {
+        tierIndex: 3,
+        rate,
+        rateDisplay: orMoreText,
+        rateShort: "$0.40/L+",
+        tierRange: "300 L+ / month",
+        isOrMore: true,
+        monthlyEstimate,
+        monthlyEstimateDisplay: `≥ $${monthlyEstimate.toFixed(2)}`
+      };
+    }
+  },
+
   calculate(isUserClick = false) {
     const { days, times, fryerCount } = this.frequency;
 
@@ -267,6 +331,7 @@ export const Calculator = {
     const ucoRecoveryLiters = Math.round(totalMonthlyLiters * 0.75);
 
     const containerConfig = this.determineContainerConfig(ucoRecoveryLiters);
+    const ucoPricing = this.determineUcoPricing(ucoRecoveryLiters);
 
     const resMonthly = document.getElementById("resMonthlyOil");
     if (resMonthly) resMonthly.textContent = totalMonthlyLiters.toLocaleString();
@@ -277,6 +342,12 @@ export const Calculator = {
     const resUco = document.getElementById("resUcoRecovery");
     if (resUco) resUco.textContent = `${ucoRecoveryLiters.toLocaleString()} ${i18n.t("calc_unit_liter")}`;
 
+    const resUcoPrice = document.getElementById("resUcoPrice");
+    if (resUcoPrice) resUcoPrice.textContent = ucoPricing.rateDisplay;
+
+    const resUcoIncome = document.getElementById("resUcoIncome");
+    if (resUcoIncome) resUcoIncome.textContent = ucoPricing.monthlyEstimateDisplay;
+
     const resContainer = document.getElementById("res200LDrums");
     if (resContainer) {
       resContainer.textContent = containerConfig.spec;
@@ -285,10 +356,29 @@ export const Calculator = {
     const resAdvice = document.getElementById("resPickupAdvice");
     if (resAdvice) resAdvice.textContent = containerConfig.advice;
 
+    const tierPill = document.getElementById("ucoCurrentTierPill");
+    if (tierPill) {
+      const badgeText = i18n.t("calc_tier_current_badge");
+      tierPill.textContent = `${badgeText}: ${ucoPricing.tierRange}`;
+    }
+
+    // Highlight active tier in reference table
+    for (let i = 0; i <= 3; i++) {
+      const row = document.getElementById(`ucoTierRow${i}`);
+      if (row) {
+        if (i === ucoPricing.tierIndex) {
+          row.classList.add("uco-tier-active");
+        } else {
+          row.classList.remove("uco-tier-active");
+        }
+      }
+    }
+
     this.latestResult = {
       totalMonthlyLiters,
       standardDrums,
       ucoRecoveryLiters,
+      ucoPricing,
       containerConfig,
       pickupAdvice: containerConfig.advice,
       avgCap,
@@ -358,6 +448,7 @@ export const Calculator = {
       totalMonthlyLiters, 
       standardDrums, 
       ucoRecoveryLiters, 
+      ucoPricing,
       containerConfig,
       pickupAdvice, 
       avgCap,
@@ -378,6 +469,8 @@ export const Calculator = {
         `· Oil Change Frequency: Every ${this.frequency.days} days, ${this.frequency.times} times (${this.frequency.fryerCount} fryers each time)`,
         `· Est. Monthly Oil Consumption: ${totalMonthlyLiters} L (~ ${standardDrums} jugs of 16L commercial oil)`,
         `· Est. Monthly UCO Recovery: ${ucoRecoveryLiters} L (75% recovery)`,
+        `· Suggested UCO Price: ${ucoPricing ? ucoPricing.rateDisplay : '$0.35 / L'} (${ucoPricing ? ucoPricing.tierRange : '200–300 L / month'})`,
+        `· Est. Monthly Rebate: ${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
         `· Recommended Container Setup: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· Recommended Pickup Plan: ${pickupAdvice}`,
         `----------------------------------------`,
@@ -395,6 +488,8 @@ export const Calculator = {
         `· 기름 교체 주기: ${this.frequency.days}일마다 ${this.frequency.times}회 (회당 ${this.frequency.fryerCount}대 교체)`,
         `· 예상 월간 식용유 사용량: ${totalMonthlyLiters} L (약 ${standardDrums}캔 16L 업소용 식용유)`,
         `· 예상 월간 폐식용유 수거량: ${ucoRecoveryLiters} L (회수율 75%)`,
+        `· 권장 폐유 수거단가: ${ucoPricing ? ucoPricing.rateDisplay : '$0.35 / L'} (${ucoPricing ? ucoPricing.tierRange : '200–300 L / month'})`,
+        `· 예상 월간 수거 보상금: ${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
         `· 권장 수거용기 구성: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· 권장 수거 솔루션: ${pickupAdvice}`,
         `----------------------------------------`,
@@ -412,6 +507,8 @@ export const Calculator = {
         `· 更换频率：每 ${this.frequency.days} 天 ${this.frequency.times} 次 (每次换 ${this.frequency.fryerCount} 锅)`,
         `· 预计月用油：${totalMonthlyLiters} 升 (约 ${standardDrums} 桶 16L 商用油)`,
         `· 预计月废油回收：${ucoRecoveryLiters} 升 (出油率 75%)`,
+        `· 建议回收报价：${ucoPricing ? ucoPricing.rateDisplay : '$0.35 / L'} (对应阶梯: ${ucoPricing ? ucoPricing.tierRange : '200–300 L / month'})`,
+        `· 预估月回收返还：${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
         `· 推荐回收设备配置：${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· 建议回收方案：${pickupAdvice}`,
         `----------------------------------------`,

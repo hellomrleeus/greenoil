@@ -1314,6 +1314,120 @@ body {
   color: #ffffff;
 }
 
+.uco-price-metric, .uco-income-metric {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.1);
+}
+
+.uco-price-metric .sub-metric-val {
+  color: #34d399;
+}
+
+.uco-income-metric .sub-metric-val {
+  color: #ffffff;
+}
+
+/* UCO Pricing Reference Card */
+.uco-pricing-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.uco-pricing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.uco-pricing-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #a7f3d0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.uco-tier-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: #059669;
+  color: #ffffff;
+  padding: 0.18rem 0.6rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.uco-pricing-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.uco-pricing-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.uco-pricing-table th {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  color: #6ee7b7;
+  font-weight: 600;
+  font-size: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.uco-pricing-table td {
+  padding: 0.45rem 0.5rem;
+  color: #e2e8f0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.uco-pricing-table td.tier-price-cell {
+  text-align: right;
+  font-weight: 600;
+  font-family: var(--font-mono, monospace);
+  color: #ffffff;
+}
+
+.uco-pricing-table tr.uco-tier-active td {
+  background: rgba(16, 185, 129, 0.25);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.uco-pricing-table tr.uco-tier-active td.tier-vol-cell {
+  border-top-left-radius: var(--radius-sm);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.uco-pricing-table tr.uco-tier-active td.tier-vol-cell::before {
+  content: "▶ ";
+  color: #34d399;
+  font-size: 0.7rem;
+  margin-right: 0.25rem;
+}
+
+.uco-pricing-table tr.uco-tier-active td.tier-price-cell {
+  border-top-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  color: #34d399;
+  font-size: 0.92rem;
+}
+
 .business-advice-box {
   background: rgba(255, 255, 255, 0.12);
   border-radius: var(--radius);

@@ -71,6 +71,10 @@ function setupNavigation() {
   const tabViews = document.querySelectorAll(".tab-view");
 
   window.switchTab = function(targetTabId) {
+    try {
+      localStorage.setItem("greenoil_active_tab", targetTabId);
+    } catch (e) {}
+
     navItems.forEach(item => {
       if (item.dataset.tab === targetTabId) {
         item.classList.add("active");
@@ -117,6 +121,13 @@ function setupNavigation() {
       window.switchTab(tabId);
     });
   });
+
+  try {
+    const savedTab = localStorage.getItem("greenoil_active_tab");
+    if (savedTab && document.getElementById(savedTab) && savedTab !== "tab-restaurants") {
+      window.switchTab(savedTab);
+    }
+  } catch (e) {}
 }
 
 function setupSidebarCollapse() {

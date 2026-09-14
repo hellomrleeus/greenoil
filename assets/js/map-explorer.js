@@ -39,6 +39,17 @@ export const GTA_COMMUNITIES = [
     neighborhoods: []
   },
   {
+    id: "scarborough",
+    name: "士嘉堡 (Scarborough)",
+    nameZh: "士嘉堡",
+    nameEn: "Scarborough",
+    nameKo: "스카버러",
+    center: { lat: 43.7764, lng: -79.2318 },
+    zoom: 12,
+    bbox: [-79.34985, 43.67108, -79.11527, 43.85546],
+    neighborhoods: []
+  },
+  {
     id: "markham",
     name: "万锦 (Markham)",
     nameZh: "万锦",
@@ -132,6 +143,68 @@ export const MapExplorer = {
   currentPage: 1,
   pageSize: 20,
 
+  saveFilterState() {
+    try {
+      const state = {
+        activeCityIds: Array.from(this.activeCityIds),
+        activeNeighborhoodIds: Array.from(this.activeNeighborhoodIds),
+        activeCategory: this.activeCategory,
+        activeVisited: this.activeVisited,
+        activeOutcome: this.activeOutcome,
+        searchKeyword: this.searchKeyword
+      };
+      localStorage.setItem("greenoil_map_filter_state", JSON.stringify(state));
+    } catch (e) {
+      console.warn("Failed to save map filter state to localStorage:", e);
+    }
+  },
+
+  restoreFilterState() {
+    try {
+      const raw = localStorage.getItem("greenoil_map_filter_state");
+      if (!raw) return false;
+      const state = JSON.parse(raw);
+      if (state && typeof state === "object") {
+        if (Array.isArray(state.activeCityIds) && state.activeCityIds.length > 0) {
+          this.activeCityIds = new Set(state.activeCityIds);
+        }
+        if (Array.isArray(state.activeNeighborhoodIds)) {
+          this.activeNeighborhoodIds = new Set(state.activeNeighborhoodIds);
+        }
+        if (typeof state.activeCategory === "string") {
+          this.activeCategory = state.activeCategory;
+        }
+        if (typeof state.activeVisited === "string") {
+          this.activeVisited = state.activeVisited;
+        }
+        if (typeof state.activeOutcome === "string") {
+          this.activeOutcome = state.activeOutcome;
+        }
+        if (typeof state.searchKeyword === "string") {
+          this.searchKeyword = state.searchKeyword;
+        }
+        return true;
+      }
+    } catch (e) {
+      console.warn("Failed to restore map filter state from localStorage:", e);
+    }
+    return false;
+  },
+
+  syncFilterControlsFromState() {
+    const catSelect = document.getElementById("mapCategorySelect");
+    if (catSelect && this.activeCategory) catSelect.value = this.activeCategory;
+
+    const visitedSelect = document.getElementById("mapVisitedSelect");
+    if (visitedSelect && this.activeVisited) visitedSelect.value = this.activeVisited;
+
+    const outcomeSelect = document.getElementById("mapOutcomeSelect");
+    if (outcomeSelect && this.activeOutcome) outcomeSelect.value = this.activeOutcome;
+
+    const searchInput = document.getElementById("mapKeywordInput");
+    if (searchInput && this.searchKeyword) searchInput.value = this.searchKeyword;
+  },
+
   async init() {
     if (this.isInitialized) return;
     this.isInitialized = true;
@@ -141,8 +214,12 @@ export const MapExplorer = {
     // 1. Load official GTA municipal GeoJSON boundaries dataset
     await this.loadNeighbourhoodsGeoJson();
 
+    // Restore map filters from localStorage
+    this.restoreFilterState();
+
     this.setupAuthFailureHandler();
     this.bindEvents();
+    this.syncFilterControlsFromState();
     this.setupResizeObserver();
     this.renderPopover();
     this.updateAreaSummaryBtn();
@@ -778,11 +855,11 @@ export const MapExplorer = {
     }
 
     // 4. Render Neighborhoods Pills (Sub-districts / Official Municipal Boundaries)
-    const nbPillsRow = document.getElementById("popoverNeighborhoodPills");
-    const nbSection = document.getElementById("popoverNeighborhoodSection");
     if (nbPillsRow) {
       const isAllCity = this.activeCityIds.has("all");
-      const candidateNbs = isAllCity ? allNbs : allNbs.filter(nb => this.activeCityIds.has(nb.parentCityId));
+      const candidateNbs = isAllCity ? allNbs : allNbs.filter(nb =>
+        this.activeCityIds.has(nb.parentCityId) || (this.activeCityIds.has("toronto") && nb.parentCityId === "scarborough")
+      );
       const title = nbSection?.querySelector(".popover-section-title");
       if (title) {
         const wardsOnly = candidateNbs.length && candidateNbs.every(nb => nb.boundaryType === "ward");
@@ -933,6 +1010,7 @@ export const MapExplorer = {
     this.renderPopover();
     this.updateAreaSummaryBtn();
     this.panToSelectedArea();
+    this.saveFilterState();
     this.loadPlacesForCurrentArea();
   },
 
@@ -948,6 +1026,7 @@ export const MapExplorer = {
       this.renderPopover();
       this.updateAreaSummaryBtn();
       this.panToSelectedArea();
+      this.saveFilterState();
       this.loadPlacesForCurrentArea();
     }
   },
@@ -978,6 +1057,7 @@ export const MapExplorer = {
     this.renderPopover();
     this.updateAreaSummaryBtn();
     this.panToSelectedArea();
+    this.saveFilterState();
     this.loadPlacesForCurrentArea();
   },
 
@@ -990,6 +1070,7 @@ export const MapExplorer = {
       this.renderPopover();
       this.updateAreaSummaryBtn();
       this.panToSelectedArea();
+      this.saveFilterState();
       this.loadPlacesForCurrentArea();
     }
   },
@@ -2604,6 +2685,7 @@ export const MapExplorer = {
         this.renderPopover();
         this.updateAreaSummaryBtn();
         this.panToSelectedArea();
+        this.saveFilterState();
         this.loadPlacesForCurrentArea();
       });
     }
@@ -2671,6 +2753,7 @@ export const MapExplorer = {
         this.renderPopover();
         this.updateAreaSummaryBtn();
         this.panToSelectedArea();
+        this.saveFilterState();
         this.loadPlacesForCurrentArea();
         this.togglePopover(false);
       });
@@ -2681,6 +2764,7 @@ export const MapExplorer = {
     if (catSelect) {
       catSelect.addEventListener("change", (e) => {
         this.activeCategory = e.target.value;
+        this.saveFilterState();
         this.loadPlacesForCurrentArea(false);
       });
     }
@@ -2690,6 +2774,7 @@ export const MapExplorer = {
     if (visitedSelect) {
       visitedSelect.addEventListener("change", (e) => {
         this.activeVisited = e.target.value;
+        this.saveFilterState();
         this.loadPlacesForCurrentArea(false);
       });
     }
@@ -2699,6 +2784,7 @@ export const MapExplorer = {
     if (outcomeSelect) {
       outcomeSelect.addEventListener("change", (e) => {
         this.activeOutcome = e.target.value;
+        this.saveFilterState();
         this.loadPlacesForCurrentArea(false);
       });
     }
@@ -2709,6 +2795,7 @@ export const MapExplorer = {
 
     const doSearch = () => {
       this.searchKeyword = searchInput ? searchInput.value.trim() : "";
+      this.saveFilterState();
       this.loadPlacesForCurrentArea();
     };
 
