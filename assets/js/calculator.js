@@ -5,6 +5,7 @@
 import { i18n } from "./i18n.js";
 
 export const Calculator = {
+  pricingMode: "total", // "total" (default) or "uco"
   fryers: [
     { id: 1, capacity: 20 },
     { id: 2, capacity: 20 }
@@ -36,6 +37,16 @@ export const Calculator = {
     const btnAddFryer = document.getElementById("btnAddFryer");
     if (btnAddFryer) {
       btnAddFryer.addEventListener("click", () => this.addFryer());
+    }
+
+    const btnModeTotalOil = document.getElementById("btnModeTotalOil");
+    if (btnModeTotalOil) {
+      btnModeTotalOil.addEventListener("click", () => this.setPricingMode("total"));
+    }
+
+    const btnModeUcoRate = document.getElementById("btnModeUcoRate");
+    if (btnModeUcoRate) {
+      btnModeUcoRate.addEventListener("click", () => this.setPricingMode("uco"));
     }
 
     this.setupPureNumberInput("freqDays", (val) => {
@@ -311,6 +322,27 @@ export const Calculator = {
     }
   },
 
+  setPricingMode(mode) {
+    if (this.pricingMode === mode) return;
+    this.pricingMode = mode;
+    this.updateModeTabUI();
+    this.calculate();
+  },
+
+  updateModeTabUI() {
+    const btnModeTotal = document.getElementById("btnModeTotalOil");
+    const btnModeUco = document.getElementById("btnModeUcoRate");
+    if (btnModeTotal && btnModeUco) {
+      if (this.pricingMode === "total") {
+        btnModeTotal.classList.add("active");
+        btnModeUco.classList.remove("active");
+      } else {
+        btnModeTotal.classList.remove("active");
+        btnModeUco.classList.add("active");
+      }
+    }
+  },
+
   calculate(isUserClick = false) {
     const { days, times, fryerCount } = this.frequency;
 
@@ -331,7 +363,10 @@ export const Calculator = {
     const ucoRecoveryLiters = Math.round(totalMonthlyLiters * 0.75);
 
     const containerConfig = this.determineContainerConfig(ucoRecoveryLiters);
-    const ucoPricing = this.determineUcoPricing(ucoRecoveryLiters);
+
+    // Selected calculation basis: "total" (Total Cooking Oil) vs "uco" (75% Recovery Rate)
+    const basisVolume = this.pricingMode === "total" ? totalMonthlyLiters : ucoRecoveryLiters;
+    const ucoPricing = this.determineUcoPricing(basisVolume);
 
     const resMonthly = document.getElementById("resMonthlyOil");
     if (resMonthly) resMonthly.textContent = totalMonthlyLiters.toLocaleString();
@@ -341,6 +376,15 @@ export const Calculator = {
 
     const resUco = document.getElementById("resUcoRecovery");
     if (resUco) resUco.textContent = `${ucoRecoveryLiters.toLocaleString()} ${i18n.t("calc_unit_liter")}`;
+
+    const basisHintEl = document.getElementById("pricingBasisHint");
+    if (basisHintEl) {
+      const hintKey = this.pricingMode === "total" ? "calc_basis_hint_total" : "calc_basis_hint_uco";
+      basisHintEl.textContent = i18n.t(hintKey, {
+        vol: basisVolume.toLocaleString(),
+        price: ucoPricing.rateDisplay
+      });
+    }
 
     const resUcoPrice = document.getElementById("resUcoPrice");
     if (resUcoPrice) resUcoPrice.textContent = ucoPricing.rateDisplay;
@@ -378,6 +422,8 @@ export const Calculator = {
       totalMonthlyLiters,
       standardDrums,
       ucoRecoveryLiters,
+      pricingMode: this.pricingMode,
+      basisVolume,
       ucoPricing,
       containerConfig,
       pickupAdvice: containerConfig.advice,
@@ -408,6 +454,8 @@ export const Calculator = {
     ];
     this.nextFryerId = 3;
     this.frequency = { days: 7, times: 2, fryerCount: 2 };
+    this.pricingMode = "total";
+    this.updateModeTabUI();
 
     const inDays = document.getElementById("freqDays");
     const inTimes = document.getElementById("freqTimes");
@@ -448,6 +496,8 @@ export const Calculator = {
       totalMonthlyLiters, 
       standardDrums, 
       ucoRecoveryLiters, 
+      pricingMode,
+      basisVolume,
       ucoPricing,
       containerConfig,
       pickupAdvice, 
@@ -460,6 +510,7 @@ export const Calculator = {
 
     if (currentLang === "en") {
       const restDisplay = restaurantName || "Standard Restaurant";
+      const basisLabel = pricingMode === "total" ? "Total Cooking Oil" : "UCO Recovery (75%)";
       const lines = [
         `[Green Oil Recycling - Cooking Oil & UCO Estimate]`,
         `Restaurant: ${restDisplay}`,
@@ -469,7 +520,8 @@ export const Calculator = {
         `· Oil Change Frequency: Every ${this.frequency.days} days, ${this.frequency.times} times (${this.frequency.fryerCount} fryers each time)`,
         `· Est. Monthly Oil Consumption: ${totalMonthlyLiters} L (~ ${standardDrums} jugs of 16L commercial oil)`,
         `· Est. Monthly UCO Recovery: ${ucoRecoveryLiters} L (75% recovery)`,
-        `· Suggested UCO Price: ${ucoPricing ? ucoPricing.rateDisplay : '$0.35 / L'} (${ucoPricing ? ucoPricing.tierRange : '200–300 L / month'})`,
+        `· Pricing Basis: ${basisLabel} (${basisVolume} L/mo)`,
+        `· Suggested UCO Price: ${ucoPricing ? ucoPricing.rateDisplay : '$0.40 / L'} (${ucoPricing ? ucoPricing.tierRange : '300 L+ / month'})`,
         `· Est. Monthly Rebate: ${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
         `· Recommended Container Setup: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· Recommended Pickup Plan: ${pickupAdvice}`,
@@ -479,6 +531,7 @@ export const Calculator = {
       text = lines.join("\n");
     } else if (currentLang === "ko") {
       const restDisplay = restaurantName || "일반 식당";
+      const basisLabel = pricingMode === "total" ? "총 식용유량 기준" : "폐유 회수율(75%) 기준";
       const lines = [
         `[Green Oil 친환경 식용유 및 폐유 산정 견적서]`,
         `식당명: ${restDisplay}`,
@@ -488,7 +541,8 @@ export const Calculator = {
         `· 기름 교체 주기: ${this.frequency.days}일마다 ${this.frequency.times}회 (회당 ${this.frequency.fryerCount}대 교체)`,
         `· 예상 월간 식용유 사용량: ${totalMonthlyLiters} L (약 ${standardDrums}캔 16L 업소용 식용유)`,
         `· 예상 월간 폐식용유 수거량: ${ucoRecoveryLiters} L (회수율 75%)`,
-        `· 권장 폐유 수거단가: ${ucoPricing ? ucoPricing.rateDisplay : '$0.35 / L'} (${ucoPricing ? ucoPricing.tierRange : '200–300 L / month'})`,
+        `· 단가 산정기준: ${basisLabel} (${basisVolume} L/월)`,
+        `· 권장 폐유 수거단가: ${ucoPricing ? ucoPricing.rateDisplay : '$0.40 / L'} (${ucoPricing ? ucoPricing.tierRange : '300 L+ / month'})`,
         `· 예상 월간 수거 보상금: ${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
         `· 권장 수거용기 구성: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· 권장 수거 솔루션: ${pickupAdvice}`,
@@ -498,6 +552,7 @@ export const Calculator = {
       text = lines.join("\n");
     } else {
       const restDisplay = restaurantName || "普通餐馆";
+      const basisLabel = pricingMode === "total" ? "按总用油量" : "按出油率 (75%)";
       const lines = [
         `【Green Oil 环保回收用油测算】`,
         `餐馆名称：${restDisplay}`,
@@ -507,7 +562,8 @@ export const Calculator = {
         `· 更换频率：每 ${this.frequency.days} 天 ${this.frequency.times} 次 (每次换 ${this.frequency.fryerCount} 锅)`,
         `· 预计月用油：${totalMonthlyLiters} 升 (约 ${standardDrums} 桶 16L 商用油)`,
         `· 预计月废油回收：${ucoRecoveryLiters} 升 (出油率 75%)`,
-        `· 建议回收报价：${ucoPricing ? ucoPricing.rateDisplay : '$0.35 / L'} (对应阶梯: ${ucoPricing ? ucoPricing.tierRange : '200–300 L / month'})`,
+        `· 测算基准口径：${basisLabel} (${basisVolume} 升/月)`,
+        `· 建议回收报价：${ucoPricing ? ucoPricing.rateDisplay : '$0.40 / L'} (对应阶梯: ${ucoPricing ? ucoPricing.tierRange : '300 L+ / month'})`,
         `· 预估月回收返还：${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
         `· 推荐回收设备配置：${containerConfig ? containerConfig.spec : '200L Drum'}`,
         `· 建议回收方案：${pickupAdvice}`,

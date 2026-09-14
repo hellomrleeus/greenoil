@@ -364,16 +364,6 @@
                   <div class="sub-metric-val" id="resUcoRecovery">0 升</div>
                 </div>
 
-                <div class="sub-metric uco-price-metric">
-                  <div class="sub-metric-label" data-i18n="calc_res_price_label">建议回收报价 (Price)</div>
-                  <div class="sub-metric-val highlight" id="resUcoPrice">$0.35 / L</div>
-                </div>
-
-                <div class="sub-metric uco-income-metric">
-                  <div class="sub-metric-label" data-i18n="calc_res_income_label">预估月回收返还</div>
-                  <div class="sub-metric-val highlight" id="resUcoIncome">$89.95</div>
-                </div>
-
                 <div class="sub-metric">
                   <div class="sub-metric-label" data-i18n="calc_res_200l_drums">推荐回收设备 (Drum / Bin)</div>
                   <div class="sub-metric-val" id="res200LDrums">-</div>
@@ -385,41 +375,76 @@
                 </div>
               </div>
 
-              <!-- GOI UCO Pricing Reference Card -->
-              <div class="uco-pricing-card">
-                <div class="uco-pricing-header">
-                  <div class="uco-pricing-title">
-                    <span data-i18n="calc_pricing_ref_title">GOI UCO 报价参考 (Pricing Reference)</span>
+              <!-- Dedicated Pricing & Rebate Module -->
+              <div class="pricing-workbench-card">
+                <div class="pricing-card-header">
+                  <div class="pricing-card-title">
+                    <span data-i18n="calc_pricing_module_title">回收报价与收益返还</span>
                   </div>
-                  <span class="uco-tier-pill" id="ucoCurrentTierPill">--</span>
+                  <!-- Mode Switcher Tabs (Default: Total Oil) -->
+                  <div class="pricing-mode-tabs" role="tablist" aria-label="Pricing Calculation Basis">
+                    <button type="button" class="pricing-mode-tab active" id="btnModeTotalOil" data-mode="total" data-i18n="calc_mode_total_oil">
+                      按总用油量
+                    </button>
+                    <button type="button" class="pricing-mode-tab" id="btnModeUcoRate" data-mode="uco" data-i18n="calc_mode_uco_rate">
+                      按出油率 (75%)
+                    </button>
+                  </div>
                 </div>
-                <div class="uco-pricing-table-wrap">
-                  <table class="uco-pricing-table">
-                    <thead>
-                      <tr>
-                        <th data-i18n="calc_col_volume">Monthly UCO Volume</th>
-                        <th style="text-align: right;" data-i18n="calc_col_price">建议报价 Price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr id="ucoTierRow0" data-tier="0">
-                        <td class="tier-vol-cell">&lt; 100 L / month</td>
-                        <td class="tier-price-cell">$0.25/L</td>
-                      </tr>
-                      <tr id="ucoTierRow1" data-tier="1">
-                        <td class="tier-vol-cell">100–200 L / month</td>
-                        <td class="tier-price-cell">$0.30/L</td>
-                      </tr>
-                      <tr id="ucoTierRow2" data-tier="2">
-                        <td class="tier-vol-cell">200–300 L / month</td>
-                        <td class="tier-price-cell">$0.35/L</td>
-                      </tr>
-                      <tr id="ucoTierRow3" data-tier="3">
-                        <td class="tier-vol-cell">300 L+ / month</td>
-                        <td class="tier-price-cell">$0.40/L or more</td>
-                      </tr>
-                    </tbody>
-                  </table>
+
+                <!-- Pricing Basis Hint -->
+                <div class="pricing-basis-hint" id="pricingBasisHint">
+                  当前测算口径：按总用油量
+                </div>
+
+                <!-- 2 Metrics: Suggested Price & Est. Monthly Rebate -->
+                <div class="pricing-metrics-row">
+                  <div class="pricing-metric-box">
+                    <div class="pricing-metric-label" data-i18n="calc_res_price_label">建议回收报价 (Price)</div>
+                    <div class="pricing-metric-val" id="resUcoPrice">$0.40 / L</div>
+                  </div>
+                  <div class="pricing-metric-box">
+                    <div class="pricing-metric-label" data-i18n="calc_res_income_label">预估月回收返还</div>
+                    <div class="pricing-metric-val" id="resUcoIncome">$0.00</div>
+                  </div>
+                </div>
+
+                <!-- GOI UCO Pricing Reference Table -->
+                <div class="uco-pricing-table-section">
+                  <div class="uco-pricing-header">
+                    <div class="uco-pricing-title">
+                      <span data-i18n="calc_pricing_ref_title">GOI UCO 报价参考标准</span>
+                    </div>
+                    <span class="uco-tier-pill" id="ucoCurrentTierPill">--</span>
+                  </div>
+                  <div class="uco-pricing-table-wrap">
+                    <table class="uco-pricing-table">
+                      <thead>
+                        <tr>
+                          <th data-i18n="calc_col_volume">Monthly UCO Volume</th>
+                          <th style="text-align: right;" data-i18n="calc_col_price">建议报价 Price</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr id="ucoTierRow0" data-tier="0">
+                          <td class="tier-vol-cell">&lt; 100 L / month</td>
+                          <td class="tier-price-cell">$0.25/L</td>
+                        </tr>
+                        <tr id="ucoTierRow1" data-tier="1">
+                          <td class="tier-vol-cell">100–200 L / month</td>
+                          <td class="tier-price-cell">$0.30/L</td>
+                        </tr>
+                        <tr id="ucoTierRow2" data-tier="2">
+                          <td class="tier-vol-cell">200–300 L / month</td>
+                          <td class="tier-price-cell">$0.35/L</td>
+                        </tr>
+                        <tr id="ucoTierRow3" data-tier="3">
+                          <td class="tier-vol-cell">300 L+ / month</td>
+                          <td class="tier-price-cell">$0.40/L or more</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 

@@ -66,7 +66,7 @@ export async function updateRestaurant(db,key,updates,headers) {
   delete patch.placeId;
   const entries=Object.entries(patch);
   if (!entries.length) return json({success:false,error:'No updates provided'},headers,400);
-  const paths=entries.flatMap(([key,value])=>['$.'+JSON.stringify(key),JSON.stringify(value)]);
+  const paths=entries.flatMap(([key,value])=>['$.'+key,JSON.stringify(value)]);
   const sql=`UPDATE restaurants SET data=json_set(data,${entries.map(()=> '?,json(?)').join(',')}) WHERE id=?`;
   const results=await db.batch([db.prepare(sql).bind(...paths,key),stamp(db)]);
   if(!results[0].meta.changes) return json({success:false,error:'Restaurant not found'},headers,404);
@@ -85,10 +85,11 @@ export async function updateSale(db,id,updates,headers) {
   const entries=Object.entries(patch);
   if (!entries.length) return json({success:false,error:'No updates provided'},headers,400);
   const results=await db.batch([
-    db.prepare(`UPDATE sales SET data=json_set(data,${entries.map(()=> '?,json(?)').join(',')}) WHERE id=? RETURNING data`).bind(...entries.flatMap(([k,v])=>['$.'+JSON.stringify(k),JSON.stringify(v)]),id),stamp(db)
+    db.prepare(`UPDATE sales SET data=json_set(data,${entries.map(()=> '?,json(?)').join(',')}) WHERE id=?`).bind(...entries.flatMap(([k,v])=>['$.'+k,JSON.stringify(v)]),id),stamp(db)
   ]);
-  if(!results[0].results.length) return json({success:false,error:'Record not found'},headers,404);
-  return json({success:true,record:JSON.parse(results[0].results[0].data)},headers);
+  if(!results[0].meta.changes) return json({success:false,error:'Record not found'},headers,404);
+  const row=await db.prepare('SELECT data FROM sales WHERE id=?').bind(id).first();
+  return json({success:true,record:row?JSON.parse(row.data):null},headers);
 }
 export async function deleteSale(db,id,headers) {
   await db.batch([db.prepare('DELETE FROM sales WHERE id=?').bind(id),stamp(db)]);

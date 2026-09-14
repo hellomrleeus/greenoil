@@ -127,9 +127,9 @@ export const MapExplorer = {
   kvNormalizedNamesSet: new Set(),
   
   // Filter States (Locality / Cities Multi-Select & Neighborhoods)
-  // Start the map explorer in Vaughan and load only Vaughan restaurants.
+  // Start the map explorer in Scarborough and load only Scarborough restaurants.
   // Users can still choose All GTA from the area popover when needed.
-  activeCityIds: new Set(["vaughan"]),
+  activeCityIds: new Set(["scarborough"]),
   activeNeighborhoodIds: new Set(),
   polygonsMap: new Map(), // Boundary polygons
   activeCategory: "全部",
@@ -244,7 +244,7 @@ export const MapExplorer = {
     await this.initGoogleMap();
 
 
-    // 3. Fit the initial Vaughan selection and load only its restaurants.
+    // 3. Fit the initial Scarborough selection and load only its restaurants.
     // Explicit city/ward changes use the same pan-and-load path.
     const hasExplicitInitialArea = !(this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0);
     if (hasExplicitInitialArea) this.panToSelectedArea();
@@ -1340,8 +1340,8 @@ export const MapExplorer = {
     }
 
     try {
-      const defaultCommunity = GTA_COMMUNITIES.find(city => city.id === "vaughan") || GTA_COMMUNITIES[0];
-      const defaultCenter = { ...defaultCommunity.center }; // Vaughan default
+      const defaultCommunity = GTA_COMMUNITIES.find(city => city.id === "scarborough") || GTA_COMMUNITIES[0];
+      const defaultCenter = { ...defaultCommunity.center }; // Scarborough default
       this.googleMap = new google.maps.Map(canvas, {
         center: defaultCenter,
         zoom: defaultCommunity.zoom || 13,
@@ -1423,7 +1423,7 @@ export const MapExplorer = {
       this.fallbackMap = null;
     }
 
-    const defaultCommunity = GTA_COMMUNITIES.find(city => city.id === "vaughan") || GTA_COMMUNITIES[0];
+    const defaultCommunity = GTA_COMMUNITIES.find(city => city.id === "scarborough") || GTA_COMMUNITIES[0];
     const defaultCenter = [defaultCommunity.center.lat, defaultCommunity.center.lng];
     this.fallbackMap = L.map(canvas, { preferCanvas: true }).setView(defaultCenter, defaultCommunity.zoom || 13);
 

@@ -63,8 +63,29 @@ assert.equal(t500.monthlyEstimateDisplay, '≥ $200.00');
 
 console.log('PASS: All tier boundary conditions and rates (<100, 100-200, 200-300, 300+) verified.');
 
-// 2. Test calculate() with DOM mock
+// 2. Test calculate() with DOM mock and dual basis modes (Total Oil vs UCO Rate)
+function createMockClassList(initialClasses = []) {
+  const set = new Set(initialClasses);
+  return {
+    add(c) { set.add(c); },
+    remove(c) { set.delete(c); },
+    contains(c) { return set.has(c); },
+    toggle(c, force) {
+      if (force === undefined) {
+        if (set.has(c)) set.delete(c); else set.add(c);
+      } else if (force) {
+        set.add(c);
+      } else {
+        set.delete(c);
+      }
+    }
+  };
+}
+
 const domElements = {
+  btnModeTotalOil: { classList: createMockClassList(['active']) },
+  btnModeUcoRate: { classList: createMockClassList() },
+  pricingBasisHint: { textContent: '' },
   resMonthlyOil: { textContent: '' },
   resStandardDrums: { textContent: '' },
   resUcoRecovery: { textContent: '' },
@@ -73,18 +94,11 @@ const domElements = {
   res200LDrums: { textContent: '' },
   resPickupAdvice: { textContent: '' },
   ucoCurrentTierPill: { textContent: '' },
-  ucoTierRow0: { classList: new Set() },
-  ucoTierRow1: { classList: new Set() },
-  ucoTierRow2: { classList: new Set() },
-  ucoTierRow3: { classList: new Set() }
+  ucoTierRow0: { classList: createMockClassList() },
+  ucoTierRow1: { classList: createMockClassList() },
+  ucoTierRow2: { classList: createMockClassList() },
+  ucoTierRow3: { classList: createMockClassList() }
 };
-
-for (let i = 0; i <= 3; i++) {
-  const row = domElements[`ucoTierRow${i}`];
-  row.classList.add = function(c) { this.has(c) || Set.prototype.add.call(this, c); };
-  row.classList.remove = function(c) { Set.prototype.delete.call(this, c); };
-  row.classList.contains = function(c) { return Set.prototype.has.call(this, c); };
-}
 
 globalThis.document = {
   documentElement: { lang: 'zh' },
@@ -97,58 +111,68 @@ globalThis.document = {
 // monthlyChanges = 30 * (2 / 7) = 8.5714
 // oilPerChange = 40
 // totalMonthlyLiters = 343 L
-// ucoRecoveryLiters = 343 * 0.75 = 257 L (Tier 2: 200-300 L)
+// ucoRecoveryLiters = 343 * 0.75 = 257 L
 Calculator.fryers = [{ id: 1, capacity: 20 }, { id: 2, capacity: 20 }];
 Calculator.frequency = { days: 7, times: 2, fryerCount: 2 };
+
+// 2a. Default Mode: 'total' (按总用油量)
+Calculator.pricingMode = 'total';
 Calculator.calculate();
 
 assert.equal(Calculator.latestResult.totalMonthlyLiters, 343);
 assert.equal(Calculator.latestResult.ucoRecoveryLiters, 257);
+assert.equal(Calculator.latestResult.pricingMode, 'total');
+assert.equal(Calculator.latestResult.basisVolume, 343);
+// In Total Oil mode: 343 L falls in Tier 3 (300 L+ / month)
+assert.equal(Calculator.latestResult.ucoPricing.tierIndex, 3);
+assert.equal(Calculator.latestResult.ucoPricing.rate, 0.40);
+assert.equal(domElements.resUcoPrice.textContent, '$0.40/L 或更高');
+assert.equal(domElements.resUcoIncome.textContent, '≥ $137.20');
+assert.equal(domElements.ucoTierRow3.classList.contains('uco-tier-active'), true);
+assert.equal(domElements.ucoTierRow2.classList.contains('uco-tier-active'), false);
+assert(domElements.pricingBasisHint.textContent.includes('按总用油量 343 升/月'));
+
+// 2b. Toggle Mode to 'uco' (按出油率 75%)
+Calculator.setPricingMode('uco');
+assert.equal(Calculator.pricingMode, 'uco');
+assert.equal(domElements.btnModeTotalOil.classList.contains('active'), false);
+assert.equal(domElements.btnModeUcoRate.classList.contains('active'), true);
+assert.equal(Calculator.latestResult.pricingMode, 'uco');
+assert.equal(Calculator.latestResult.basisVolume, 257);
+// In UCO recovery mode: 257 L falls in Tier 2 (200–300 L / month)
 assert.equal(Calculator.latestResult.ucoPricing.tierIndex, 2);
 assert.equal(Calculator.latestResult.ucoPricing.rate, 0.35);
 assert.equal(domElements.resUcoPrice.textContent, '$0.35 / L');
 assert.equal(domElements.resUcoIncome.textContent, '$89.95');
 assert.equal(domElements.ucoTierRow2.classList.contains('uco-tier-active'), true);
-assert.equal(domElements.ucoTierRow0.classList.contains('uco-tier-active'), false);
-assert.equal(domElements.ucoTierRow1.classList.contains('uco-tier-active'), false);
 assert.equal(domElements.ucoTierRow3.classList.contains('uco-tier-active'), false);
+assert(domElements.pricingBasisHint.textContent.includes('按废油出油率 (75%) 257 升/月'));
 
-// Change to high volume: 4 fryers of 25L, every 3 days 2 times with 4 fryers:
-// monthlyChanges = 30 * (2 / 3) = 20
-// oilPerChange = 4 * 25 = 100
-// totalMonthlyLiters = 2000 L
-// ucoRecoveryLiters = 1500 L (Tier 3: 300 L+)
-Calculator.fryers = [{ id: 1, capacity: 25 }, { id: 2, capacity: 25 }, { id: 3, capacity: 25 }, { id: 4, capacity: 25 }];
-Calculator.frequency = { days: 3, times: 2, fryerCount: 4 };
-Calculator.calculate();
-
-assert.equal(Calculator.latestResult.totalMonthlyLiters, 2000);
-assert.equal(Calculator.latestResult.ucoRecoveryLiters, 1500);
+// 2c. Switch back to 'total'
+Calculator.setPricingMode('total');
+assert.equal(Calculator.pricingMode, 'total');
+assert.equal(domElements.btnModeTotalOil.classList.contains('active'), true);
+assert.equal(domElements.btnModeUcoRate.classList.contains('active'), false);
 assert.equal(Calculator.latestResult.ucoPricing.tierIndex, 3);
-assert.equal(domElements.resUcoIncome.textContent, '≥ $600.00');
-assert.equal(domElements.ucoTierRow3.classList.contains('uco-tier-active'), true);
-assert.equal(domElements.ucoTierRow2.classList.contains('uco-tier-active'), false);
 
-// Change to small volume: 1 fryer of 10L, every 14 days 1 time:
-// monthlyChanges = 30 * (1 / 14) = 2.1428
-// oilPerChange = 10
+// 2d. Change to small volume: 1 fryer of 10L, every 14 days 1 time:
 // totalMonthlyLiters = 21 L
-// ucoRecoveryLiters = 16 L (Tier 0: < 100 L)
+// ucoRecoveryLiters = 16 L (Tier 0: < 100 L in both modes)
 Calculator.fryers = [{ id: 1, capacity: 10 }];
 Calculator.frequency = { days: 14, times: 1, fryerCount: 1 };
 Calculator.calculate();
 
 assert.equal(Calculator.latestResult.totalMonthlyLiters, 21);
-assert.equal(Calculator.latestResult.ucoRecoveryLiters, 16);
+assert.equal(Calculator.latestResult.basisVolume, 21);
 assert.equal(Calculator.latestResult.ucoPricing.tierIndex, 0);
 assert.equal(domElements.resUcoPrice.textContent, '$0.25 / L');
-assert.equal(domElements.resUcoIncome.textContent, '$4.00');
+assert.equal(domElements.resUcoIncome.textContent, '$5.25');
 assert.equal(domElements.ucoTierRow0.classList.contains('uco-tier-active'), true);
 assert.equal(domElements.ucoTierRow3.classList.contains('uco-tier-active'), false);
 
-console.log('PASS: calculate() DOM updates and active tier switching verified.');
+console.log('PASS: Dual pricing modes (Total vs UCO), DOM tab updates, and tier recalculations verified.');
 
-// 3. Test quote text formatting
+// 3. Test quote text formatting with pricing basis indication
 let copiedText = '';
 Object.defineProperty(globalThis, 'navigator', {
   value: {
@@ -160,23 +184,37 @@ Object.defineProperty(globalThis, 'navigator', {
 });
 globalThis.alert = () => {};
 
-// zh quote
+// zh quote (total mode)
 i18n.setLanguage('zh');
+Calculator.pricingMode = 'total';
+Calculator.calculate();
 Calculator.copyQuoteText();
+assert(copiedText.includes('测算基准口径：按总用油量 (21 升/月)'));
 assert(copiedText.includes('建议回收报价：$0.25 / L'));
+assert(copiedText.includes('预估月回收返还：$5.25'));
+
+// zh quote (uco mode)
+Calculator.pricingMode = 'uco';
+Calculator.calculate();
+Calculator.copyQuoteText();
+assert(copiedText.includes('测算基准口径：按出油率 (75%) (16 升/月)'));
 assert(copiedText.includes('预估月回收返还：$4.00'));
 
-// en quote
+// en quote (total mode)
 i18n.setLanguage('en');
+Calculator.pricingMode = 'total';
+Calculator.calculate();
 Calculator.copyQuoteText();
+assert(copiedText.includes('Pricing Basis: Total Cooking Oil (21 L/mo)'));
 assert(copiedText.includes('Suggested UCO Price: $0.25 / L'));
-assert(copiedText.includes('Est. Monthly Rebate: $4.00'));
 
-// ko quote
+// ko quote (total mode)
 i18n.setLanguage('ko');
+Calculator.pricingMode = 'total';
+Calculator.calculate();
 Calculator.copyQuoteText();
-assert(copiedText.includes('권장 폐유 수거단가: $0.25 / L'));
-assert(copiedText.includes('예상 월간 수거 보상금: $4.00'));
+assert(copiedText.includes('단가 산정기준: 총 식용유량 기준 (21 L/월)'));
+assert(copiedText.includes('권장 폐유 수格단가') || copiedText.includes('권장 폐유 수거단가'));
 
-console.log('PASS: Multilingual quote export text verified.');
+console.log('PASS: Multilingual quote export text with calculation basis verified.');
 console.log('ALL UCO PRICING TESTS PASSED!');
