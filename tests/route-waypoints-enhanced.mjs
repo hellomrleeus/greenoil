@@ -309,6 +309,27 @@ assert.equal(exportedRows[0]['营业时间'], '11:00-22:00');
 assert(exportedRows[0]['拜访记录'].includes('已签署月结回收合同'));
 assert.equal(exportedRows[2]['营业时间'], '11:00 AM – 10:00 PM (周五: 11:00 AM – 11:00 PM)');
 
+// Test enrichment of waypoint that originally lacked openingHours (e.g. Zen Japanese Restaurant added from map)
+const wpZenNoHours = {
+  placeId: 'ChIJ_UhzjJ7U1IkRxCoo1LUCK_0',
+  name: 'Zen Japanese Restaurant',
+  address: '7634 Woodbine Ave, Markham, ON L3R 2N2',
+  phone: '(905) 604-7211'
+};
+FieldSales.cachedRestaurants = [{
+  placeId: 'ChIJ_UhzjJ7U1IkRxCoo1LUCK_0',
+  name: 'Zen Japanese Restaurant',
+  openingHours: '星期一: 休息\n星期二: 12:00–14:30, 17:30–22:00\n星期三: 12:00–14:30, 17:30–22:00\n星期四: 12:00–14:30, 17:30–22:00\n星期五: 12:00–14:30, 17:30–22:00\n星期六: 12:00–14:30, 17:30–22:00\n星期日: 休息'
+}];
+FieldSales.routeWaypoints = [wpZenNoHours];
+FieldSales.selectedWaypointIds = new Set();
+await FieldSales.exportWaypointsToExcel();
+const zenExportRows = exportedWb.Sheets['Waypoints']._rows;
+assert.equal(zenExportRows.length, 1);
+assert.equal(zenExportRows[0]['餐厅名称'], 'Zen Japanese Restaurant');
+assert.equal(zenExportRows[0]['营业时间'], '12:00–14:30, 17:30–22:00 (周一休息)');
+assert.equal(wpZenNoHours.openingHours, FieldSales.cachedRestaurants[0].openingHours, 'Waypoint in route should be enriched with openingHours');
+
 console.log('PASS: Excel export data construction & weekday hours aggregation verified.');
 
 // -------------------------------------------------------------

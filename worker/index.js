@@ -1404,23 +1404,77 @@ function deriveKeywords(name, primaryType, matchedTerm = "") {
 }
 
 /**
+ * Helper: Enrich waypoints with full details (openingHours, nameEn, phone, address) from D1 if missing
+ */
+async function enrichWaypointsWithHours(waypoints, env) {
+  if (!env.DB || !Array.isArray(waypoints) || waypoints.length === 0) return waypoints;
+  const missing = waypoints.filter(w => !w.openingHours || w.openingHours === "未提供");
+  if (missing.length === 0) return waypoints;
+
+  const ids = missing.map(w => w.placeId || w.name).filter(Boolean);
+  const nameKeys = missing.map(w => (w.name || "").trim().toLowerCase()).filter(Boolean);
+  if (ids.length === 0 && nameKeys.length === 0) return waypoints;
+
+  try {
+    const idPlaceholders = ids.length ? ids.map(() => '?').join(',') : '';
+    const namePlaceholders = nameKeys.length ? nameKeys.map(() => '?').join(',') : '';
+    let sql = 'SELECT id, name_key, data FROM restaurants WHERE ';
+    const params = [];
+    if (idPlaceholders && namePlaceholders) {
+      sql += `id IN (${idPlaceholders}) OR name_key IN (${namePlaceholders})`;
+      params.push(...ids, ...nameKeys);
+    } else if (idPlaceholders) {
+      sql += `id IN (${idPlaceholders})`;
+      params.push(...ids);
+    } else {
+      sql += `name_key IN (${namePlaceholders})`;
+      params.push(...nameKeys);
+    }
+
+    const rows = await env.DB.prepare(sql).bind(...params).all();
+    if (rows && Array.isArray(rows.results)) {
+      const idMap = new Map();
+      const nameMap = new Map();
+      for (const r of rows.results) {
+        try {
+          const parsed = JSON.parse(r.data);
+          if (r.id) idMap.set(r.id, parsed);
+          if (r.name_key) nameMap.set(r.name_key, parsed);
+        } catch (e) {}
+      }
+      for (const w of waypoints) {
+        const normName = (w.name || "").trim().toLowerCase();
+        const matched = (w.placeId ? idMap.get(w.placeId) : null) || nameMap.get(normName);
+        if (matched) {
+          if ((!w.openingHours || w.openingHours === "未提供") && matched.openingHours) {
+            w.openingHours = matched.openingHours;
+          }
+          if (!w.nameEn && matched.nameEn) w.nameEn = matched.nameEn;
+          if (!w.phone && matched.phone) w.phone = matched.phone;
+          if (!w.address && matched.address) w.address = matched.address;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("enrichWaypointsWithHours failed:", e);
+  }
+  return waypoints;
+}
+
+/**
  * Route Waypoints: Get persisted route waypoints from KV
  */
 async function handleGetRouteWaypoints(request, env, corsHeaders) {
+  let routeData = {
+    waypoints: [],
+    origin: "Green Oil Inc, Toronto, ON",
+    updatedAt: null
+  };
+
   if (env.RESTAURANTS_KV) {
     try {
-      const data = await env.RESTAURANTS_KV.get(KV_ROUTE_KEY, { type: "json" }) || {
-        waypoints: [],
-        origin: "Green Oil Inc, Toronto, ON",
-        updatedAt: null
-      };
-      return new Response(JSON.stringify({
-        success: true,
-        data
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      const data = await env.RESTAURANTS_KV.get(KV_ROUTE_KEY, { type: "json" });
+      if (data) routeData = data;
     } catch (err) {
       return new Response(JSON.stringify({ success: false, error: err.message }), {
         status: 500,
@@ -1429,9 +1483,20 @@ async function handleGetRouteWaypoints(request, env, corsHeaders) {
     }
   }
 
+  if (Array.isArray(routeData.waypoints) && routeData.waypoints.length > 0) {
+    const prevMissingCount = routeData.waypoints.filter(w => !w.openingHours || w.openingHours === "未提供").length;
+    await enrichWaypointsWithHours(routeData.waypoints, env);
+    const postMissingCount = routeData.waypoints.filter(w => !w.openingHours || w.openingHours === "未提供").length;
+    if (env.RESTAURANTS_KV && prevMissingCount > postMissingCount) {
+      try {
+        await env.RESTAURANTS_KV.put(KV_ROUTE_KEY, JSON.stringify(routeData));
+      } catch (e) {}
+    }
+  }
+
   return new Response(JSON.stringify({
     success: true,
-    data: { waypoints: [], origin: "Green Oil Inc, Toronto, ON" }
+    data: routeData
   }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -1455,6 +1520,8 @@ async function handleSaveRouteWaypoints(request, env, corsHeaders) {
   const waypoints = Array.isArray(body.waypoints) ? body.waypoints : [];
   const origin = body.origin || "Green Oil Inc, Toronto, ON";
   const now = new Date().toISOString();
+
+  await enrichWaypointsWithHours(waypoints, env);
 
   const routeData = {
     waypoints,

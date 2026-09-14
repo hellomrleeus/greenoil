@@ -47,7 +47,7 @@ export async function queryRestaurants(db,params,headers) {
   ]);
   let data=rows.results.map(row=>({...JSON.parse(row.data),inKV:true,isVisited:!!row.sale_id,lastOutcome:row.sale_id?(row.outcome||'有意向/跟进中'):'未拜访',lastVisitTime:row.visit_time||''}));
   if (params.get('format') === 'map') {
-    const fields=['placeId','name','region','address','phone','rating','reviews','price','status','categoriesRaw','categories','latitude','longitude','hubId','hubName','mapsUrl','photoUrl','inKV','isVisited','lastOutcome','lastVisitTime'];
+    const fields=['placeId','name','nameEn','region','address','phone','rating','reviews','price','status','openingHours','categoriesRaw','categories','latitude','longitude','hubId','hubName','mapsUrl','photoUrl','inKV','isVisited','lastOutcome','lastVisitTime'];
     data=data.map(r=>Object.fromEntries(fields.filter(k=>r[k]!==undefined).map(k=>[k,r[k]])));
   }
   const total=count.results[0].total;

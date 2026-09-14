@@ -129,6 +129,7 @@ export const FieldSales = {
     if (window.Restaurants && Array.isArray(window.Restaurants.fullDataset) && window.Restaurants.fullDataset.length > 0) {
       this.cachedRestaurants = window.Restaurants.fullDataset;
       this.populateRestaurantDatalist();
+      this.enrichExistingWaypoints();
       return;
     }
 
@@ -136,6 +137,7 @@ export const FieldSales = {
     if (res && res.success && Array.isArray(res.data)) {
       this.cachedRestaurants = res.data;
       this.populateRestaurantDatalist();
+      this.enrichExistingWaypoints();
     }
   },
 
@@ -351,6 +353,7 @@ export const FieldSales = {
     if (!restaurant) return restaurant;
     const all = [
       ...(this.cachedRestaurants || []),
+      ...(window.Restaurants?.fullDataset || []),
       ...(window.MapExplorer?.allRestaurants || [])
     ];
     const normName = (restaurant.name || "").trim().toLowerCase();
@@ -358,12 +361,43 @@ export const FieldSales = {
       (restaurant.placeId && r.placeId === restaurant.placeId) ||
       ((r.name || "").trim().toLowerCase() === normName)
     );
-    if (match && match.name && match.name !== restaurant.name) {
-      if (!restaurant.nameEn) restaurant.nameEn = restaurant.name;
-      restaurant.name = match.name;
-      if (restaurant._raw) restaurant._raw["餐馆名称 (Name)"] = match.name;
+    if (match) {
+      if (match.name && match.name !== restaurant.name) {
+        if (!restaurant.nameEn) restaurant.nameEn = restaurant.name;
+        restaurant.name = match.name;
+        if (restaurant._raw) restaurant._raw["餐馆名称 (Name)"] = match.name;
+      }
+      if ((!restaurant.openingHours || restaurant.openingHours === "未提供") && match.openingHours && match.openingHours !== "未提供") {
+        restaurant.openingHours = match.openingHours;
+      }
+      if (!restaurant._raw && match._raw) {
+        restaurant._raw = match._raw;
+      }
+      if (!restaurant.phone && match.phone) {
+        restaurant.phone = match.phone;
+      }
+      if (!restaurant.address && match.address) {
+        restaurant.address = match.address;
+      }
+      if (!restaurant.nameEn && match.nameEn) {
+        restaurant.nameEn = match.nameEn;
+      }
     }
     return restaurant;
+  },
+
+  enrichExistingWaypoints() {
+    if (!Array.isArray(this.routeWaypoints) || this.routeWaypoints.length === 0) return;
+    let changed = false;
+    this.routeWaypoints.forEach(w => {
+      const beforeHours = w.openingHours;
+      this.normalizeRestaurantName(w);
+      if (w.openingHours !== beforeHours) changed = true;
+    });
+    if (changed) {
+      this.saveRouteWaypoints();
+      this.renderRouteWaypoints();
+    }
   },
 
   getFilteredWaypoints() {
@@ -822,7 +856,7 @@ export const FieldSales = {
     return `${usualTime} (${specialParts.join(", ")})`;
   },
 
-  exportWaypointsToExcel() {
+  async exportWaypointsToExcel() {
     const targets = this.selectedWaypointIds.size > 0
       ? this.routeWaypoints.filter(w => this.selectedWaypointIds.has(w._uid))
       : this.routeWaypoints;
@@ -830,6 +864,40 @@ export const FieldSales = {
     if (targets.length === 0) {
       alert(i18n.t("fs_alert_no_waypoints"));
       return;
+    }
+
+    // 1. Normalize and enrich from in-memory cache
+    targets.forEach(w => this.normalizeRestaurantName(w));
+
+    // 2. If any target is still missing openingHours, query backend API
+    const missing = targets.filter(w => (!w.openingHours || w.openingHours === "未提供") && (w.placeId || w.name));
+    if (missing.length > 0) {
+      const api = (typeof window !== "undefined" && window.Api) ? window.Api : (typeof Api !== "undefined" ? Api : null);
+      if (api && typeof api.queryRestaurants === "function") {
+        try {
+          await Promise.all(missing.map(async w => {
+            try {
+              const keyword = w.name || w.placeId;
+              const res = await api.queryRestaurants({ keyword, pageSize: 5 });
+              if (res && res.success && Array.isArray(res.data)) {
+                const found = res.data.find(r => 
+                  (w.placeId && r.placeId === w.placeId) || 
+                  ((r.name || "").trim().toLowerCase() === (w.name || "").trim().toLowerCase())
+                );
+                if (found && found.openingHours && found.openingHours !== "未提供") {
+                  w.openingHours = found.openingHours;
+                  if (!w.nameEn && found.nameEn) w.nameEn = found.nameEn;
+                  if (!w.phone && found.phone) w.phone = found.phone;
+                  if (!w.address && found.address) w.address = found.address;
+                }
+              }
+            } catch (e) {
+              console.warn("Failed to fetch opening hours for", w.name, e);
+            }
+          }));
+          this.saveRouteWaypoints();
+        } catch (e) {}
+      }
     }
 
     const exportRows = targets.map((w, idx) => {
