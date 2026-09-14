@@ -170,15 +170,98 @@ assert(visitedSummary.includes('签订合同'), 'Visit records must include outc
 const unvisitedSummary = FieldSales.formatWaypointVisitRecords(wpUnvisited);
 assert.equal(unvisitedSummary, '未拜访', 'Unvisited waypoint should display 未拜访');
 
-// Test export row generation
-FieldSales.routeWaypoints = [wpVisited, wpUnvisited];
+// Test weekday opening hours aggregation (Mon-Fri only, ignore Sat/Sun)
+console.log('4.1. Testing Weekday Opening Hours Aggregation...');
+const hoursAllSame = [
+  'Monday: 11:00 AM – 10:00 PM',
+  'Tuesday: 11:00 AM – 10:00 PM',
+  'Wednesday: 11:00 AM – 10:00 PM',
+  'Thursday: 11:00 AM – 10:00 PM',
+  'Friday: 11:00 AM – 10:00 PM',
+  'Saturday: 11:00 AM – 11:00 PM',
+  'Sunday: 11:00 AM – 9:00 PM'
+].join('\n');
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours(hoursAllSame),
+  '11:00 AM – 10:00 PM',
+  'When Mon-Fri are identical, return clean operating hours ignoring weekend'
+);
+
+const hoursFriLate = [
+  'Monday: 11:00 AM – 10:00 PM',
+  'Tuesday: 11:00 AM – 10:00 PM',
+  'Wednesday: 11:00 AM – 10:00 PM',
+  'Thursday: 11:00 AM – 10:00 PM',
+  'Friday: 11:00 AM – 11:00 PM',
+  'Saturday: 11:00 AM – 11:00 PM',
+  'Sunday: 11:00 AM – 10:00 PM'
+].join('\n');
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours(hoursFriLate),
+  '11:00 AM – 10:00 PM (周五: 11:00 AM – 11:00 PM)',
+  'Friday special hours should be annotated in parentheses'
+);
+
+const hoursMonClosed = [
+  'Monday: Closed',
+  'Tuesday: 11:00 AM – 10:00 PM',
+  'Wednesday: 11:00 AM – 10:00 PM',
+  'Thursday: 11:00 AM – 10:00 PM',
+  'Friday: 11:00 AM – 10:00 PM',
+  'Saturday: 11:00 AM – 11:00 PM',
+  'Sunday: 11:00 AM – 10:00 PM'
+].join('\n');
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours(hoursMonClosed),
+  '11:00 AM – 10:00 PM (周一休息)',
+  'Monday closed should be annotated as 周一休息'
+);
+
+const hoursMultiClosedAndSpecial = [
+  'Monday: 休息',
+  'Tuesday: 休息',
+  'Wednesday: 11:30 AM – 9:30 PM',
+  'Thursday: 11:30 AM – 9:30 PM',
+  'Friday: 11:30 AM – 10:30 PM'
+].join('\n');
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours(hoursMultiClosedAndSpecial),
+  '11:30 AM – 9:30 PM (周一、周二休息, 周五: 11:30 AM – 10:30 PM)',
+  'Multiple closed days and special hours should be grouped cleanly'
+);
+
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours('Mon-Sun: 11:00 AM - 10:00 PM'),
+  '11:00 AM - 10:00 PM',
+  'Single line Mon-Sun range prefix should be stripped'
+);
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours('周一至周五: 10:00 - 21:00'),
+  '10:00 - 21:00',
+  'Single line Mon-Fri range prefix should be stripped'
+);
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours('11:00 - 22:00'),
+  '11:00 - 22:00',
+  'Plain single line should be preserved'
+);
+
+// Test export row generation with aggregated hours
+const wpMultiLineHours = {
+  placeId: 'p3',
+  name: '川味香',
+  address: '500 Hwy 7',
+  phone: '905-999-9999',
+  openingHours: hoursFriLate
+};
+FieldSales.routeWaypoints = [wpVisited, wpUnvisited, wpMultiLineHours];
 FieldSales.selectedWaypointIds = new Set(); // none selected -> export all
 
 let exportedWb = null;
 let exportedFileName = null;
 globalThis.window.XLSX = {
   utils: {
-    json_to_sheet: (rows) => ({ '!ref': 'A1:F3', _rows: rows }),
+    json_to_sheet: (rows) => ({ '!ref': 'A1:F4', _rows: rows }),
     book_new: () => ({ Sheets: {}, SheetNames: [] }),
     book_append_sheet: (wb, ws, name) => { wb.Sheets[name] = ws; wb.SheetNames.push(name); }
   },
@@ -189,15 +272,40 @@ FieldSales.exportWaypointsToExcel();
 assert(exportedWb, 'XLSX.writeFile must be called');
 assert(exportedFileName.startsWith('GreenOil_Route_Waypoints_'), 'File name must follow convention');
 const exportedRows = exportedWb.Sheets['Waypoints']._rows;
-assert.equal(exportedRows.length, 2, 'Exported rows count must match waypoints');
+assert.equal(exportedRows.length, 3, 'Exported rows count must match waypoints');
 assert.equal(exportedRows[0]['序号'], 1);
 assert.equal(exportedRows[0]['餐厅名称'], '御品 (Kingsfield Chinese Cuisine)');
 assert.equal(exportedRows[0]['地址'], '280 West Beaver Creek Rd');
 assert.equal(exportedRows[0]['电话'], '905-888-8888');
 assert.equal(exportedRows[0]['营业时间'], '11:00-22:00');
 assert(exportedRows[0]['拜访记录'].includes('已签署月结回收合同'));
+assert.equal(exportedRows[2]['营业时间'], '11:00 AM – 10:00 PM (周五: 11:00 AM – 11:00 PM)');
 
-console.log('PASS: Excel export data construction verified.');
+console.log('PASS: Excel export data construction & weekday hours aggregation verified.');
+
+// -------------------------------------------------------------
+// 4.2. Verify Button Emojis Removed from Translations & UI
+// -------------------------------------------------------------
+console.log('4.2. Verifying Button Emojis Removed...');
+const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+const checkedKeys = [
+  'fs_route_btn_batch_nav',
+  'fs_route_btn_batch_delete',
+  'fs_route_btn_export_excel',
+  'fs_route_nav_btn_full',
+  'fs_route_nav_btn_open_all',
+  'fs_route_nav_btn_leg'
+];
+
+for (const lang of ['zh', 'en', 'ko']) {
+  i18n.currentLang = lang;
+  for (const k of checkedKeys) {
+    const text = i18n.t(k);
+    assert(!emojiRegex.test(text), `Translation key ${k} in ${lang} must not contain emojis (got: ${text})`);
+  }
+}
+i18n.currentLang = 'zh';
+console.log('PASS: All button translation texts are emoji-free.');
 
 // -------------------------------------------------------------
 // 5. Test Google Maps Slash URL & Segmented Navigation

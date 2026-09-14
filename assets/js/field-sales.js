@@ -617,7 +617,7 @@ export const FieldSales = {
             </div>
           </div>
           <button class="btn btn-sm btn-primary fs-btn-leg-nav" data-url="${encodeURI(leg.url)}" style="white-space: nowrap; font-size: 0.8rem; padding: 0.4rem 0.75rem; background: #2563eb; border-color: #2563eb; color: white;">
-            ${i18n.t("fs_route_nav_btn_leg") || "📍 开启此段导航"}
+            ${i18n.t("fs_route_nav_btn_leg") || "开启此段导航"}
           </button>
         </div>
       `).join("");
@@ -698,6 +698,102 @@ export const FieldSales = {
     }).join("\r\n");
   },
 
+  formatWeekdayOpeningHours(rawHours) {
+    if (!rawHours || typeof rawHours !== "string") return "未提供";
+    const cleanStr = rawHours.replace(/[\u202F\u00A0]/g, " ").trim();
+    if (!cleanStr || cleanStr === "未提供" || cleanStr === "无") return "未提供";
+
+    const lines = cleanStr.split(/[\r\n;]+/).map(s => s.trim()).filter(Boolean);
+
+    const WEEKDAYS = [
+      { dayIndex: 1, name: "周一", regex: /^(monday\b|mon\b|星期一|周一)(?![~–\-至到])[\s:：]*/i },
+      { dayIndex: 2, name: "周二", regex: /^(tuesday\b|tue\b|星期二|周二)(?![~–\-至到])[\s:：]*/i },
+      { dayIndex: 3, name: "周三", regex: /^(wednesday\b|wed\b|星期三|周三)(?![~–\-至到])[\s:：]*/i },
+      { dayIndex: 4, name: "周四", regex: /^(thursday\b|thu\b|星期四|周四)(?![~–\-至到])[\s:：]*/i },
+      { dayIndex: 5, name: "周五", regex: /^(friday\b|fri\b|星期五|周五)(?![~–\-至到])[\s:：]*/i }
+    ];
+
+    const parsedDays = new Map();
+
+    for (const line of lines) {
+      for (const wd of WEEKDAYS) {
+        if (wd.regex.test(line)) {
+          let timePart = line.replace(wd.regex, "").trim();
+          if (/^(closed|close|休息|打烊|不营业|off)$/i.test(timePart) || timePart.includes("closed") || timePart.includes("休息")) {
+            timePart = "休息";
+          }
+          parsedDays.set(wd.dayIndex, { name: wd.name, time: timePart });
+          break;
+        }
+      }
+    }
+
+    // If weekday entries are not found or fewer than 3 found (e.g. single line range or malformed)
+    if (parsedDays.size < 3) {
+      const prefixPattern = /^(?:mon(?:day)?\s*[-–~至到]\s*(?:sun(?:day)?|fri(?:day)?)|周一\s*[-–~至到]\s*(?:周日|周天|星期日|星期天|周五|星期五))[\s:：]*/i;
+      const simplified = cleanStr.replace(prefixPattern, "").trim();
+      return simplified || cleanStr;
+    }
+
+    // We have at least 3 weekdays. Construct list for Mon-Fri (1..5)
+    const weekdayList = [1, 2, 3, 4, 5].map(idx => {
+      return parsedDays.get(idx) || null;
+    });
+
+    // Count frequencies of known times
+    const freqMap = new Map();
+    for (const item of weekdayList) {
+      if (item && item.time) {
+        freqMap.set(item.time, (freqMap.get(item.time) || 0) + 1);
+      }
+    }
+
+    // Find most frequent time (usual time). Prefer non-"休息" if counts tie
+    let usualTime = "";
+    let maxScore = -1;
+    for (const [time, count] of freqMap.entries()) {
+      const score = count * 10 + (time !== "休息" ? 1 : 0);
+      if (score > maxScore) {
+        maxScore = score;
+        usualTime = time;
+      }
+    }
+
+    // Fill any missing weekday with usualTime
+    for (let i = 0; i < 5; i++) {
+      if (!weekdayList[i]) {
+        weekdayList[i] = { name: WEEKDAYS[i].name, time: usualTime };
+      }
+    }
+
+    // Check if all 5 weekdays equal usualTime
+    const specialDays = weekdayList.filter(item => item.time !== usualTime);
+    if (specialDays.length === 0) {
+      return usualTime;
+    }
+
+    // Group special days by their time
+    const specialDaysByTime = new Map();
+    for (const item of specialDays) {
+      if (!specialDaysByTime.has(item.time)) {
+        specialDaysByTime.set(item.time, []);
+      }
+      specialDaysByTime.get(item.time).push(item.name);
+    }
+
+    const specialParts = [];
+    for (const [time, dayNames] of specialDaysByTime.entries()) {
+      const daysStr = dayNames.join("、");
+      if (time === "休息") {
+        specialParts.push(`${daysStr}休息`);
+      } else {
+        specialParts.push(`${daysStr}: ${time}`);
+      }
+    }
+
+    return `${usualTime} (${specialParts.join(", ")})`;
+  },
+
   exportWaypointsToExcel() {
     const targets = this.selectedWaypointIds.size > 0
       ? this.routeWaypoints.filter(w => this.selectedWaypointIds.has(w._uid))
@@ -710,7 +806,8 @@ export const FieldSales = {
 
     const exportRows = targets.map((w, idx) => {
       const visitSummary = this.formatWaypointVisitRecords(w);
-      const openHours = w.openingHours || (w._raw && w._raw["营业时间 (Opening Hours)"]) || "未提供";
+      const rawHours = w.openingHours || (w._raw && w._raw["营业时间 (Opening Hours)"]) || "未提供";
+      const openHours = this.formatWeekdayOpeningHours(rawHours);
       const phone = (w.phone && w.phone !== "无") ? w.phone : "";
       const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` (${w.nameEn})` : "");
 
