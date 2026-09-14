@@ -246,6 +246,34 @@ assert.equal(
   'Plain single line should be preserved'
 );
 
+// Test glued strings without newlines (e.g. from raw database/Excel imports)
+const gluedCafe = 'Monday: 9:00 AM – 8:00 PMTuesday: 9:00 AM – 8:00 PMWednesday: 9:00 AM – 8:00 PMThursday: 9:00 AM – 8:00 PMFriday: 9:00 AM – 8:00 PMSaturday: 9:00 AM – 8:00 PMSunday: 9:00 AM – 8:00 PM';
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours(gluedCafe),
+  '9:00 AM – 8:00 PM',
+  'Glued string without newlines should be successfully split and aggregated'
+);
+
+const gluedIsland = 'Monday: ClosedTuesday: 11:00 AM – 7:00 PMWednesday: 11:00 AM – 7:00 PMThursday: 11:00 AM – 7:00 PMFriday: 11:00 AM – 7:00 PMSaturday: 11:00 AM – 7:00 PMSunday: Closed';
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours(gluedIsland),
+  '11:00 AM – 7:00 PM (周一休息)',
+  'Glued string with closed Monday should be parsed with special day'
+);
+
+// Test array of lines
+assert.equal(
+  FieldSales.formatWeekdayOpeningHours([
+    'Monday: 10:00 AM - 9:00 PM',
+    'Tuesday: 10:00 AM - 9:00 PM',
+    'Wednesday: 10:00 AM - 9:00 PM',
+    'Thursday: 10:00 AM - 9:00 PM',
+    'Friday: 10:00 AM - 10:00 PM'
+  ]),
+  '10:00 AM - 9:00 PM (周五: 10:00 AM - 10:00 PM)',
+  'Array of strings should be supported'
+);
+
 // Test export row generation with aggregated hours
 const wpMultiLineHours = {
   placeId: 'p3',

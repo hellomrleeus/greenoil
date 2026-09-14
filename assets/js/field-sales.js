@@ -699,9 +699,37 @@ export const FieldSales = {
   },
 
   formatWeekdayOpeningHours(rawHours) {
-    if (!rawHours || typeof rawHours !== "string") return "未提供";
-    const cleanStr = rawHours.replace(/[\u202F\u00A0]/g, " ").trim();
+    if (!rawHours) return "未提供";
+
+    // Handle array or object formats if passed
+    let rawStr = "";
+    if (typeof rawHours === "string") {
+      rawStr = rawHours;
+    } else if (Array.isArray(rawHours)) {
+      rawStr = rawHours.join("\n");
+    } else if (typeof rawHours === "object") {
+      if (Array.isArray(rawHours.weekdayDescriptions)) {
+        rawStr = rawHours.weekdayDescriptions.join("\n");
+      } else {
+        rawStr = Object.entries(rawHours).map(([k, v]) => `${k}: ${v}`).join("\n");
+      }
+    } else {
+      rawStr = String(rawHours);
+    }
+
+    // 1. Normalize spaces, hidden zero-width chars and tabs
+    let cleanStr = rawStr
+      .replace(/[\u202F\u00A0\u2009\u200A\u3000]/g, " ")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "")
+      .trim();
+
     if (!cleanStr || cleanStr === "未提供" || cleanStr === "无") return "未提供";
+
+    // 2. Pre-process: Insert newline before any day name if concatenated without newline (e.g. "...8:00 PMTuesday:...")
+    cleanStr = cleanStr.replace(
+      /([^\r\n])\s*(?=(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon\b|tue\b|wed\b|thu\b|fri\b|sat\b|sun\b|星期[一二三四五六日天]|周[一二三四五六日天])[\s:：])/gi,
+      "$1\n"
+    );
 
     const lines = cleanStr.split(/[\r\n;]+/).map(s => s.trim()).filter(Boolean);
 
@@ -718,7 +746,7 @@ export const FieldSales = {
     for (const line of lines) {
       for (const wd of WEEKDAYS) {
         if (wd.regex.test(line)) {
-          let timePart = line.replace(wd.regex, "").trim();
+          let timePart = line.replace(wd.regex, "").trim().replace(/\s+/g, " ");
           if (/^(closed|close|休息|打烊|不营业|off)$/i.test(timePart) || timePart.includes("closed") || timePart.includes("休息")) {
             timePart = "休息";
           }
