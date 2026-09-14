@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { Api } from '../assets/js/api.js';
 import { FieldSales } from '../assets/js/field-sales.js';
 import { MapExplorer } from '../assets/js/map-explorer.js';
 import { i18n } from '../assets/js/i18n.js';
@@ -402,5 +403,82 @@ assert(legs[2].url.startsWith(`https://www.google.com/maps/dir/${encodeURICompon
 assert(legs[2].url.includes(encodeURIComponent('餐馆 22, Street Address 22, Toronto, ON')));
 
 console.log('PASS: Google Maps Slash URL and Segmented Navigation verified.');
+
+// -------------------------------------------------------------
+// 6. Test Sales Visit Opening Hours Sync to Database
+// -------------------------------------------------------------
+console.log('6. Testing Sales Visit Opening Hours Sync...');
+let updatedRestArgs = null;
+Api.updateRestaurant = async (placeId, name, updates) => {
+  updatedRestArgs = { placeId, name, updates };
+  return { success: true };
+};
+Api.createSale = async (record) => ({ success: true, record });
+Api.updateSale = async (id, record) => ({ success: true, record });
+globalThis.window.Api = Api;
+
+const restToEdit = {
+  placeId: 'ChIJ_zen_test',
+  name: 'Zen Japanese Restaurant',
+  address: '7634 Woodbine Ave',
+  phone: '(905) 604-7211',
+  openingHours: '12:00–14:30'
+};
+FieldSales.routeWaypoints = [{ ...restToEdit }];
+FieldSales.selectedRestaurantForSale = restToEdit;
+
+// Mock DOM elements for visit modal
+globalThis.document = {
+  documentElement: { lang: 'en' },
+  querySelectorAll: () => [],
+  getElementById: (id) => {
+    if (id === 'fsRecordRestSelect') return { value: 'ChIJ_zen_test' };
+    if (id === 'fsRecordTime') return { value: '2026-09-14T10:00' };
+    if (id === 'fsEditRestPhone') return { value: '(905) 604-7211' };
+    if (id === 'fsEditRestAddress') return { value: '7634 Woodbine Ave' };
+    if (id === 'fsEditRestContact') return { value: 'Manager Tanaka' };
+    if (id === 'fsEditRestHours') return { value: '12:00–14:30, 17:30–22:00 (周一休息)' };
+    if (id === 'fsSyncRestToKv') return { checked: true };
+    if (id === 'fsBtnSubmitRecord') return { textContent: '' };
+    if (id === 'fsRecordModalOverlay') return { classList: { remove: () => {} } };
+    return null;
+  },
+  querySelector: (sel) => {
+    if (sel.includes('fsMethod')) return { value: 'onsite' };
+    if (sel.includes('fsOutcome')) return { value: 'interested' };
+    return null;
+  }
+};
+
+await FieldSales.handleSaveRecord();
+
+assert(updatedRestArgs, 'Api.updateRestaurant must be called when sync is checked');
+assert.equal(updatedRestArgs.placeId, 'ChIJ_zen_test');
+assert.equal(updatedRestArgs.updates.openingHours, '12:00–14:30, 17:30–22:00 (周一休息)', 'Opening hours must be synced in updates');
+assert.equal(updatedRestArgs.updates.contactPerson, 'Manager Tanaka');
+assert.equal(FieldSales.routeWaypoints[0].openingHours, '12:00–14:30, 17:30–22:00 (周一休息)', 'Waypoint openingHours in route must be updated');
+console.log('PASS: Sales visit opening hours sync to database verified.');
+
+// -------------------------------------------------------------
+// 7. Verify KV Terminology Completely Removed from UI Translations
+// -------------------------------------------------------------
+console.log('7. Verifying KV Terminology Removed from UI...');
+const i18nKeysToCheck = [
+  'legend_in_kv',
+  'legend_new_place',
+  'btn_batch_add_to_kv',
+  'map_filter_kv',
+  'th_kv_status',
+  'fs_edit_rest_section',
+  'fs_rest_sync_tip'
+];
+['zh', 'en', 'ko'].forEach(lang => {
+  i18n.setLanguage(lang);
+  for (const key of i18nKeysToCheck) {
+    const text = i18n.t(key);
+    assert(!text.includes('KV'), `Translation for "${key}" in "${lang}" must not contain "KV" (was: "${text}")`);
+  }
+});
+console.log('PASS: All UI translations are free of legacy "KV" terminology.');
 
 console.log('ALL ENHANCED ROUTE WAYPOINT TESTS PASSED!');

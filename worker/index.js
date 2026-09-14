@@ -558,7 +558,7 @@ async function handleUpdateRestaurant(request, env, corsHeaders) {
 
       return new Response(JSON.stringify({
         success: true,
-        message: "餐馆信息已成功更新并同步至云端 KV",
+        message: "餐馆信息已成功更新并同步至数据库",
         key,
         updates: patches.updated[key]
       }), {
@@ -659,8 +659,8 @@ async function handleAddRestaurant(request, env, corsHeaders) {
         success: true,
         count: normalizedList.length,
         message: normalizedList.length === 1 
-          ? "新餐馆已成功添加至云端 KV 数据库" 
-          : `已成功将 ${normalizedList.length} 家新餐馆批量保存至云端 KV 数据库`,
+          ? "新餐馆已成功添加至数据库" 
+          : `已成功将 ${normalizedList.length} 家新餐馆批量保存至数据库`,
         restaurant: normalizedList[0],
         restaurants: normalizedList
       }), {
@@ -797,7 +797,7 @@ async function handleCreateSale(request, env, corsHeaders) {
 
       return new Response(JSON.stringify({
         success: true,
-        message: "拜访记录已成功保存到云端 KV",
+        message: "拜访记录已成功保存到数据库",
         record: newRecord
       }), {
         status: 200,
@@ -1534,7 +1534,7 @@ async function handleSaveRouteWaypoints(request, env, corsHeaders) {
       await env.RESTAURANTS_KV.put(KV_ROUTE_KEY, JSON.stringify(routeData));
       return new Response(JSON.stringify({
         success: true,
-        message: "路线途径站点已成功保存到云端 KV",
+        message: "路线途径站点已成功保存到云端数据库",
         data: routeData
       }), {
         status: 200,

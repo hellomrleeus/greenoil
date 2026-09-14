@@ -977,8 +977,8 @@
             <div class="map-explorer-map-column">
               <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
               <div class="map-floating-legend">
-                <span class="legend-item"><span class="legend-dot in-kv"></span><span data-i18n="legend_in_kv">已在KV库</span></span>
-                <span class="legend-item"><span class="legend-dot new-place"></span><span data-i18n="legend_new_place">未在KV库</span></span>
+                <span class="legend-item"><span class="legend-dot in-kv"></span><span data-i18n="legend_in_kv">已入库</span></span>
+                <span class="legend-item"><span class="legend-dot new-place"></span><span data-i18n="legend_new_place">未入库</span></span>
               </div>
             </div>
 
@@ -1002,8 +1002,8 @@
                     <strong class="selection-count-badge" id="mapSelectedCountNum">0</strong>
                     <button type="button" class="btn-clear-sel" id="mapBtnClearSelection" data-i18n="btn_clear_selection">清空选择</button>
                   </div>
-                  <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669; white-space: nowrap; flex-shrink: 0;" title="批量保存到KV" data-i18n-title="btn_batch_add_to_kv">
-                    <span data-i18n="btn_batch_add_to_kv">保存至KV</span>
+                  <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669; white-space: nowrap; flex-shrink: 0;" title="批量保存到数据库" data-i18n-title="btn_batch_add_to_kv">
+                    <span data-i18n="btn_batch_add_to_kv">保存至数据库</span>
                   </button>
                   <button class="btn btn-primary btn-sm" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb; white-space: nowrap; flex-shrink: 0;" title="规划路线" data-i18n-title="btn_plan_route">
                     <span data-i18n="btn_plan_route">规划路线</span>
@@ -1172,9 +1172,9 @@
           </div>
         </div>
 
-        <!-- Editable Restaurant Info (Syncs to KV) -->
+        <!-- Editable Restaurant Info (Syncs to DB) -->
         <div class="fs-edit-rest-box">
-          <div class="fs-edit-rest-title" data-i18n="fs_edit_rest_section">现场核对 / 修改餐馆资料 (自动同步至 KV)</div>
+          <div class="fs-edit-rest-title" data-i18n="fs_edit_rest_section">现场核对 / 修改餐馆资料 (自动同步至数据库)</div>
           <div class="fs-form-row">
             <div class="form-group" style="flex: 1; margin-bottom: 0.5rem;">
               <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_phone">联系电话</label>
@@ -1189,9 +1189,13 @@
             <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_address">详细地址</label>
             <input type="text" class="form-input" id="fsEditRestAddress" data-i18n-placeholder="fs_rest_address_placeholder" placeholder="详细街道地址与门牌">
           </div>
+          <div class="form-group" style="margin-bottom: 0.5rem;">
+            <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_hours">营业时间</label>
+            <textarea class="form-input" id="fsEditRestHours" data-i18n-placeholder="fs_rest_hours_placeholder" placeholder="例: 11:00-22:00 或按星期分行填入" rows="2" style="font-size: 0.8rem; resize: vertical;"></textarea>
+          </div>
           <label class="fs-checkbox-label" style="font-size: 0.8rem; color: var(--primary-dark);">
             <input type="checkbox" id="fsSyncRestToKv" class="custom-checkbox" checked>
-            <span data-i18n="fs_rest_sync_tip">保存记录时同步修改餐馆数据库 (云端 KV)</span>
+            <span data-i18n="fs_rest_sync_tip">保存记录时同步修改餐馆数据库</span>
           </label>
         </div>
 

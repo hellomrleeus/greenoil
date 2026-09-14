@@ -1220,6 +1220,7 @@ export const FieldSales = {
         placeId: existingRecord.restaurantId,
         region: existingRecord.region
       };
+      this.normalizeRestaurantName(targetRest);
     } else if ((!targetRest || !this.routeWaypoints.some(w => (w.placeId || w.name) === (targetRest.placeId || targetRest.name))) && this.routeWaypoints && this.routeWaypoints.length > 0) {
       // Prioritize the first unvisited stop in the route planning list
       targetRest = this.routeWaypoints.find(w => !w.visited) || this.routeWaypoints[0];
@@ -1283,10 +1284,12 @@ export const FieldSales = {
     const inPhone = document.getElementById("fsEditRestPhone");
     const inAddress = document.getElementById("fsEditRestAddress");
     const inContact = document.getElementById("fsEditRestContact");
+    const inHours = document.getElementById("fsEditRestHours");
 
     if (inPhone) inPhone.value = rest ? (rest.phone || "") : "";
     if (inAddress) inAddress.value = rest ? (rest.address || "") : "";
     if (inContact) inContact.value = rest ? (rest.contactPerson || "") : "";
+    if (inHours) inHours.value = rest ? (rest.openingHours || (rest._raw && rest._raw["营业时间 (Opening Hours)"]) || "") : "";
   },
 
   updateOutcomeConditionalFields(outcome) {
@@ -1331,11 +1334,13 @@ export const FieldSales = {
     const inPhone = document.getElementById("fsEditRestPhone");
     const inAddress = document.getElementById("fsEditRestAddress");
     const inContact = document.getElementById("fsEditRestContact");
+    const inHours = document.getElementById("fsEditRestHours");
     const chkSyncKv = document.getElementById("fsSyncRestToKv");
 
     const updatedPhone = inPhone ? inPhone.value.trim() : rest.phone;
     const updatedAddress = inAddress ? inAddress.value.trim() : rest.address;
     const updatedContact = inContact ? inContact.value.trim() : "";
+    const updatedHours = inHours ? inHours.value.trim() : (rest.openingHours || "");
 
     const record = {
       id: this.editingRecordId || `sale_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -1369,12 +1374,13 @@ export const FieldSales = {
       res = await Api.createSale(record);
     }
 
-    // 2. Sync modified restaurant info to KV if checked
+    // 2. Sync modified restaurant info to Database if checked
     if (chkSyncKv && chkSyncKv.checked) {
       const restUpdates = {};
       if (updatedPhone && updatedPhone !== rest.phone) restUpdates.phone = updatedPhone;
       if (updatedAddress && updatedAddress !== rest.address) restUpdates.address = updatedAddress;
       if (updatedContact) restUpdates.contactPerson = updatedContact;
+      if (updatedHours && updatedHours !== rest.openingHours) restUpdates.openingHours = updatedHours;
 
       if (Object.keys(restUpdates).length > 0) {
         await Api.updateRestaurant(rest.placeId, rest.name, restUpdates);
@@ -1382,6 +1388,45 @@ export const FieldSales = {
         rest.phone = updatedPhone;
         rest.address = updatedAddress;
         rest.contactPerson = updatedContact;
+        if (updatedHours) {
+          rest.openingHours = updatedHours;
+          if (rest._raw) rest._raw["营业时间 (Opening Hours)"] = updatedHours;
+        }
+
+        // Also update across route waypoints and cached datasets
+        if (this.routeWaypoints) {
+          const wp = this.routeWaypoints.find(w => (w.placeId && w.placeId === rest.placeId) || (w.name && w.name === rest.name));
+          if (wp) {
+            wp.phone = updatedPhone;
+            wp.address = updatedAddress;
+            if (updatedHours) wp.openingHours = updatedHours;
+            this.saveRouteWaypoints();
+          }
+        }
+        if (Array.isArray(this.cachedRestaurants)) {
+          const cr = this.cachedRestaurants.find(r => (r.placeId && r.placeId === rest.placeId) || (r.name && r.name === rest.name));
+          if (cr) {
+            cr.phone = updatedPhone;
+            cr.address = updatedAddress;
+            if (updatedHours) cr.openingHours = updatedHours;
+          }
+        }
+        if (window.Restaurants && Array.isArray(window.Restaurants.fullDataset)) {
+          const fr = window.Restaurants.fullDataset.find(r => (r.placeId && r.placeId === rest.placeId) || (r.name && r.name === rest.name));
+          if (fr) {
+            fr.phone = updatedPhone;
+            fr.address = updatedAddress;
+            if (updatedHours) fr.openingHours = updatedHours;
+          }
+        }
+        if (window.MapExplorer && Array.isArray(window.MapExplorer.allRestaurants)) {
+          const mr = window.MapExplorer.allRestaurants.find(r => (r.placeId && r.placeId === rest.placeId) || (r.name && r.name === rest.name));
+          if (mr) {
+            mr.phone = updatedPhone;
+            mr.address = updatedAddress;
+            if (updatedHours) mr.openingHours = updatedHours;
+          }
+        }
       }
     }
 

@@ -66,9 +66,10 @@ export async function updateRestaurant(db,key,updates,headers) {
   delete patch.placeId;
   const entries=Object.entries(patch);
   if (!entries.length) return json({success:false,error:'No updates provided'},headers,400);
-  const paths=entries.flatMap(([key,value])=>['$.'+key,JSON.stringify(value)]);
-  const sql=`UPDATE restaurants SET data=json_set(data,${entries.map(()=> '?,json(?)').join(',')}) WHERE id=?`;
-  const results=await db.batch([db.prepare(sql).bind(...paths,key),stamp(db)]);
+  const paths=entries.flatMap(([k,value])=>['$.'+k,JSON.stringify(value)]);
+  const normKey=(key||'').trim().toLowerCase();
+  const sql=`UPDATE restaurants SET data=json_set(data,${entries.map(()=> '?,json(?)').join(',')}) WHERE id=? OR name_key=?`;
+  const results=await db.batch([db.prepare(sql).bind(...paths,key,normKey),stamp(db)]);
   if(!results[0].meta.changes) return json({success:false,error:'Restaurant not found'},headers,404);
   return json({success:true,key,updates:patch},headers);
 }

@@ -2221,8 +2221,8 @@ export const MapExplorer = {
     const txtUnvisited = lang === "en" ? "Unvisited" : (lang === "ko" ? "미방문" : "未拜访");
     const txtLogged = lang === "en" ? "Logged" : (lang === "ko" ? "기록됨" : "已记录");
     const txtRecentVisit = lang === "en" ? "Recent visit" : (lang === "ko" ? "최근 방문" : "最近拜访");
-    const txtSaveKv = lang === "en" ? "Save to KV" : (lang === "ko" ? "KV 저장" : "保存至KV");
-    const txtSaveKvTitle = lang === "en" ? "Save to KV Database" : (lang === "ko" ? "KV 데이터베이스에 저장" : "立即一键保存到云端KV");
+    const txtSaveKv = lang === "en" ? "Save to DB" : (lang === "ko" ? "데이터베이스 저장" : "保存至数据库");
+    const txtSaveKvTitle = lang === "en" ? "Save to Database" : (lang === "ko" ? "데이터베이스에 저장" : "立即一键保存到数据库");
     const txtLogVisit = lang === "en" ? "Log Visit" : (lang === "ko" ? "방문 기록" : "拜访记录");
     const txtLogVisitTitle = lang === "en" ? "Log on-site visit" : (lang === "ko" ? "현장 방문 기록" : "登记现场拜访记录");
     const txtNav = lang === "en" ? "Directions" : (lang === "ko" ? "길찾기" : "导航");
@@ -2374,10 +2374,10 @@ export const MapExplorer = {
     const photoInfo = this.getRestaurantPhoto(r);
 
     const kvBadge = r.inKV 
-      ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:600;">✓ ${lang === "en" ? "In KV" : (lang === "ko" ? "KV 등록" : "已在KV")}</span>`
-      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:700;">${lang === "en" ? "Not in KV" : (lang === "ko" ? "KV 미등록" : "未在KV库")}</span>`;
+      ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:600;">✓ ${lang === "en" ? "In DB" : (lang === "ko" ? "등록 매장" : "已入库")}</span>`
+      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:700;">${lang === "en" ? "Not in DB" : (lang === "ko" ? "미등록" : "未入库")}</span>`;
 
-    const saveText = lang === "en" ? "Save to KV" : (lang === "ko" ? "KV 저장" : "保存至KV");
+    const saveText = lang === "en" ? "Save to DB" : (lang === "ko" ? "DB 저장" : "保存至数据库");
     const navText = lang === "en" ? "Directions" : (lang === "ko" ? "길찾기" : "导航");
     const noAddrText = lang === "en" ? "No address" : (lang === "ko" ? "주소 없음" : "暂无地址");
 
@@ -2491,9 +2491,9 @@ export const MapExplorer = {
     const lang = this.getCurrentLanguage();
 
     if (r.inKV) {
-      alert(lang === "en" ? "This restaurant is already in the KV database!" :
-            lang === "ko" ? "이미 KV 데이터베이스에 등록된 매장입니다!" :
-            "该餐馆已在 KV 数据库中！");
+      alert(lang === "en" ? "This restaurant is already in the database!" :
+            lang === "ko" ? "이미 데이터베이스에 등록된 매장입니다!" :
+            "该餐馆已在数据库中！");
       return;
     }
 
@@ -2507,9 +2507,9 @@ export const MapExplorer = {
       this.renderMarkers();
       this.renderPlacesCards();
       this.updateResultsSummary();
-      const successMsg = lang === "en" ? `🎉 Successfully added [${r.name}] to cloud KV database!` :
-                         lang === "ko" ? `🎉 [${r.name}] 매장이 클라우드 KV 데이터베이스에 저장되었습니다!` :
-                         `🎉 餐馆【${r.name}】已成功添加至云端 KV 数据库！`;
+      const successMsg = lang === "en" ? `🎉 Successfully added [${r.name}] to database!` :
+                         lang === "ko" ? `🎉 [${r.name}] 매장이 데이터베이스에 저장되었습니다!` :
+                         `🎉 餐馆【${r.name}】已成功添加至数据库！`;
       alert(successMsg);
     } else {
       const failMsg = lang === "en" ? "Failed to add: " : (lang === "ko" ? "추가 실패: " : "添加失败: ");
@@ -2622,24 +2622,24 @@ export const MapExplorer = {
 
     if (unsaved.length === 0) {
       if (hasSelection) {
-        alert(lang === "en" ? "All selected restaurants are already in KV database!" :
-              lang === "ko" ? "선택한 모든 매장이 이미 KV 데이터베이스에 등록되어 있습니다!" :
-              "所选餐馆均已存在于 KV 数据库中，无需重复添加！");
+        alert(lang === "en" ? "All selected restaurants are already in the database!" :
+              lang === "ko" ? "선택한 모든 매장이 이미 데이터베이스에 등록되어 있습니다!" :
+              "所选餐馆均已存在于数据库中，无需重复添加！");
       } else {
-        alert(lang === "en" ? "All restaurants in current view are already in KV database!" :
-              lang === "ko" ? "현재 목록의 모든 매장이 이미 KV 데이터베이스에 등록되어 있습니다!" :
-              "当前列表中的所有餐馆都已存在于 KV 数据库中，无需重复添加！");
+        alert(lang === "en" ? "All restaurants in current view are already in the database!" :
+              lang === "ko" ? "현재 목록의 모든 매장이 이미 데이터베이스에 등록되어 있습니다!" :
+              "当前列表中的所有餐馆都已存在于数据库中，无需重复添加！");
       }
       return;
     }
 
     const confirmMsg = hasSelection
-      ? (lang === "en" ? `Found ${unsaved.length} selected restaurants not in KV database.\nBatch save these ${unsaved.length} restaurants to KV database?` :
-         lang === "ko" ? `선택한 매장 중 KV 미등록 매장 ${unsaved.length}개가 발견되었습니다.\n클라우드 KV 데이터베이스에 일괄 저장하시겠습니까?` :
-         `检测到所选项中有 ${unsaved.length} 家未在KV库餐馆。\n是否将这 ${unsaved.length} 家餐馆批量保存到云端 KV 数据库？`)
-      : (lang === "en" ? `Found ${unsaved.length} restaurants not in KV database.\nBatch save all ${unsaved.length} restaurants to KV database?` :
-         lang === "ko" ? `KV 미등록 매장 ${unsaved.length}개가 발견되었습니다.\n${unsaved.length}개 매장을 클라우드 KV 데이터베이스에 일괄 저장하시겠습니까?` :
-         `检测到当前列表共有 ${unsaved.length} 家未在KV库餐馆。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到云端 KV 数据库？`);
+      ? (lang === "en" ? `Found ${unsaved.length} selected restaurants not in database.\nBatch save these ${unsaved.length} restaurants to database?` :
+         lang === "ko" ? `선택한 매장 중 미등록 매장 ${unsaved.length}개가 발견되었습니다.\n데이터베이스에 일괄 저장하시겠습니까?` :
+         `检测到所选项中有 ${unsaved.length} 家未入库餐馆。\n是否将这 ${unsaved.length} 家餐馆批量保存到数据库？`)
+      : (lang === "en" ? `Found ${unsaved.length} restaurants not in database.\nBatch save all ${unsaved.length} restaurants to database?` :
+         lang === "ko" ? `미등록 매장 ${unsaved.length}개가 발견되었습니다.\n${unsaved.length}개 매장을 데이터베이스에 일괄 저장하시겠습니까?` :
+         `检测到当前列表共有 ${unsaved.length} 家未入库餐馆。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到数据库？`);
 
     if (!confirm(confirmMsg)) {
       return;
@@ -2658,9 +2658,9 @@ export const MapExplorer = {
         this.renderPlacesCards();
         this.updateResultsSummary();
         this.updateSelectionUI();
-        const successMsg = lang === "en" ? `🎉 Successfully batch saved ${unsaved.length} restaurants to cloud KV database!` :
-                           lang === "ko" ? `🎉 매장 ${unsaved.length}개가 클라우드 KV 데이터베이스에 일괄 저장되었습니다!` :
-                           `🎉 成功将 ${unsaved.length} 家餐馆批量保存至云端 KV 数据库！`;
+        const successMsg = lang === "en" ? `🎉 Successfully batch saved ${unsaved.length} restaurants to database!` :
+                           lang === "ko" ? `🎉 매장 ${unsaved.length}개가 데이터베이스에 일괄 저장되었습니다!` :
+                           `🎉 成功将 ${unsaved.length} 家餐馆批量保存至数据库！`;
         alert(successMsg);
       } else {
         const failMsg = lang === "en" ? "Batch save failed: " : (lang === "ko" ? "일괄 저장 실패: " : "批量保存失败: ");
