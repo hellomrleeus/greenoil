@@ -87,7 +87,12 @@ const mockElements = {
   mapCategorySelect: { value: '' },
   mapVisitedSelect: { value: '' },
   mapOutcomeSelect: { value: '' },
-  mapKeywordInput: { value: '' }
+  mapKeywordInput: { value: '' },
+  popoverActiveTagsRow: { innerHTML: '' },
+  popoverNearbySection: { style: {} },
+  popoverCityPills: { innerHTML: '' },
+  popoverNeighborhoodPills: { innerHTML: '' },
+  popoverNeighborhoodSection: { style: {}, querySelector: () => null }
 };
 
 globalThis.document = {
@@ -102,5 +107,11 @@ assert.equal(mockElements.mapVisitedSelect.value, 'unvisited');
 assert.equal(mockElements.mapOutcomeSelect.value, 'interested');
 assert.equal(mockElements.mapKeywordInput.value, 'chicken');
 
-console.log('PASS: DOM controls synchronization from restored state verified.');
+// 6. Verify renderPopover runs without error
+assert.doesNotThrow(() => {
+  MapExplorer.renderPopover();
+}, 'renderPopover must execute without ReferenceError');
+assert(mockElements.popoverCityPills.innerHTML.includes('士嘉堡'), 'Popover city pills must render Scarborough');
+
+console.log('PASS: DOM controls synchronization and renderPopover verified.');
 console.log('ALL SCARBOROUGH & PERSISTENCE TESTS PASSED!');

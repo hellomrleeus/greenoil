@@ -855,6 +855,8 @@ export const MapExplorer = {
     }
 
     // 4. Render Neighborhoods Pills (Sub-districts / Official Municipal Boundaries)
+    const nbPillsRow = document.getElementById("popoverNeighborhoodPills");
+    const nbSection = document.getElementById("popoverNeighborhoodSection");
     if (nbPillsRow) {
       const isAllCity = this.activeCityIds.has("all");
       const candidateNbs = isAllCity ? allNbs : allNbs.filter(nb =>
