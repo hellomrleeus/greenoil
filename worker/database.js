@@ -99,5 +99,18 @@ export async function markSavedPlaces(db, places) {
   if(!places.length) return;
   const statements=places.map(p=>db.prepare(`SELECT r.data,s.id AS sale_id,s.outcome,s.visit_time ${joined} WHERE r.id=? OR r.name_key=? LIMIT 1`).bind(p.placeId||'',(p.name||'').trim().toLowerCase()));
   const results=await db.batch(statements);
-  results.forEach((res,i)=>{const row=res.results[0];if(row) Object.assign(places[i],{inKV:true,isVisited:!!row.sale_id,lastOutcome:row.sale_id?(row.outcome||'有意向/跟进中'):'未拜访',lastVisitTime:row.visit_time||''});});
+  results.forEach((res,i)=>{
+    const row=res.results[0];
+    if(row) {
+      try {
+        const savedData = JSON.parse(row.data);
+        if (savedData?.name) {
+          if (!places[i].nameEn) places[i].nameEn = places[i].name;
+          places[i].name = savedData.name;
+          if (places[i]._raw) places[i]._raw["餐馆名称 (Name)"] = savedData.name;
+        }
+      } catch(e) {}
+      Object.assign(places[i],{inKV:true,isVisited:!!row.sale_id,lastOutcome:row.sale_id?(row.outcome||'有意向/跟进中'):'未拜访',lastVisitTime:row.visit_time||''});
+    }
+  });
 }

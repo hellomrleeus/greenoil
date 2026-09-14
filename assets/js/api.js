@@ -257,9 +257,9 @@ export const Api = {
   /**
    * Search Google Maps Places by Keyword (Proxy)
    */
-  async getGooglePlaceDetails(placeId) {
+  async getGooglePlaceDetails(placeId, lang = "zh-CN") {
     try {
-      const response = await fetch(`${this.getWorkerUrl()}/api/places/details?placeId=${encodeURIComponent(placeId)}`, {
+      const response = await fetch(`${this.getWorkerUrl()}/api/places/details?placeId=${encodeURIComponent(placeId)}&lang=${encodeURIComponent(lang)}`, {
         headers: this.getAuthHeaders(), credentials: "include"
       });
       return await response.json();

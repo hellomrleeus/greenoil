@@ -663,6 +663,37 @@
                   <span data-i18n="fs_route_stops_title">途经站点清单</span> (<span id="fsRouteStopsBadge">0</span> <span data-i18n="fs_route_stops_unit">家餐馆</span>)
                 </h3>
               </div>
+
+              <!-- Waypoints Search & Batch Toolbar -->
+              <div class="fs-waypoints-toolbar card" style="padding: 0.65rem 0.85rem; margin-bottom: 0.75rem; background: #f8fafc; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: center; justify-content: space-between;">
+                  <!-- Search Filter -->
+                  <div style="flex: 1; min-width: 220px; position: relative;">
+                    <input type="text" class="form-input" id="fsRouteSearchInput" placeholder="搜索途经站点（店名/地址/电话）..." data-i18n-placeholder="fs_route_waypoints_search_placeholder" style="padding: 0.4rem 0.65rem; font-size: 0.85rem; width: 100%; border-radius: 6px;">
+                  </div>
+                  <!-- Batch Control Buttons -->
+                  <div style="display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center;">
+                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; user-select: none; margin-right: 0.35rem; color: #334155;">
+                      <input type="checkbox" id="fsRouteSelectAll" style="width: 15px; height: 15px; cursor: pointer;">
+                      <span data-i18n="fs_route_select_all">全选</span>
+                      <span id="fsRouteSelectedCount" style="color: #64748b; font-size: 0.8rem; font-weight: normal;">(已选 0)</span>
+                    </label>
+
+                    <button class="btn btn-sm btn-outline" id="fsRouteBtnBatchNav" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; color: #2563eb; border-color: #bfdbfe; background: #eff6ff;" title="在 Google 地图导航所选站点">
+                      <span>📍 <span data-i18n="fs_route_btn_batch_nav">导航所选</span></span>
+                    </button>
+
+                    <button class="btn btn-sm btn-outline" id="fsRouteBtnBatchDelete" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; color: #dc2626; border-color: #fecaca; background: #fef2f2;" title="批量移除所选站点">
+                      <span>🗑️ <span data-i18n="fs_route_btn_batch_delete">批量删除</span></span>
+                    </button>
+
+                    <button class="btn btn-sm btn-primary" id="fsRouteBtnExportExcel" style="font-size: 0.8rem; padding: 0.35rem 0.7rem; background: #059669; border-color: #059669; color: white;" title="导出 Excel 清单 (含拜访记录)">
+                      <span>📥 <span data-i18n="fs_route_btn_export_excel">导出 Excel</span></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div class="fs-waypoints-list" id="fsRouteWaypointsList"></div>
               <div class="fs-empty-notice" id="fsRouteEmptyNotice" style="display: none;" data-i18n="fs_route_empty">
                 暂未添加途经餐馆。您可以从餐馆查询列表勾选后一键导入，或在上方搜索添加。
@@ -1267,6 +1298,46 @@
         </div>
 
       </form>
+    </div>
+  </div>
+
+  <!-- ROUTE MULTI-STOP NAVIGATION MODAL -->
+  <div class="modal-overlay" id="fsRouteNavModalOverlay">
+    <div class="modal-card fs-modal-card" style="max-width: 640px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="fsRouteNavModalTitle" data-i18n="fs_route_nav_modal_title">智能路线导航方案</h3>
+        <button class="modal-close-btn" id="fsRouteNavModalClose" aria-label="关闭">✕</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem;">
+        <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem; color: #1e40af; margin-bottom: 1rem; line-height: 1.5;">
+          <div style="font-weight: 600; margin-bottom: 0.25rem;">💡 <span data-i18n="nav_hint_title">导航提示</span></div>
+          <div id="fsRouteNavModalTip" data-i18n="fs_route_nav_modal_tip">
+            当前路线包含较多地点。由于手机端 Google Maps App 外部调用限制为最多 10 个地点，建议手机跑店使用分段导航；网页端或车机大屏可直接打开全量拼接路线。
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.25rem;">
+          <button class="btn btn-primary" id="fsRouteNavBtnFull" style="flex: 1; min-width: 200px; background: #2563eb; border-color: #2563eb; font-size: 0.88rem; padding: 0.6rem 0.8rem; font-weight: 600;">
+            <span data-i18n="fs_route_nav_btn_full">🌐 打开全量完整路线 (网页版/车机推荐)</span>
+          </button>
+          <button class="btn btn-outline" id="fsRouteNavBtnOpenAll" style="flex: 1; min-width: 180px; font-size: 0.88rem; padding: 0.6rem 0.8rem; font-weight: 600; color: #0f766e; border-color: #99f6e4; background: #f0fdfa;">
+            <span data-i18n="fs_route_nav_btn_open_all">🚀 在新标签页打开所有分段</span>
+          </button>
+        </div>
+
+        <div style="font-size: 0.9rem; font-weight: 700; color: #1e293b; margin-bottom: 0.6rem;">
+          <span data-i18n="fs_route_nav_segments_title">分段路线列表 (每段最多 9 家餐馆，无缝衔接)</span>
+        </div>
+
+        <div id="fsRouteNavLegsList" style="display: flex; flex-direction: column; gap: 0.65rem; max-height: 360px; overflow-y: auto; padding-right: 4px;">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 0.75rem 1.25rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+        <button class="btn btn-outline" id="fsRouteNavModalBtnCancel" data-i18n="btn_close">关闭</button>
+      </div>
     </div>
   </div>
 

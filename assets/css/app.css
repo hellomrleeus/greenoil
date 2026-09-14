@@ -2448,6 +2448,58 @@ body {
   font-size: 0.9rem;
 }
 
+/* Waypoint Checkbox & Selected State */
+.fs-wp-checkbox {
+  width: 17px;
+  height: 17px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: #2563eb;
+}
+
+.fs-waypoint-card.is-selected {
+  background: #f0f7ff;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 1px #93c5fd, var(--shadow-sm);
+}
+
+.fs-route-nav-leg-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.15s ease;
+}
+
+.fs-route-nav-leg-card:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.fs-route-nav-leg-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.fs-route-nav-leg-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #0f172a;
+  margin-bottom: 0.2rem;
+}
+
+.fs-route-nav-leg-stops {
+  font-size: 0.78rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Sales Records View */
 .fs-records-filter-bar {
   display: flex;

@@ -1557,6 +1557,11 @@ export const MapExplorer = {
                         (normName && kvByName.get(normName));
 
       if (matchedKv) {
+        if (matchedKv.name && matchedKv.name !== place.name) {
+          if (!place.nameEn) place.nameEn = place.name;
+          place.name = matchedKv.name;
+          if (place._raw) place._raw["餐馆名称 (Name)"] = matchedKv.name;
+        }
         place.isVisited = matchedKv.isVisited || false;
         place.lastOutcome = matchedKv.lastOutcome || "";
         place.lastVisitTime = matchedKv.lastVisitTime || "";
@@ -2411,7 +2416,10 @@ export const MapExplorer = {
   },
 
   findPlace(key) {
-    return this.poiPlaces.get(key) || this.displayedPlaces.find(r => (r.placeId || r.name) === key) || this.filteredPlaces?.find(r => (r.placeId || r.name) === key);
+    return this.poiPlaces.get(key) || 
+           this.displayedPlaces.find(r => (r.placeId || r.name) === key) || 
+           this.filteredPlaces?.find(r => (r.placeId || r.name) === key) ||
+           this.allRestaurants?.find(r => (r.placeId || r.name) === key);
   },
 
   async openGooglePoi(placeId, position) {
@@ -2422,7 +2430,8 @@ export const MapExplorer = {
     this.infoWindow.open({ map: this.googleMap });
     let restaurant = this.findPlace(placeId);
     if (!restaurant) {
-      const result = await Api.getGooglePlaceDetails(placeId);
+      const lang = this.getCurrentLanguage() === "en" ? "en" : "zh-CN";
+      const result = await Api.getGooglePlaceDetails(placeId, lang);
       if (requestId !== this.poiRequestId) return;
       if (!result.success || !result.place) {
         const message = { zh: "店铺详情加载失败，请重新点击重试", en: "Unable to load this place. Click it again to retry.", ko: "장소 정보를 불러올 수 없습니다. 다시 클릭해 주세요." };
@@ -2432,6 +2441,18 @@ export const MapExplorer = {
       restaurant = result.place;
     }
     if (requestId !== this.poiRequestId) return;
+
+    const normName = (restaurant.name || "").trim().toLowerCase();
+    const matchedKnown = (this.allRestaurants || []).find(item => 
+      (restaurant.placeId && item.placeId === restaurant.placeId) || 
+      ((item.name || "").trim().toLowerCase() === normName)
+    );
+    if (matchedKnown && matchedKnown.name && matchedKnown.name !== restaurant.name) {
+      if (!restaurant.nameEn) restaurant.nameEn = restaurant.name;
+      restaurant.name = matchedKnown.name;
+      if (restaurant._raw) restaurant._raw["餐馆名称 (Name)"] = matchedKnown.name;
+    }
+
     restaurant.inKV = this.checkIsInKv(restaurant);
     this.poiPlaces.set(placeId, restaurant);
     this.infoWindow.setContent(this.getPopupHtml(restaurant));

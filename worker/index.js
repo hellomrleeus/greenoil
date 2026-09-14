@@ -107,12 +107,22 @@ export default {
         if (!/^[A-Za-z0-9_-]{1,256}$/.test(placeId)) return Response.json({ success: false, error: "Invalid place ID" }, { status: 400, headers: corsHeaders });
         const key = env.GOOGLE_MAPS_SERVER_KEY || env.GOOGLE_MAPS_API_KEY;
         if (!key) return Response.json({ success: false, error: "Google Maps API not configured" }, { status: 503, headers: corsHeaders });
+        const lang = url.searchParams.get("lang") || "zh-CN";
         const response = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
-          headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": "id,displayName,formattedAddress,location,primaryType,rating,userRatingCount,nationalPhoneNumber,websiteUri,googleMapsUri,regularOpeningHours,currentOpeningHours,priceLevel,photos,addressComponents" }
+          headers: {
+            "X-Goog-Api-Key": key,
+            "X-Goog-FieldMask": "id,displayName,formattedAddress,location,primaryType,rating,userRatingCount,nationalPhoneNumber,websiteUri,googleMapsUri,regularOpeningHours,currentOpeningHours,priceLevel,photos,addressComponents",
+            "X-Goog-LanguageCode": lang
+          }
         });
         if (!response.ok) return Response.json({ success: false, error: "Unable to load place details" }, { status: response.status, headers: corsHeaders });
         const place = await response.json();
-        return Response.json({ success: true, place: transformGooglePlace(place, place.addressComponents?.find(component => component.types?.includes("locality"))?.longText || "GTA") }, { headers: corsHeaders });
+        const locality = place.addressComponents?.find(component => component.types?.includes("locality"))?.longText || "GTA";
+        const transformed = transformGooglePlace(place, locality, "", key);
+        if (env.DB) {
+          await Database.markSavedPlaces(env.DB, [transformed]);
+        }
+        return Response.json({ success: true, place: transformed }, { headers: corsHeaders });
       }
 
       // 7.1. Google Maps Places Photo Proxy / Media Stream (Public / Edge-cached)

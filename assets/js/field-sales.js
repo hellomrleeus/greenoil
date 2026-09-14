@@ -21,6 +21,8 @@ const STORAGE_WAYPOINTS_KEY = "greenoil_route_waypoints";
 export const FieldSales = {
   activeSubTab: "route", // route | records | analytics
   routeWaypoints: [],
+  selectedWaypointIds: new Set(),
+  routeSearchQuery: "",
   originAddress: DEFAULT_ORIGIN_ADDRESS,
   cachedRestaurants: [],
   salesRecords: [],
@@ -213,6 +215,59 @@ export const FieldSales = {
       });
     }
 
+    // Waypoints search filter
+    const searchInput = document.getElementById("fsRouteSearchInput");
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        this.routeSearchQuery = e.target.value.trim().toLowerCase();
+        this.renderRouteWaypoints();
+      });
+    }
+
+    // Select All
+    const selectAllCb = document.getElementById("fsRouteSelectAll");
+    if (selectAllCb) {
+      selectAllCb.addEventListener("change", (e) => {
+        const visible = this.getFilteredWaypoints();
+        if (e.target.checked) {
+          visible.forEach(w => this.selectedWaypointIds.add(w._uid));
+        } else {
+          visible.forEach(w => this.selectedWaypointIds.delete(w._uid));
+        }
+        this.renderRouteWaypoints();
+      });
+    }
+
+    // Batch Navigate Selected
+    const btnBatchNav = document.getElementById("fsRouteBtnBatchNav");
+    if (btnBatchNav) {
+      btnBatchNav.addEventListener("click", () => this.navigateSelectedWaypoints());
+    }
+
+    // Batch Delete Selected
+    const btnBatchDelete = document.getElementById("fsRouteBtnBatchDelete");
+    if (btnBatchDelete) {
+      btnBatchDelete.addEventListener("click", () => this.deleteSelectedWaypoints());
+    }
+
+    // Export Excel
+    const btnExportExcel = document.getElementById("fsRouteBtnExportExcel");
+    if (btnExportExcel) {
+      btnExportExcel.addEventListener("click", () => this.exportWaypointsToExcel());
+    }
+
+    // Route Navigation Modal listeners
+    const navModalClose = document.getElementById("fsRouteNavModalClose");
+    const navModalCancel = document.getElementById("fsRouteNavModalBtnCancel");
+    const navModalOverlay = document.getElementById("fsRouteNavModalOverlay");
+    if (navModalClose) navModalClose.addEventListener("click", () => this.closeRouteNavModal());
+    if (navModalCancel) navModalCancel.addEventListener("click", () => this.closeRouteNavModal());
+    if (navModalOverlay) {
+      navModalOverlay.addEventListener("click", (e) => {
+        if (e.target === navModalOverlay) this.closeRouteNavModal();
+      });
+    }
+
     // Navigation via Google Maps
     const btnNav = document.getElementById("fsRouteBtnNavigate");
     if (btnNav) {
@@ -228,6 +283,7 @@ export const FieldSales = {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           this.routeWaypoints = parsed;
+          this.ensureWaypointUids();
         }
       }
     } catch (e) {
@@ -240,6 +296,7 @@ export const FieldSales = {
       if (res && res.success && res.data) {
         if (Array.isArray(res.data.waypoints)) {
           this.routeWaypoints = res.data.waypoints;
+          this.ensureWaypointUids();
           try {
             localStorage.setItem(STORAGE_WAYPOINTS_KEY, JSON.stringify(this.routeWaypoints));
           } catch (e) {}
@@ -282,13 +339,59 @@ export const FieldSales = {
     }).join("");
   },
 
+  ensureWaypointUids() {
+    this.routeWaypoints.forEach((w, idx) => {
+      if (!w._uid) {
+        w._uid = w.placeId ? `wp_${w.placeId}` : `wp_${idx}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      }
+    });
+  },
+
+  normalizeRestaurantName(restaurant) {
+    if (!restaurant) return restaurant;
+    const all = [
+      ...(this.cachedRestaurants || []),
+      ...(window.MapExplorer?.allRestaurants || [])
+    ];
+    const normName = (restaurant.name || "").trim().toLowerCase();
+    const match = all.find(r => 
+      (restaurant.placeId && r.placeId === restaurant.placeId) ||
+      ((r.name || "").trim().toLowerCase() === normName)
+    );
+    if (match && match.name && match.name !== restaurant.name) {
+      if (!restaurant.nameEn) restaurant.nameEn = restaurant.name;
+      restaurant.name = match.name;
+      if (restaurant._raw) restaurant._raw["餐馆名称 (Name)"] = match.name;
+    }
+    return restaurant;
+  },
+
+  getFilteredWaypoints() {
+    this.ensureWaypointUids();
+    if (!this.routeSearchQuery) {
+      return this.routeWaypoints;
+    }
+    const q = this.routeSearchQuery.toLowerCase();
+    return this.routeWaypoints.filter(w => {
+      const name = (w.name || "").toLowerCase();
+      const nameEn = (w.nameEn || "").toLowerCase();
+      const address = (w.address || "").toLowerCase();
+      const phone = (w.phone || "").toLowerCase();
+      return name.includes(q) || nameEn.includes(q) || address.includes(q) || phone.includes(q);
+    });
+  },
+
   addRestaurantToRoute(restaurant, jumpToTab = false) {
+    restaurant = this.normalizeRestaurantName(restaurant);
     const exists = this.routeWaypoints.some(w => (w.placeId && w.placeId === restaurant.placeId) || w.name === restaurant.name);
     if (exists) {
       const msg = i18n.t("fs_msg_already_in_route", { name: restaurant.name });
       if (window.showToast) window.showToast(msg);
       else alert(msg);
       return;
+    }
+    if (!restaurant._uid) {
+      restaurant._uid = restaurant.placeId ? `wp_${restaurant.placeId}` : `wp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     }
     this.routeWaypoints.push(restaurant);
     this.saveRouteWaypoints();
@@ -308,8 +411,12 @@ export const FieldSales = {
     if (!Array.isArray(restaurants) || restaurants.length === 0) return;
     let addedCount = 0;
     restaurants.forEach(r => {
+      r = this.normalizeRestaurantName(r);
       const exists = this.routeWaypoints.some(w => (w.placeId && w.placeId === r.placeId) || w.name === r.name);
       if (!exists) {
+        if (!r._uid) {
+          r._uid = r.placeId ? `wp_${r.placeId}` : `wp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        }
         this.routeWaypoints.push(r);
         addedCount++;
       }
@@ -347,9 +454,39 @@ export const FieldSales = {
   },
 
   removeWaypoint(index) {
-    this.routeWaypoints.splice(index, 1);
+    const removed = this.routeWaypoints.splice(index, 1)[0];
+    if (removed && removed._uid) {
+      this.selectedWaypointIds.delete(removed._uid);
+    }
     this.saveRouteWaypoints();
     this.renderRouteWaypoints();
+  },
+
+  deleteSelectedWaypoints() {
+    if (this.selectedWaypointIds.size === 0) {
+      alert(i18n.t("fs_route_alert_select_to_delete") || "请先勾选需要删除的途经站点！");
+      return;
+    }
+    const count = this.selectedWaypointIds.size;
+    const confirmMsg = i18n.t("fs_route_confirm_batch_delete", { count }) || `确定从路线中移除选中的 ${count} 个途经站点吗？`;
+    if (!confirm(confirmMsg)) return;
+
+    this.routeWaypoints = this.routeWaypoints.filter(w => !this.selectedWaypointIds.has(w._uid));
+    this.selectedWaypointIds.clear();
+    this.saveRouteWaypoints();
+    this.renderRouteWaypoints();
+    const msg = `已移除 ${count} 个站点`;
+    if (window.showToast) window.showToast(msg);
+    else alert(msg);
+  },
+
+  navigateSelectedWaypoints() {
+    if (this.selectedWaypointIds.size === 0) {
+      alert(i18n.t("fs_route_alert_select_to_nav") || "请先勾选需要导航的途经站点！");
+      return;
+    }
+    const targets = this.routeWaypoints.filter(w => this.selectedWaypointIds.has(w._uid));
+    this.openEnhancedGoogleMapsNavigation(targets);
   },
 
   optimizeRoute() {
@@ -395,7 +532,7 @@ export const FieldSales = {
   },
 
   getEffectiveOrigin() {
-    const originInput = document.getElementById("fsRouteOriginInput");
+    const originInput = typeof document !== "undefined" ? document.getElementById("fsRouteOriginInput") : null;
     const address = originInput ? originInput.value.trim() : this.originAddress;
     return {
       name: "Green Oil Inc",
@@ -405,61 +542,302 @@ export const FieldSales = {
     };
   },
 
+  buildGoogleMapsSlashUrl(originAddress, stops) {
+    const originStr = encodeURIComponent(originAddress);
+    const stopStrs = stops.map(s => encodeURIComponent((s.name ? s.name + ", " : "") + (s.address || "")));
+    return `https://www.google.com/maps/dir/${originStr}/${stopStrs.join("/")}/`;
+  },
+
+  buildRouteLegs(originAddress, stops) {
+    const legs = [];
+    const step = 9;
+    const totalLegs = Math.ceil(stops.length / step);
+
+    for (let i = 0; i < totalLegs; i++) {
+      const startIdx = i * step;
+      const endIdx = Math.min(startIdx + step, stops.length);
+      const legStops = stops.slice(startIdx, endIdx);
+      
+      const legOrigin = i === 0 ? originAddress : ((stops[startIdx - 1].name ? stops[startIdx - 1].name + ", " : "") + (stops[startIdx - 1].address || ""));
+      const legUrl = this.buildGoogleMapsSlashUrl(legOrigin, legStops);
+
+      const fromLabel = i === 0 ? "Green Oil HQ" : (stops[startIdx - 1].name || `第 ${startIdx} 站`);
+      const toLabel = legStops[legStops.length - 1].name || `第 ${endIdx} 站`;
+
+      legs.push({
+        legIndex: i + 1,
+        from: fromLabel,
+        to: toLabel,
+        stopsCount: legStops.length,
+        stopNames: legStops.map(s => s.name).join(" → "),
+        url: legUrl
+      });
+    }
+
+    return legs;
+  },
+
+  openRouteNavModal(originAddress, targetWaypoints, fullSlashUrl) {
+    if (typeof document === "undefined") return;
+    const modalOverlay = document.getElementById("fsRouteNavModalOverlay");
+    const tipEl = document.getElementById("fsRouteNavModalTip");
+    const btnFull = document.getElementById("fsRouteNavBtnFull");
+    const btnOpenAll = document.getElementById("fsRouteNavBtnOpenAll");
+    const legsListEl = document.getElementById("fsRouteNavLegsList");
+
+    if (!modalOverlay) return;
+
+    if (tipEl) {
+      tipEl.textContent = i18n.t("fs_route_nav_modal_tip", { count: targetWaypoints.length }) || `当前共有 ${targetWaypoints.length} 个地点。建议手机端按路段分段导航，网页端可直接打开完整拼接路线。`;
+    }
+
+    const legs = this.buildRouteLegs(originAddress, targetWaypoints);
+
+    if (btnFull) {
+      btnFull.onclick = () => window.open(fullSlashUrl, "_blank");
+    }
+
+    if (btnOpenAll) {
+      btnOpenAll.onclick = () => {
+        legs.forEach(leg => {
+          window.open(leg.url, "_blank");
+        });
+      };
+    }
+
+    if (legsListEl) {
+      legsListEl.innerHTML = legs.map(leg => `
+        <div class="fs-route-nav-leg-card">
+          <div class="fs-route-nav-leg-info">
+            <div class="fs-route-nav-leg-title">
+              ${i18n.t("fs_route_nav_leg_title", { leg: leg.legIndex, from: leg.from, to: leg.to, count: leg.stopsCount }) || `第 ${leg.legIndex} 段：${leg.from} → ${leg.to} (共 ${leg.stopsCount} 站)`}
+            </div>
+            <div class="fs-route-nav-leg-stops" title="${Restaurants.escapeHtml(leg.stopNames)}">
+              ${Restaurants.escapeHtml(leg.stopNames)}
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary fs-btn-leg-nav" data-url="${encodeURI(leg.url)}" style="white-space: nowrap; font-size: 0.8rem; padding: 0.4rem 0.75rem; background: #2563eb; border-color: #2563eb; color: white;">
+            ${i18n.t("fs_route_nav_btn_leg") || "📍 开启此段导航"}
+          </button>
+        </div>
+      `).join("");
+
+      legsListEl.querySelectorAll(".fs-btn-leg-nav").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const url = decodeURI(btn.dataset.url);
+          window.open(url, "_blank");
+        });
+      });
+    }
+
+    modalOverlay.classList.add("active");
+  },
+
+  closeRouteNavModal() {
+    if (typeof document === "undefined") return;
+    const modalOverlay = document.getElementById("fsRouteNavModalOverlay");
+    if (modalOverlay) modalOverlay.classList.remove("active");
+  },
+
+  openEnhancedGoogleMapsNavigation(targetWaypoints) {
+    if (!targetWaypoints || targetWaypoints.length === 0) {
+      alert(i18n.t("fs_alert_no_waypoints"));
+      return;
+    }
+
+    const origin = this.getEffectiveOrigin();
+    const originAddress = origin.address || DEFAULT_ORIGIN_ADDRESS;
+    const fullSlashUrl = this.buildGoogleMapsSlashUrl(originAddress, targetWaypoints);
+
+    // If 9 or fewer stops, total points <= 10, open directly
+    if (targetWaypoints.length <= 9) {
+      window.open(fullSlashUrl, "_blank");
+      return;
+    }
+
+    // More than 9 stops: Show segmented navigation modal
+    this.openRouteNavModal(originAddress, targetWaypoints, fullSlashUrl);
+  },
+
   openGoogleMapsNavigation() {
     if (this.routeWaypoints.length === 0) {
       alert(i18n.t("fs_alert_no_waypoints"));
       return;
     }
 
-    const origin = this.getEffectiveOrigin();
-    const destination = this.routeWaypoints[this.routeWaypoints.length - 1];
-    const intermediates = this.routeWaypoints.slice(0, -1);
+    const targets = this.selectedWaypointIds.size > 0
+      ? this.routeWaypoints.filter(w => this.selectedWaypointIds.has(w._uid))
+      : this.routeWaypoints;
 
-    const originStr = encodeURIComponent(origin.address);
-    const destStr = encodeURIComponent((destination.name ? destination.name + ", " : "") + (destination.address || ""));
-    const wpStr = intermediates.map(w => encodeURIComponent((w.name ? w.name + ", " : "") + (w.address || ""))).join("|");
+    this.openEnhancedGoogleMapsNavigation(targets);
+  },
 
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${originStr}&destination=${destStr}&travelmode=driving`;
-    if (wpStr) {
-      url += `&waypoints=${wpStr}`;
+  formatWaypointVisitRecords(waypoint) {
+    if (!this.salesRecords || this.salesRecords.length === 0) {
+      return i18n.t("visited_no") || "未拜访";
+    }
+    const normWpName = (waypoint.name || "").trim().toLowerCase();
+    const records = this.salesRecords.filter(r => 
+      (waypoint.placeId && r.restaurantId && r.restaurantId === waypoint.placeId) ||
+      (r.restaurantName && r.restaurantName.trim().toLowerCase() === normWpName)
+    );
+
+    if (records.length === 0) {
+      return i18n.t("visited_no") || "未拜访";
     }
 
-    window.open(url, "_blank");
+    return records.map((r, i) => {
+      const timeStr = r.visitTime ? r.visitTime.slice(0, 10) : "";
+      const methodStr = r.method === "onsite" ? (i18n.t("fs_method_onsite") || "现场拜访") : (i18n.t("fs_method_phone") || "电话沟通");
+      const outcomeStr = this.getOutcomeText(r.outcome);
+      let details = `[${timeStr} ${methodStr} - ${outcomeStr}]`;
+      if (r.notes) details += ` 纪要: ${r.notes}`;
+      if (r.competitorName) details += ` 竞品: ${r.competitorName}`;
+      if (r.competitorQuote) details += ` 报价: ${r.competitorQuote}`;
+      return `${i + 1}. ${details}`;
+    }).join("\r\n");
+  },
+
+  exportWaypointsToExcel() {
+    const targets = this.selectedWaypointIds.size > 0
+      ? this.routeWaypoints.filter(w => this.selectedWaypointIds.has(w._uid))
+      : this.routeWaypoints;
+
+    if (targets.length === 0) {
+      alert(i18n.t("fs_alert_no_waypoints"));
+      return;
+    }
+
+    const exportRows = targets.map((w, idx) => {
+      const visitSummary = this.formatWaypointVisitRecords(w);
+      const openHours = w.openingHours || (w._raw && w._raw["营业时间 (Opening Hours)"]) || "未提供";
+      const phone = (w.phone && w.phone !== "无") ? w.phone : "";
+      const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` (${w.nameEn})` : "");
+
+      return {
+        [i18n.t("fs_route_col_stop_no") || "序号"]: idx + 1,
+        [i18n.t("fs_route_col_name") || "餐厅名称"]: displayName,
+        [i18n.t("fs_route_col_address") || "地址"]: w.address || "",
+        [i18n.t("fs_route_col_phone") || "电话"]: phone,
+        [i18n.t("fs_route_col_hours") || "营业时间"]: openHours,
+        [i18n.t("fs_route_col_visit_records") || "拜访记录"]: visitSummary
+      };
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const xlsxLib = (typeof window !== "undefined" && window.XLSX) ? window.XLSX : (typeof XLSX !== "undefined" ? XLSX : null);
+    if (xlsxLib) {
+      const ws = xlsxLib.utils.json_to_sheet(exportRows);
+      const colWidths = [
+        { wch: 8 },  // 序号
+        { wch: 32 }, // 餐厅名称
+        { wch: 40 }, // 地址
+        { wch: 18 }, // 电话
+        { wch: 35 }, // 营业时间
+        { wch: 55 }  // 拜访记录
+      ];
+      ws['!cols'] = colWidths;
+
+      const wb = xlsxLib.utils.book_new();
+      xlsxLib.utils.book_append_sheet(wb, ws, "Waypoints");
+      xlsxLib.writeFile(wb, `GreenOil_Route_Waypoints_${dateStr}.xlsx`);
+    } else {
+      // CSV Fallback
+      const headers = Object.keys(exportRows[0]);
+      const csv = [
+        headers.join(","),
+        ...exportRows.map(row => headers.map(h => `"${(row[h] || "").toString().replace(/"/g, '""')}"`).join(","))
+      ].join("\n");
+
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `GreenOil_Route_Waypoints_${dateStr}.csv`;
+      link.click();
+    }
   },
 
   renderRouteWaypoints() {
+    this.ensureWaypointUids();
+    if (typeof document === "undefined") return;
     const listEl = document.getElementById("fsRouteWaypointsList");
     const emptyEl = document.getElementById("fsRouteEmptyNotice");
     const countBadge = document.getElementById("fsRouteStopsBadge");
+    const selectAllCb = document.getElementById("fsRouteSelectAll");
+    const selectedCountEl = document.getElementById("fsRouteSelectedCount");
 
     if (countBadge) countBadge.textContent = this.routeWaypoints.length;
 
+    // Prune stale selected ids that no longer exist in routeWaypoints
+    const currentUids = new Set(this.routeWaypoints.map(w => w._uid));
+    for (const uid of this.selectedWaypointIds) {
+      if (!currentUids.has(uid)) this.selectedWaypointIds.delete(uid);
+    }
+
+    const visibleWaypoints = this.getFilteredWaypoints();
+    const totalCount = this.routeWaypoints.length;
+    const selectedCount = this.selectedWaypointIds.size;
+
+    if (selectedCountEl) {
+      selectedCountEl.textContent = i18n.t("fs_route_selected_count", { count: selectedCount, total: totalCount }) || `(已选 ${selectedCount}/${totalCount})`;
+    }
+
+    if (selectAllCb) {
+      if (visibleWaypoints.length > 0 && visibleWaypoints.every(w => this.selectedWaypointIds.has(w._uid))) {
+        selectAllCb.checked = true;
+        selectAllCb.indeterminate = false;
+      } else if (visibleWaypoints.some(w => this.selectedWaypointIds.has(w._uid))) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = true;
+      } else {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+      }
+    }
+
     if (!listEl) return;
 
-    if (this.routeWaypoints.length === 0) {
+    if (totalCount === 0) {
       listEl.innerHTML = "";
-      if (emptyEl) emptyEl.style.display = "block";
+      if (emptyEl) {
+        emptyEl.textContent = i18n.t("fs_route_empty");
+        emptyEl.style.display = "block";
+      }
+      return;
+    }
+
+    if (visibleWaypoints.length === 0) {
+      listEl.innerHTML = "";
+      if (emptyEl) {
+        emptyEl.textContent = i18n.t("fs_route_no_matching_stops") || "未找到匹配的途经站点";
+        emptyEl.style.display = "block";
+      }
       return;
     }
 
     if (emptyEl) emptyEl.style.display = "none";
 
-    listEl.innerHTML = this.routeWaypoints.map((w, index) => {
-      const isFirst = index === 0;
-      const isLast = index === this.routeWaypoints.length - 1;
-      const stopNumber = index + 1;
+    listEl.innerHTML = visibleWaypoints.map((w) => {
+      const origIndex = this.routeWaypoints.indexOf(w);
+      const isFirst = origIndex === 0;
+      const isLast = origIndex === this.routeWaypoints.length - 1;
+      const stopNumber = origIndex + 1;
+      const isSelected = this.selectedWaypointIds.has(w._uid);
       const phoneStr = w.phone && w.phone !== "无" ? `<a href="tel:${w.phone}" class="fs-link">${w.phone}</a>` : "";
       const isVisited = !!w.visited;
       const visitedBadge = isVisited 
         ? `<span style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ ${i18n.t("visited_yes")}</span>` 
         : `<span style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${i18n.t("visited_pending")}</span>`;
 
+      const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` <span class="fs-wp-name-en" style="font-size: 0.82rem; color: #64748b; font-weight: normal;">(${w.nameEn})</span>` : "");
+
       return `
-        <div class="fs-waypoint-card ${isVisited ? 'is-visited' : ''}" style="${isVisited ? 'border-left: 4px solid #10b981;' : ''}">
+        <div class="fs-waypoint-card ${isVisited ? 'is-visited' : ''} ${isSelected ? 'is-selected' : ''}" data-uid="${w._uid}" style="${isVisited ? 'border-left: 4px solid #10b981;' : ''}">
+          <input type="checkbox" class="fs-wp-checkbox" data-uid="${w._uid}" ${isSelected ? 'checked' : ''} title="${i18n.t("select") || '选择'}" />
           <div class="fs-wp-badge" style="${isVisited ? 'background: #10b981;' : ''}">${stopNumber}</div>
           <div class="fs-wp-content">
             <div class="fs-wp-header">
-              <span class="fs-wp-name">${w.name}</span>
+              <span class="fs-wp-name">${displayName}</span>
               ${visitedBadge}
               <span class="fs-wp-region">${Restaurants.formatRegion(w.region) || "GTA"}</span>
             </div>
@@ -467,15 +845,28 @@ export const FieldSales = {
             <div class="fs-wp-meta">${phoneStr}</div>
           </div>
           <div class="fs-wp-actions">
-            <button class="fs-btn-action fs-btn-nav" data-action="nav" data-index="${index}" title="${i18n.t("fs_btn_nav_title")}">${i18n.t("fs_btn_nav")}</button>
-            <button class="fs-btn-action" data-action="up" data-index="${index}" ${isFirst ? "disabled" : ""} title="${i18n.t("fs_btn_move_up")}">${i18n.t("fs_btn_move_up")}</button>
-            <button class="fs-btn-action" data-action="down" data-index="${index}" ${isLast ? "disabled" : ""} title="${i18n.t("fs_btn_move_down")}">${i18n.t("fs_btn_move_down")}</button>
-            <button class="fs-btn-action fs-btn-del" data-action="del" data-index="${index}" title="${i18n.t("btn_delete")}">${i18n.t("btn_delete")}</button>
-            <button class="fs-btn-action fs-btn-log" data-action="log" data-index="${index}" title="${isVisited ? i18n.t('fs_btn_log_title_edit') : i18n.t('fs_btn_log_title_new')}" style="${isVisited ? 'background: #d1fae5; color: #065f46; border-color: #a7f3d0;' : ''}">${isVisited ? i18n.t('fs_btn_log_recorded') : i18n.t('fs_btn_log_new')}</button>
+            <button class="fs-btn-action fs-btn-nav" data-action="nav" data-index="${origIndex}" title="${i18n.t("fs_btn_nav_title")}">${i18n.t("fs_btn_nav")}</button>
+            <button class="fs-btn-action" data-action="up" data-index="${origIndex}" ${isFirst ? "disabled" : ""} title="${i18n.t("fs_btn_move_up")}">${i18n.t("fs_btn_move_up")}</button>
+            <button class="fs-btn-action" data-action="down" data-index="${origIndex}" ${isLast ? "disabled" : ""} title="${i18n.t("fs_btn_move_down")}">${i18n.t("fs_btn_move_down")}</button>
+            <button class="fs-btn-action fs-btn-del" data-action="del" data-index="${origIndex}" title="${i18n.t("btn_delete")}">${i18n.t("btn_delete")}</button>
+            <button class="fs-btn-action fs-btn-log" data-action="log" data-index="${origIndex}" title="${isVisited ? i18n.t('fs_btn_log_title_edit') : i18n.t('fs_btn_log_title_new')}" style="${isVisited ? 'background: #d1fae5; color: #065f46; border-color: #a7f3d0;' : ''}">${isVisited ? i18n.t('fs_btn_log_recorded') : i18n.t('fs_btn_log_new')}</button>
           </div>
         </div>
       `;
     }).join("");
+
+    // Bind checkboxes
+    listEl.querySelectorAll(".fs-wp-checkbox").forEach(cb => {
+      cb.addEventListener("change", () => {
+        const uid = cb.dataset.uid;
+        if (cb.checked) {
+          this.selectedWaypointIds.add(uid);
+        } else {
+          this.selectedWaypointIds.delete(uid);
+        }
+        this.renderRouteWaypoints();
+      });
+    });
 
     // Bind action events
     listEl.querySelectorAll(".fs-btn-action, .fs-btn-icon").forEach(btn => {
