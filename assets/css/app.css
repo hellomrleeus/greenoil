@@ -2296,6 +2296,105 @@ body {
   margin-bottom: 0.75rem;
 }
 
+/* Route Tabs Bar */
+.fs-route-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.fs-route-tabs-bar {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.fs-route-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: #f8fafc;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  color: #334155;
+}
+
+.fs-route-tab-pill:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.fs-route-tab-pill.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+}
+
+.fs-route-tab-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-route-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.fs-route-tab-pill.active .fs-route-tab-count {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.fs-route-tab-actions {
+  display: inline-flex;
+  gap: 0.2rem;
+  margin-left: 0.25rem;
+}
+
+.fs-route-tab-action-btn {
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.12s;
+  line-height: 1.2;
+}
+
+.fs-route-tab-action-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #0f172a;
+}
+
+.fs-route-tab-action-btn.fs-route-tab-del-btn:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .fs-waypoints-list {
   display: flex;
   flex-direction: column;

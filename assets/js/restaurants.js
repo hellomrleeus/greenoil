@@ -4,6 +4,7 @@
 
 import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
+import { BusinessHours } from "./business-hours.js";
 
 export const Restaurants = {
   currentPageData: [],
@@ -350,14 +351,17 @@ export const Restaurants = {
     }
   },
 
-  formatStatus(status) {
+  formatStatus(status, openingHours) {
+    if (openingHours && typeof openingHours === "string" && openingHours.trim() && !["未提供", "未知", "Not provided", "暂无", "null"].includes(openingHours.trim())) {
+      return BusinessHours.getBusinessStatus(openingHours);
+    }
     if (status === "营业中" || status === "Open") {
-      return { label: i18n.t("status_open"), cls: "status-open" };
+      return { status: "营业中", label: i18n.t("status_open"), cls: "status-open" };
     }
     if (status === "已打烊" || status === "Closed") {
-      return { label: i18n.t("status_closed"), cls: "status-closed" };
+      return { status: "已打烊", label: i18n.t("status_closed"), cls: "status-closed" };
     }
-    return { label: i18n.t("status_unknown"), cls: "status-unknown" };
+    return { status: "未知", label: i18n.t("status_unknown"), cls: "status-unknown" };
   },
 
   formatRegion(region) {
@@ -551,7 +555,7 @@ export const Restaurants = {
     container.innerHTML = this.currentPageData.map((r, idx) => {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
-      const statusObj = this.formatStatus(r.status);
+      const statusObj = this.formatStatus(r.status, r.openingHours);
       const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
 
       return `
@@ -642,7 +646,7 @@ export const Restaurants = {
     tbody.innerHTML = this.currentPageData.map((r, idx) => {
       const key = r.placeId || r.name;
       const isSelected = this.selectedMap.has(key);
-      const statusObj = this.formatStatus(r.status);
+      const statusObj = this.formatStatus(r.status, r.openingHours);
       const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
 
       return `
@@ -860,7 +864,7 @@ export const Restaurants = {
         "主分类代码 (Primary Type)": r.primaryType || "",
         "评分 (Rating)": r.rating || "",
         "评价数 (Reviews)": r.reviews || 0,
-        "营业状态 (Status)": r.status || "",
+        "营业状态 (Status)": this.formatStatus(r.status, r.openingHours).label || r.status || "",
         "价格档次 (Price)": r.price || "",
         "详细地址 (Address)": r.address || "",
         "联系电话 (Phone)": r.phone || "",
@@ -957,7 +961,7 @@ export const Restaurants = {
       }
     }
 
-    const statusObj = this.formatStatus(r.status);
+    const statusObj = this.formatStatus(r.status, r.openingHours);
     const modalStatus = document.getElementById("modalRestStatus");
     if (modalStatus) {
       modalStatus.textContent = statusObj.label;

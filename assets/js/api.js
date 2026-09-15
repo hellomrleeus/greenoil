@@ -325,14 +325,14 @@ export const Api = {
   /**
    * Save Route Waypoints to Cloudflare KV
    */
-  async saveRouteWaypoints(waypoints = [], origin = "Green Oil Inc, Toronto, ON") {
+  async saveRouteWaypoints(waypoints = [], origin = "Green Oil Inc, Toronto, ON", tabs = null, activeTabId = null) {
     const workerUrl = this.getWorkerUrl();
     try {
       const resp = await fetch(`${workerUrl}/api/route`, {
         method: "POST",
         headers: this.getAuthHeaders(),
         credentials: "include",
-        body: JSON.stringify({ waypoints, origin })
+        body: JSON.stringify({ waypoints, origin, tabs, activeTabId })
       });
       return await resp.json();
     } catch (e) {

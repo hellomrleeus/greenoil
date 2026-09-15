@@ -481,4 +481,221 @@ const i18nKeysToCheck = [
 });
 console.log('PASS: All UI translations are free of legacy "KV" terminology.');
 
+// -------------------------------------------------------------
+// 8. Test Route Tabs Lifecycle & Operations
+// -------------------------------------------------------------
+console.log('8. Testing Route Tabs Lifecycle & Operations...');
+
+// Reset language and state
+i18n.setLanguage('zh');
+FieldSales.routeTabs = [];
+FieldSales.activeRouteTabId = null;
+FieldSales.getActiveRouteTab();
+
+assert.equal(FieldSales.routeTabs.length, 1, 'Should initialize with 1 default tab');
+const defaultTab = FieldSales.getActiveRouteTab();
+assert(defaultTab, 'Default tab must exist');
+assert.equal(defaultTab.id, FieldSales.activeRouteTabId);
+
+// 8.1 Create Tab
+const tab2 = FieldSales.createRouteTab('路线 2');
+assert.equal(FieldSales.routeTabs.length, 2);
+assert.equal(FieldSales.activeRouteTabId, tab2.id, 'New tab becomes active');
+assert.equal(tab2.name, '路线 2');
+
+// 8.2 Add waypoint to tab 2 and duplicate
+tab2.waypoints.push({
+  _uid: 'wp_tab2_1',
+  placeId: 'p_tab2_1',
+  name: '测试餐馆',
+  address: '100 Test Ave'
+});
+
+const tab3 = FieldSales.duplicateRouteTab(tab2.id);
+assert.equal(FieldSales.routeTabs.length, 3);
+assert.equal(tab3.name, '路线 2 (副本)', 'Duplicated tab name has suffix');
+assert.equal(tab3.waypoints.length, 1);
+assert.notEqual(tab3.waypoints[0]._uid, 'wp_tab2_1', 'Duplicated waypoints must have new unique _uids');
+assert.equal(tab3.waypoints[0].name, '测试餐馆');
+
+// Deep copy check: modifying tab 3 must not affect tab 2
+tab3.waypoints.push({ _uid: 'wp_tab3_new', name: '独立站点' });
+assert.equal(tab2.waypoints.length, 1, 'Modifying copy must not affect original tab');
+assert.equal(tab3.waypoints.length, 2);
+
+// 8.3 Rename Tab
+FieldSales._renamingTabId = tab3.id;
+globalThis.document.getElementById = (id) => {
+  if (id === 'fsRouteRenameInput') return { value: '重命名路线' };
+  if (id === 'fsRouteRenameModalOverlay') return { classList: { remove: () => {} } };
+  return null;
+};
+FieldSales.saveRenameTab();
+assert.equal(tab3.name, '重命名路线', 'Tab should be renamed');
+
+// 8.4 Delete Tab
+FieldSales.deleteRouteTab(tab3.id);
+assert.equal(FieldSales.routeTabs.length, 2, 'Tab 3 should be deleted');
+assert(!FieldSales.routeTabs.some(t => t.id === tab3.id));
+
+// 8.5 Delete Protection (at least 1 tab)
+FieldSales.deleteRouteTab(tab2.id);
+assert.equal(FieldSales.routeTabs.length, 1);
+const lastTabId = FieldSales.routeTabs[0].id;
+FieldSales.deleteRouteTab(lastTabId);
+assert.equal(FieldSales.routeTabs.length, 1, 'Last tab must not be deleted');
+
+// 8.6 Single tab vs Multi-tab adding behavior
+let modalOpened = false;
+FieldSales.openSelectTabModal = () => { modalOpened = true; };
+
+// Single tab: adds directly without opening modal
+FieldSales.addRestaurantToRoute({ placeId: 'auto_p1', name: '自动直达餐馆' });
+assert.equal(modalOpened, false, 'With 1 tab, addRestaurantToRoute should not open selection modal');
+assert(FieldSales.getActiveRouteTab().waypoints.some(w => w.name === '自动直达餐馆'));
+
+// Multi tab: opens selection modal
+FieldSales.createRouteTab('路线 B');
+assert.equal(FieldSales.routeTabs.length, 2);
+FieldSales.addRestaurantToRoute({ placeId: 'select_p2', name: '需选择餐馆' });
+assert.equal(modalOpened, true, 'With >1 tabs, addRestaurantToRoute must open selection modal');
+
+console.log('PASS: Route tabs lifecycle and operations verified.');
+
+// -------------------------------------------------------------
+// 9. Test Address Matching Engine & Manual Add
+// -------------------------------------------------------------
+console.log('9. Testing Address Matching Engine & Manual Add...');
+
+// Mock restaurants database
+FieldSales.cachedRestaurants = [
+  {
+    placeId: 'ChIJ_taqueria',
+    name: 'Taquería el Tapatio',
+    nameEn: 'Taqueria el Tapatio',
+    address: '915 Danforth Ave, Toronto, ON M4J 1L8',
+    phone: '(416) 463-2288',
+    openingHours: '11:00 AM - 10:00 PM',
+    latitude: 43.6806,
+    longitude: -79.3364,
+    region: 'Toronto'
+  },
+  {
+    placeId: 'ChIJ_woodbine_rest',
+    name: 'Woodbine Cafe',
+    address: '7095 Woodbine Ave, Markham, ON L3R 1A3',
+    phone: '(905) 555-0199',
+    region: 'York'
+  }
+];
+
+// 9.1 Postal code extraction
+const pc1 = FieldSales.extractPostalCode('915 Danforth Ave, Toronto, ON M4J 1L8');
+assert.equal(pc1.full, 'M4J1L8');
+assert.equal(pc1.formatted, 'M4J 1L8');
+
+const pc2 = FieldSales.extractPostalCode('3235 Hwy 7 Unit 17, Markham, on l3r-3p3 Canada');
+assert.equal(pc2.full, 'L3R3P3');
+
+const pc3 = FieldSales.extractPostalCode('No Postal Code Here');
+assert.equal(pc3, null);
+
+// 9.2 Street normalization
+const normStreet = FieldSales.normalizeStreet('915 Danforth Avenue, Unit 102, Toronto, Ontario');
+assert(normStreet.includes('915'), 'Number should be preserved');
+assert(normStreet.includes('danforth ave'), 'Avenue should normalize to ave');
+assert(!normStreet.includes('unit 102'), 'Unit info should be stripped');
+
+// 9.3 Address matching: Exact postal + street number
+const match1 = FieldSales.matchAddressToRestaurant('915 Danforth Ave, Toronto, ON M4J 1L8');
+assert(match1, 'Must match Taquería el Tapatio');
+assert.equal(match1.placeId, 'ChIJ_taqueria');
+assert.equal(match1.name, 'Taquería el Tapatio');
+
+// 9.4 Address matching: Street number + normalized street (no postal code)
+const match2 = FieldSales.matchAddressToRestaurant('915 Danforth Avenue, Toronto');
+assert(match2, 'Must match Taquería el Tapatio even without postal code');
+assert.equal(match2.placeId, 'ChIJ_taqueria');
+
+// 9.5 Batch Add from Multiline Text
+const activeTab = FieldSales.getActiveRouteTab();
+activeTab.waypoints = [];
+
+const multilineInput = `
+915 Danforth Ave, Toronto, ON M4J 1L8
+7095 Woodbine Ave, Markham, ON L3R 1A3
+99999 Nonexistent Blvd, Nowhere, ON X9X 9X9
+`;
+
+FieldSales.batchAddAddressesFromText(multilineInput, activeTab.id);
+
+assert.equal(activeTab.waypoints.length, 3, 'Must have added 3 waypoints');
+
+// Stop 1: Matched Taquería el Tapatio
+assert.equal(activeTab.waypoints[0].name, 'Taquería el Tapatio');
+assert.equal(activeTab.waypoints[0].placeId, 'ChIJ_taqueria');
+assert.equal(activeTab.waypoints[0]._matched, true);
+
+// Stop 2: Matched Woodbine Cafe
+assert.equal(activeTab.waypoints[1].name, 'Woodbine Cafe');
+assert.equal(activeTab.waypoints[1].placeId, 'ChIJ_woodbine_rest');
+assert.equal(activeTab.waypoints[1]._matched, true);
+
+// Stop 3: Unmatched pure address
+assert.equal(activeTab.waypoints[2].isCustomAddress, true);
+assert.equal(activeTab.waypoints[2]._matched, false);
+assert.equal(activeTab.waypoints[2].address, '99999 Nonexistent Blvd, Nowhere, ON X9X 9X9');
+assert(activeTab.waypoints[2].placeId.startsWith('addr_'));
+
+console.log('PASS: Address matching engine & batch manual add verified.');
+
+// -------------------------------------------------------------
+// 10. Verify No Emoji in UI Elements & Conciseness of Copy
+// -------------------------------------------------------------
+console.log('10. Verifying No Emojis & Clean Copy across i18n...');
+
+// Regex matching unicode emojis
+const tabEmojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/u;
+
+const newKeysToCheck = [
+  'fs_route_btn_manual_add',
+  'fs_route_tab_new',
+  'fs_route_tab_rename',
+  'fs_route_tab_duplicate',
+  'fs_route_tab_delete',
+  'fs_route_tab_default_name',
+  'fs_route_tab_copy_suffix',
+  'fs_route_tab_min_alert',
+  'fs_route_tab_rename_title',
+  'fs_route_tab_rename_prompt',
+  'fs_route_tab_rename_empty',
+  'fs_route_select_tab_title',
+  'fs_route_select_tab_desc',
+  'fs_route_select_tab_new_option',
+  'fs_route_manual_modal_title',
+  'fs_route_manual_modal_desc',
+  'fs_route_manual_tab_label',
+  'fs_route_manual_btn_submit',
+  'fs_route_manual_empty_alert',
+  'fs_route_manual_result_toast',
+  'fs_route_custom_address_tag'
+];
+
+['zh', 'en', 'ko'].forEach(lang => {
+  i18n.setLanguage(lang);
+  for (const key of newKeysToCheck) {
+    const text = i18n.t(key);
+    assert(text, `Key "${key}" in "${lang}" must exist`);
+    assert(!tabEmojiRegex.test(text), `Text for "${key}" in "${lang}" must not contain emojis (was: "${text}")`);
+  }
+});
+
+// Check that verbose explanation is stripped from manual add description
+i18n.setLanguage('zh');
+const zhDesc = i18n.t('fs_route_manual_modal_desc');
+assert.equal(zhDesc, '支持批量粘贴多行地址', 'Must match clean concise wording requested by user');
+assert(!zhDesc.includes('系统将优先匹配'), 'Verbose explanation must not be in modal desc');
+
+console.log('PASS: Zero emojis found and concise copy verified.');
+
 console.log('ALL ENHANCED ROUTE WAYPOINT TESTS PASSED!');

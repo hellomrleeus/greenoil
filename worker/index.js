@@ -1468,6 +1468,8 @@ async function handleGetRouteWaypoints(request, env, corsHeaders) {
   let routeData = {
     waypoints: [],
     origin: "Green Oil Inc, Toronto, ON",
+    tabs: null,
+    activeTabId: null,
     updatedAt: null
   };
 
@@ -1519,13 +1521,24 @@ async function handleSaveRouteWaypoints(request, env, corsHeaders) {
 
   const waypoints = Array.isArray(body.waypoints) ? body.waypoints : [];
   const origin = body.origin || "Green Oil Inc, Toronto, ON";
+  const tabs = Array.isArray(body.tabs) ? body.tabs : null;
+  const activeTabId = body.activeTabId || null;
   const now = new Date().toISOString();
 
   await enrichWaypointsWithHours(waypoints, env);
+  if (tabs) {
+    for (const tab of tabs) {
+      if (Array.isArray(tab.waypoints)) {
+        await enrichWaypointsWithHours(tab.waypoints, env);
+      }
+    }
+  }
 
   const routeData = {
     waypoints,
     origin,
+    tabs,
+    activeTabId,
     updatedAt: now
   };
 

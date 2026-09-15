@@ -17,10 +17,50 @@ const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc, Toronto, ON";
 const STORAGE_ORIGIN_KEY = "greenoil_start_address";
 const STORAGE_SALES_CACHE_KEY = "greenoil_field_sales_cache";
 const STORAGE_WAYPOINTS_KEY = "greenoil_route_waypoints";
+const STORAGE_ROUTE_TABS_KEY = "greenoil_route_tabs_v1";
+const STORAGE_ACTIVE_TAB_KEY = "greenoil_route_active_tab_v1";
 
 export const FieldSales = {
   activeSubTab: "route", // route | records | analytics
-  routeWaypoints: [],
+  routeTabs: [
+    {
+      id: "tab_default",
+      name: "路线 1",
+      waypoints: []
+    }
+  ],
+  activeRouteTabId: "tab_default",
+  _renamingTabId: null,
+  _pendingImportRestaurants: null,
+  _pendingImportJumpToTab: false,
+
+  getActiveRouteTab() {
+    if (!Array.isArray(this.routeTabs) || this.routeTabs.length === 0) {
+      this.routeTabs = [{
+        id: "tab_default",
+        name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+        waypoints: []
+      }];
+      this.activeRouteTabId = "tab_default";
+    }
+    let tab = this.routeTabs.find(t => t.id === this.activeRouteTabId);
+    if (!tab) {
+      tab = this.routeTabs[0];
+      this.activeRouteTabId = tab.id;
+    }
+    return tab;
+  },
+
+  get routeWaypoints() {
+    const tab = this.getActiveRouteTab();
+    return tab ? tab.waypoints : [];
+  },
+  set routeWaypoints(val) {
+    const tab = this.getActiveRouteTab();
+    if (tab) {
+      tab.waypoints = Array.isArray(val) ? val : [];
+    }
+  },
   selectedWaypointIds: new Set(),
   routeSearchQuery: "",
   originAddress: DEFAULT_ORIGIN_ADDRESS,
@@ -48,6 +88,7 @@ export const FieldSales = {
     // Listen for language change to update dynamic views
     i18n.onLanguageChange(() => {
       this.populateRestaurantDatalist();
+      this.renderRouteTabs();
       this.renderRouteWaypoints();
       this.renderSalesRecords();
       if (this.recordsViewMode === "calendar") {
@@ -64,6 +105,7 @@ export const FieldSales = {
     await this.loadSalesRecords();
     this.loadCachedRestaurants();
     await this.loadRouteWaypoints();
+    this.renderRouteTabs();
     this.renderRouteWaypoints();
   },
 
@@ -95,6 +137,7 @@ export const FieldSales = {
     } else if (targetSubTab === "records") {
       this.renderSalesRecords();
     } else if (targetSubTab === "route") {
+      this.renderRouteTabs();
       this.renderRouteWaypoints();
     }
   },
@@ -133,7 +176,7 @@ export const FieldSales = {
       return;
     }
 
-    const res = await Api.queryAllRestaurants(300);
+    const res = await Api.queryAllRestaurants(3500);
     if (res && res.success && Array.isArray(res.data)) {
       this.cachedRestaurants = res.data;
       this.populateRestaurantDatalist();
@@ -155,36 +198,106 @@ export const FieldSales = {
       });
     }
 
-    // Add restaurant to route by search
-    const addRestInput = document.getElementById("fsRouteAddRestInput");
-    const btnAddRest = document.getElementById("fsRouteBtnAddRest");
+    // Manual Batch Add Addresses
+    const btnManualAdd = document.getElementById("fsRouteBtnManualAdd");
+    if (btnManualAdd) {
+      btnManualAdd.addEventListener("click", () => this.openManualAddModal());
+    }
 
-    const doAdd = () => {
-      const val = addRestInput ? addRestInput.value.trim() : "";
-      if (!val) return;
-      const found = this.cachedRestaurants.find(r => r.name.toLowerCase() === val.toLowerCase() || (r.placeId && r.placeId === val));
-      if (found) {
-        this.addRestaurantToRoute(found);
-      } else {
-        // Add as custom point
-        this.addRestaurantToRoute({
-          name: val,
-          address: val,
-          region: "GTA",
-          latitude: 43.76,
-          longitude: -79.41,
-          placeId: "manual_" + Date.now()
-        });
-      }
-      if (addRestInput) addRestInput.value = "";
-    };
+    // New Route Tab Button
+    const btnNewTab = document.getElementById("fsRouteBtnNewTab");
+    if (btnNewTab) {
+      btnNewTab.addEventListener("click", () => this.createRouteTab());
+    }
 
-    if (btnAddRest) btnAddRest.addEventListener("click", doAdd);
-    if (addRestInput) {
-      addRestInput.addEventListener("keydown", (e) => {
+    // Bind Manual Add Modal events
+    const manualModalClose = document.getElementById("fsRouteManualModalClose");
+    const manualModalCancel = document.getElementById("fsRouteManualModalBtnCancel");
+    const manualModalOverlay = document.getElementById("fsRouteManualAddModalOverlay");
+    const manualModalSubmit = document.getElementById("fsRouteManualModalBtnSubmit");
+
+    if (manualModalClose) manualModalClose.addEventListener("click", () => this.closeManualAddModal());
+    if (manualModalCancel) manualModalCancel.addEventListener("click", () => this.closeManualAddModal());
+    if (manualModalOverlay) {
+      manualModalOverlay.addEventListener("click", (e) => {
+        if (e.target === manualModalOverlay) this.closeManualAddModal();
+      });
+    }
+    if (manualModalSubmit) {
+      manualModalSubmit.addEventListener("click", () => {
+        const input = document.getElementById("fsRouteManualAddressesInput");
+        const val = input ? input.value.trim() : "";
+        if (!val) {
+          const alertMsg = i18n.t("fs_route_manual_empty_alert") || "请输入至少一行有效地址";
+          if (window.showToast) window.showToast(alertMsg);
+          else alert(alertMsg);
+          return;
+        }
+        const tabSelect = document.getElementById("fsRouteManualTargetTabSelect");
+        const targetTabId = (tabSelect && this.routeTabs.length > 1) ? tabSelect.value : this.activeRouteTabId;
+        this.closeManualAddModal();
+        this.batchAddAddressesFromText(val, targetTabId);
+      });
+    }
+
+    // Bind Select Tab Modal events (for Map & Restaurant Query import)
+    const selectTabModalClose = document.getElementById("fsRouteSelectTabModalClose");
+    const selectTabModalCancel = document.getElementById("fsRouteSelectTabBtnCancel");
+    const selectTabModalOverlay = document.getElementById("fsRouteSelectTabModalOverlay");
+    const selectTabModalConfirm = document.getElementById("fsRouteSelectTabBtnConfirm");
+    const selectTabBtnNew = document.getElementById("fsRouteSelectTabBtnNewOption");
+
+    if (selectTabModalClose) selectTabModalClose.addEventListener("click", () => this.closeSelectTabModal());
+    if (selectTabModalCancel) selectTabModalCancel.addEventListener("click", () => this.closeSelectTabModal());
+    if (selectTabModalOverlay) {
+      selectTabModalOverlay.addEventListener("click", (e) => {
+        if (e.target === selectTabModalOverlay) this.closeSelectTabModal();
+      });
+    }
+    if (selectTabBtnNew) {
+      selectTabBtnNew.addEventListener("click", () => {
+        const newTab = this.createRouteTab();
+        const pending = this._pendingImportRestaurants;
+        const jump = this._pendingImportJumpToTab;
+        this.closeSelectTabModal();
+        if (pending && pending.length > 0) {
+          this.executeAddMultipleToRoute(pending, newTab.id, jump);
+        }
+      });
+    }
+    if (selectTabModalConfirm) {
+      selectTabModalConfirm.addEventListener("click", () => {
+        const checkedRadio = document.querySelector('input[name="fsSelectRouteTabRadio"]:checked');
+        const targetTabId = checkedRadio ? checkedRadio.value : this.activeRouteTabId;
+        const pending = this._pendingImportRestaurants;
+        const jump = this._pendingImportJumpToTab;
+        this.closeSelectTabModal();
+        if (pending && pending.length > 0) {
+          this.executeAddMultipleToRoute(pending, targetTabId, jump);
+        }
+      });
+    }
+
+    // Bind Rename Tab Modal events
+    const renameModalClose = document.getElementById("fsRouteRenameModalClose");
+    const renameModalCancel = document.getElementById("fsRouteRenameModalBtnCancel");
+    const renameModalOverlay = document.getElementById("fsRouteRenameModalOverlay");
+    const renameModalSave = document.getElementById("fsRouteRenameModalBtnSave");
+    const renameInput = document.getElementById("fsRouteRenameInput");
+
+    if (renameModalClose) renameModalClose.addEventListener("click", () => this.closeRenameTabModal());
+    if (renameModalCancel) renameModalCancel.addEventListener("click", () => this.closeRenameTabModal());
+    if (renameModalOverlay) {
+      renameModalOverlay.addEventListener("click", (e) => {
+        if (e.target === renameModalOverlay) this.closeRenameTabModal();
+      });
+    }
+    if (renameModalSave) renameModalSave.addEventListener("click", () => this.saveRenameTab());
+    if (renameInput) {
+      renameInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          doAdd();
+          this.saveRenameTab();
         }
       });
     }
@@ -280,29 +393,70 @@ export const FieldSales = {
   async loadRouteWaypoints() {
     // 1. Load local cache first for immediate responsiveness
     try {
-      const saved = localStorage.getItem(STORAGE_WAYPOINTS_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          this.routeWaypoints = parsed;
+      const savedTabs = localStorage.getItem(STORAGE_ROUTE_TABS_KEY);
+      const activeId = localStorage.getItem(STORAGE_ACTIVE_TAB_KEY);
+
+      if (savedTabs) {
+        const parsedTabs = JSON.parse(savedTabs);
+        if (Array.isArray(parsedTabs) && parsedTabs.length > 0) {
+          this.routeTabs = parsedTabs;
+          if (activeId && this.routeTabs.some(t => t.id === activeId)) {
+            this.activeRouteTabId = activeId;
+          } else {
+            this.activeRouteTabId = this.routeTabs[0].id;
+          }
           this.ensureWaypointUids();
+        }
+      } else {
+        // Fallback to legacy single list
+        const saved = localStorage.getItem(STORAGE_WAYPOINTS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            this.routeTabs = [{
+              id: "tab_default",
+              name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+              waypoints: parsed
+            }];
+            this.activeRouteTabId = "tab_default";
+            this.ensureWaypointUids();
+          }
         }
       }
     } catch (e) {
-      this.routeWaypoints = [];
+      this.getActiveRouteTab();
     }
 
     // 2. Fetch latest route waypoints and origin from Cloudflare Worker KV
     try {
       const res = await Api.getRouteWaypoints();
       if (res && res.success && res.data) {
-        if (Array.isArray(res.data.waypoints)) {
-          this.routeWaypoints = res.data.waypoints;
+        if (Array.isArray(res.data.tabs) && res.data.tabs.length > 0) {
+          this.routeTabs = res.data.tabs;
+          if (res.data.activeTabId && this.routeTabs.some(t => t.id === res.data.activeTabId)) {
+            this.activeRouteTabId = res.data.activeTabId;
+          } else {
+            this.activeRouteTabId = this.routeTabs[0].id;
+          }
           this.ensureWaypointUids();
           try {
-            localStorage.setItem(STORAGE_WAYPOINTS_KEY, JSON.stringify(this.routeWaypoints));
+            localStorage.setItem(STORAGE_ROUTE_TABS_KEY, JSON.stringify(this.routeTabs));
+            localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
+          } catch (e) {}
+        } else if (Array.isArray(res.data.waypoints)) {
+          this.routeTabs = [{
+            id: "tab_default",
+            name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+            waypoints: res.data.waypoints
+          }];
+          this.activeRouteTabId = "tab_default";
+          this.ensureWaypointUids();
+          try {
+            localStorage.setItem(STORAGE_ROUTE_TABS_KEY, JSON.stringify(this.routeTabs));
+            localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
           } catch (e) {}
         }
+
         if (res.data.origin) {
           this.originAddress = res.data.origin;
           try {
@@ -318,8 +472,11 @@ export const FieldSales = {
   },
 
   async saveRouteWaypoints() {
+    this.getActiveRouteTab();
     // 1. Save to local storage
     try {
+      localStorage.setItem(STORAGE_ROUTE_TABS_KEY, JSON.stringify(this.routeTabs));
+      localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
       localStorage.setItem(STORAGE_WAYPOINTS_KEY, JSON.stringify(this.routeWaypoints));
     } catch (e) {
       console.warn("Failed to persist route waypoints to local storage:", e);
@@ -327,10 +484,437 @@ export const FieldSales = {
 
     // 2. Save to backend KV
     try {
-      await Api.saveRouteWaypoints(this.routeWaypoints, this.originAddress);
+      await Api.saveRouteWaypoints(this.routeWaypoints, this.originAddress, this.routeTabs, this.activeRouteTabId);
     } catch (err) {
       console.warn("Failed to persist route waypoints to backend:", err);
     }
+  },
+
+  renderRouteTabs() {
+    if (typeof document === "undefined") return;
+    const barEl = document.getElementById("fsRouteTabsBar");
+    if (!barEl) return;
+
+    this.getActiveRouteTab();
+    const canDelete = this.routeTabs.length > 1;
+
+    barEl.innerHTML = this.routeTabs.map(tab => {
+      const isActive = tab.id === this.activeRouteTabId;
+      const count = tab.waypoints ? tab.waypoints.length : 0;
+      return `
+        <div class="fs-route-tab-pill ${isActive ? 'active' : ''}" data-tab-id="${tab.id}">
+          <span class="fs-route-tab-name" title="${Restaurants.escapeHtml(tab.name)}">${Restaurants.escapeHtml(tab.name)}</span>
+          <span class="fs-route-tab-count">${count}</span>
+          <div class="fs-route-tab-actions">
+            <button class="fs-route-tab-action-btn" data-action="rename" data-tab-id="${tab.id}" title="${i18n.t("fs_route_tab_rename")}">${i18n.t("fs_route_tab_rename")}</button>
+            <button class="fs-route-tab-action-btn" data-action="duplicate" data-tab-id="${tab.id}" title="${i18n.t("fs_route_tab_duplicate")}">${i18n.t("fs_route_tab_duplicate")}</button>
+            ${canDelete ? `<button class="fs-route-tab-action-btn fs-route-tab-del-btn" data-action="delete" data-tab-id="${tab.id}" title="${i18n.t("fs_route_tab_delete")}">${i18n.t("fs_route_tab_delete")}</button>` : ''}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Bind tab pill click and action button clicks
+    barEl.querySelectorAll(".fs-route-tab-pill").forEach(pill => {
+      pill.addEventListener("click", (e) => {
+        const actionBtn = e.target.closest(".fs-route-tab-action-btn");
+        const tabId = pill.dataset.tabId;
+        if (actionBtn) {
+          e.stopPropagation();
+          const action = actionBtn.dataset.action;
+          if (action === "rename") {
+            this.openRenameTabModal(tabId);
+          } else if (action === "duplicate") {
+            this.duplicateRouteTab(tabId);
+          } else if (action === "delete") {
+            this.deleteRouteTab(tabId);
+          }
+        } else {
+          this.switchRouteTab(tabId);
+        }
+      });
+    });
+  },
+
+  switchRouteTab(tabId) {
+    if (!this.routeTabs.some(t => t.id === tabId)) return;
+    this.activeRouteTabId = tabId;
+    this.selectedWaypointIds.clear();
+    this.routeSearchQuery = "";
+    const searchInput = document.getElementById("fsRouteSearchInput");
+    if (searchInput) searchInput.value = "";
+
+    try {
+      localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
+    } catch (e) {}
+
+    this.renderRouteTabs();
+    this.renderRouteWaypoints();
+  },
+
+  createRouteTab(name = null) {
+    if (!name) {
+      let num = this.routeTabs.length + 1;
+      while (this.routeTabs.some(t => t.name === `路线 ${num}` || t.name === `Route ${num}`)) {
+        num++;
+      }
+      name = `路线 ${num}`;
+    }
+
+    const newTab = {
+      id: "tab_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      name: name.trim(),
+      waypoints: []
+    };
+
+    this.routeTabs.push(newTab);
+    this.activeRouteTabId = newTab.id;
+    this.selectedWaypointIds.clear();
+
+    this.saveRouteWaypoints();
+    this.renderRouteTabs();
+    this.renderRouteWaypoints();
+
+    const msg = `已新建路线标签「${newTab.name}」`;
+    if (window.showToast) window.showToast(msg);
+    return newTab;
+  },
+
+  duplicateRouteTab(tabId) {
+    const targetTab = this.routeTabs.find(t => t.id === tabId) || this.getActiveRouteTab();
+    if (!targetTab) return;
+
+    const copySuffix = (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_copy_suffix") : " (副本)") || " (副本)";
+    const newName = `${targetTab.name}${copySuffix}`;
+
+    const newTab = {
+      id: "tab_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+      name: newName,
+      waypoints: (targetTab.waypoints || []).map(w => ({
+        ...w,
+        _uid: `wp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+      }))
+    };
+
+    this.routeTabs.push(newTab);
+    this.activeRouteTabId = newTab.id;
+    this.selectedWaypointIds.clear();
+
+    this.saveRouteWaypoints();
+    this.renderRouteTabs();
+    this.renderRouteWaypoints();
+
+    const msg = `已复制为新路线标签「${newTab.name}」`;
+    if (window.showToast) window.showToast(msg);
+    return newTab;
+  },
+
+  openRenameTabModal(tabId) {
+    const tab = this.routeTabs.find(t => t.id === tabId);
+    if (!tab) return;
+    this._renamingTabId = tabId;
+    const modal = document.getElementById("fsRouteRenameModalOverlay");
+    const input = document.getElementById("fsRouteRenameInput");
+    if (input) input.value = tab.name;
+    if (modal) modal.classList.add("active");
+    if (input) setTimeout(() => input.focus(), 50);
+  },
+
+  closeRenameTabModal() {
+    this._renamingTabId = null;
+    const modal = document.getElementById("fsRouteRenameModalOverlay");
+    if (modal) modal.classList.remove("active");
+  },
+
+  saveRenameTab() {
+    const input = document.getElementById("fsRouteRenameInput");
+    const newName = input ? input.value.trim() : "";
+    if (!newName) {
+      alert(i18n.t("fs_route_tab_rename_empty") || "标签名称不能为空");
+      return;
+    }
+    const tab = this.routeTabs.find(t => t.id === this._renamingTabId);
+    if (tab) {
+      tab.name = newName;
+      this.saveRouteWaypoints();
+      this.renderRouteTabs();
+    }
+    this.closeRenameTabModal();
+  },
+
+  deleteRouteTab(tabId) {
+    if (this.routeTabs.length <= 1) {
+      const msg = i18n.t("fs_route_tab_min_alert") || "至少保留一个路线标签";
+      if (window.showToast) window.showToast(msg);
+      else alert(msg);
+      return;
+    }
+
+    const tab = this.routeTabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    const confirmMsg = i18n.t("fs_route_tab_delete_confirm", { name: tab.name }) || `确定要删除标签「${tab.name}」及其中的站点吗？`;
+    if (!confirm(confirmMsg)) return;
+
+    this.routeTabs = this.routeTabs.filter(t => t.id !== tabId);
+    if (this.activeRouteTabId === tabId) {
+      this.activeRouteTabId = this.routeTabs[0].id;
+    }
+    this.selectedWaypointIds.clear();
+
+    this.saveRouteWaypoints();
+    this.renderRouteTabs();
+    this.renderRouteWaypoints();
+  },
+
+  openManualAddModal() {
+    const modal = document.getElementById("fsRouteManualAddModalOverlay");
+    const input = document.getElementById("fsRouteManualAddressesInput");
+    const tabGroup = document.getElementById("fsRouteManualTabGroup");
+    const tabSelect = document.getElementById("fsRouteManualTargetTabSelect");
+    if (!modal) return;
+
+    if (input) input.value = "";
+
+    if (tabGroup && tabSelect) {
+      if (this.routeTabs.length > 1) {
+        tabGroup.style.display = "block";
+        tabSelect.innerHTML = this.routeTabs.map(t => {
+          return `<option value="${t.id}" ${t.id === this.activeRouteTabId ? 'selected' : ''}>${Restaurants.escapeHtml(t.name)} (${t.waypoints ? t.waypoints.length : 0})</option>`;
+        }).join("");
+      } else {
+        tabGroup.style.display = "none";
+      }
+    }
+
+    modal.classList.add("active");
+    if (input) setTimeout(() => input.focus(), 50);
+  },
+
+  closeManualAddModal() {
+    const modal = document.getElementById("fsRouteManualAddModalOverlay");
+    if (modal) modal.classList.remove("active");
+  },
+
+  openSelectTabModal(restaurants, jumpToTab = false) {
+    if (typeof document === "undefined") {
+      const soleTab = this.getActiveRouteTab();
+      this.executeAddMultipleToRoute(restaurants, soleTab.id, jumpToTab);
+      return;
+    }
+    this._pendingImportRestaurants = restaurants;
+    this._pendingImportJumpToTab = jumpToTab;
+
+    const modal = document.getElementById("fsRouteSelectTabModalOverlay");
+    const listEl = document.getElementById("fsRouteSelectTabOptionsList");
+    if (!modal || !listEl) return;
+
+    listEl.innerHTML = this.routeTabs.map((tab) => {
+      const isChecked = tab.id === this.activeRouteTabId;
+      return `
+        <label style="display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.8rem; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; background: #fff; transition: background 0.15s;">
+          <input type="radio" name="fsSelectRouteTabRadio" value="${tab.id}" ${isChecked ? "checked" : ""} style="width: 16px; height: 16px; cursor: pointer;">
+          <div style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: 600; font-size: 0.9rem; color: #1e293b;">${Restaurants.escapeHtml(tab.name)}</span>
+            <span style="color: #64748b; font-size: 0.8rem;">(${tab.waypoints ? tab.waypoints.length : 0})</span>
+          </div>
+        </label>
+      `;
+    }).join("");
+
+    modal.classList.add("active");
+  },
+
+  closeSelectTabModal() {
+    this._pendingImportRestaurants = null;
+    this._pendingImportJumpToTab = false;
+    const modal = document.getElementById("fsRouteSelectTabModalOverlay");
+    if (modal) modal.classList.remove("active");
+  },
+
+  extractPostalCode(str) {
+    if (!str) return null;
+    const match = str.match(/\b([A-Za-z]\d[A-Za-z])[\s-]?(\d[A-Za-z]\d)\b/);
+    if (match) {
+      return {
+        full: (match[1] + match[2]).toUpperCase(),
+        fsa: match[1].toUpperCase(),
+        formatted: `${match[1].toUpperCase()} ${match[2].toUpperCase()}`
+      };
+    }
+    return null;
+  },
+
+  normalizeStreet(str) {
+    if (!str) return "";
+    let s = str.toLowerCase();
+    s = s.replace(/\b[a-z]\d[a-z][\s-]?\d[a-z]\d\b/gi, " ");
+    s = s.replace(/\b(canada|ca|ontario|on)\b/gi, " ");
+    s = s.replace(/\b(unit|suite|ste|apt|bldg|building|#)\s*[\w\d-]+/gi, " ");
+    s = s.replace(/\bavenue\b/g, "ave")
+         .replace(/\bstreet\b/g, "st")
+         .replace(/\broad\b/g, "rd")
+         .replace(/\bboulevard\b/g, "blvd")
+         .replace(/\bdrive\b/g, "dr")
+         .replace(/\bcourt\b/g, "ct")
+         .replace(/\bcrescent\b/g, "cres")
+         .replace(/\bplace\b/g, "pl")
+         .replace(/\bhighway\b/g, "hwy")
+         .replace(/\bparkway\b/g, "pkwy")
+         .replace(/\blane\b/g, "ln");
+    s = s.replace(/\beast\b/g, "e")
+         .replace(/\bwest\b/g, "w")
+         .replace(/\bnorth\b/g, "n")
+         .replace(/\bsouth\b/g, "s");
+    s = s.replace(/[^\w\s]/g, " ").replace(/\s+/g, " ").trim();
+    return s;
+  },
+
+  extractStreetNumber(str) {
+    const norm = this.normalizeStreet(str);
+    const match = norm.match(/\b(\d+)\b/);
+    return match ? match[1] : null;
+  },
+
+  matchAddressToRestaurant(inputAddress, candidates = null) {
+    const list = candidates || this.cachedRestaurants || (typeof Restaurants !== "undefined" ? (Restaurants.fullDataset || Restaurants.allRestaurants) : []);
+    if (!inputAddress || !Array.isArray(list) || list.length === 0) return null;
+    const inputPostal = this.extractPostalCode(inputAddress);
+    const inputNum = this.extractStreetNumber(inputAddress);
+    const inputNormStreet = this.normalizeStreet(inputAddress);
+
+    // 1. First priority: Postal Code Matching
+    if (inputPostal) {
+      const postalMatches = list.filter(r => {
+        const rPostal = this.extractPostalCode(r.address);
+        return rPostal && rPostal.full === inputPostal.full;
+      });
+
+      if (postalMatches.length === 1) {
+        const rNum = this.extractStreetNumber(postalMatches[0].address);
+        if (!inputNum || !rNum || inputNum === rNum) {
+          return postalMatches[0];
+        }
+      } else if (postalMatches.length > 1) {
+        if (inputNum) {
+          const numMatch = postalMatches.find(r => this.extractStreetNumber(r.address) === inputNum);
+          if (numMatch) return numMatch;
+        }
+        const inputWords = inputNormStreet.split(" ").filter(w => w.length > 2 && w !== inputNum);
+        for (const r of postalMatches) {
+          const rNorm = this.normalizeStreet(r.address);
+          if (inputWords.some(w => rNorm.includes(w))) {
+            return r;
+          }
+        }
+        return postalMatches[0];
+      }
+    }
+
+    // 2. Second priority: Street Number + Street Name Keyword Matching
+    if (inputNum) {
+      const numCandidates = list.filter(r => this.extractStreetNumber(r.address) === inputNum);
+      if (numCandidates.length > 0) {
+        let bestScore = 0;
+        let bestMatch = null;
+        const inputWords = inputNormStreet.split(" ").filter(w => w.length > 2 && w !== inputNum);
+
+        for (const r of numCandidates) {
+          const rNorm = this.normalizeStreet(r.address);
+          let score = 0;
+          for (const word of inputWords) {
+            if (rNorm.includes(word)) score += 2;
+          }
+          if (inputPostal) {
+            const rPostal = this.extractPostalCode(r.address);
+            if (rPostal && rPostal.fsa === inputPostal.fsa) score += 3;
+          }
+          if (score > bestScore && score >= 2) {
+            bestScore = score;
+            bestMatch = r;
+          }
+        }
+        if (bestMatch) return bestMatch;
+      }
+    }
+
+    // 3. Third priority: Check if line directly contains restaurant name
+    const lowerInput = inputAddress.toLowerCase();
+    const nameMatch = list.find(r => r.name && lowerInput.includes(r.name.toLowerCase()));
+    if (nameMatch) return nameMatch;
+
+    return null;
+  },
+
+  async batchAddAddressesFromText(rawText, targetTabId = null) {
+    if (!rawText || !rawText.trim()) return;
+
+    let pool = this.cachedRestaurants || [];
+    if (pool.length < 500 && window.Restaurants && Array.isArray(window.Restaurants.fullDataset) && window.Restaurants.fullDataset.length > 0) {
+      pool = window.Restaurants.fullDataset;
+      this.cachedRestaurants = pool;
+    }
+    if (pool.length === 0) {
+      try {
+        const res = await Api.queryAllRestaurants(3500);
+        if (res && res.success && Array.isArray(res.data)) {
+          pool = res.data;
+          this.cachedRestaurants = pool;
+        }
+      } catch (e) {}
+    }
+
+    const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+
+    const targetTab = this.routeTabs.find(t => t.id === targetTabId) || this.getActiveRouteTab();
+    let addedCount = 0;
+
+    lines.forEach(line => {
+      const matched = this.matchAddressToRestaurant(line, pool);
+      let stopItem;
+      if (matched) {
+        stopItem = {
+          ...matched,
+          _uid: matched.placeId ? `wp_${matched.placeId}` : `wp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          _matched: true,
+          _sourceAddress: line
+        };
+      } else {
+        stopItem = {
+          _uid: `wp_custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: line,
+          address: line,
+          region: "GTA",
+          latitude: 43.6532,
+          longitude: -79.3832,
+          placeId: `addr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          isCustomAddress: true,
+          _matched: false,
+          _sourceAddress: line
+        };
+      }
+
+      const exists = targetTab.waypoints.some(w => 
+        (stopItem.placeId && !stopItem.isCustomAddress && w.placeId === stopItem.placeId) ||
+        (w.name === stopItem.name && w.address === stopItem.address) ||
+        (stopItem.isCustomAddress && w.address === stopItem.address)
+      );
+
+      if (!exists) {
+        targetTab.waypoints.push(stopItem);
+        addedCount++;
+      }
+    });
+
+    this.activeRouteTabId = targetTab.id;
+    this.saveRouteWaypoints();
+    this.renderRouteTabs();
+    this.renderRouteWaypoints();
+
+    const toastMsg = i18n.t ? i18n.t("fs_route_manual_result_toast", { total: addedCount }) : `成功添加 ${addedCount} 个站点`;
+    if (window.showToast) window.showToast(toastMsg);
+    else alert(toastMsg);
   },
 
   populateRestaurantDatalist() {
@@ -342,11 +926,17 @@ export const FieldSales = {
   },
 
   ensureWaypointUids() {
-    this.routeWaypoints.forEach((w, idx) => {
-      if (!w._uid) {
-        w._uid = w.placeId ? `wp_${w.placeId}` : `wp_${idx}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      }
-    });
+    if (Array.isArray(this.routeTabs)) {
+      this.routeTabs.forEach(tab => {
+        if (Array.isArray(tab.waypoints)) {
+          tab.waypoints.forEach((w, idx) => {
+            if (!w._uid) {
+              w._uid = w.placeId ? `wp_${w.placeId}` : `wp_${idx}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+            }
+          });
+        }
+      });
+    }
   },
 
   normalizeRestaurantName(restaurant) {
@@ -415,63 +1005,62 @@ export const FieldSales = {
     });
   },
 
-  addRestaurantToRoute(restaurant, jumpToTab = false) {
-    restaurant = this.normalizeRestaurantName(restaurant);
-    const exists = this.routeWaypoints.some(w => (w.placeId && w.placeId === restaurant.placeId) || w.name === restaurant.name);
-    if (exists) {
-      const msg = i18n.t("fs_msg_already_in_route", { name: restaurant.name });
-      if (window.showToast) window.showToast(msg);
-      else alert(msg);
-      return;
-    }
-    if (!restaurant._uid) {
-      restaurant._uid = restaurant.placeId ? `wp_${restaurant.placeId}` : `wp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    }
-    this.routeWaypoints.push(restaurant);
-    this.saveRouteWaypoints();
-    this.renderRouteWaypoints();
-
-    if (jumpToTab && window.switchTab) {
-      window.switchTab("tab-fieldsale");
-      this.switchSubTab("route");
-    }
-
-    const msg = i18n.t("fs_msg_added_to_route", { name: restaurant.name });
-    if (window.showToast) window.showToast(msg);
-    else alert(msg);
+  addRestaurantToRoute(restaurant, jumpToTab = false, targetTabId = null) {
+    if (!restaurant) return;
+    this.addMultipleToRoute([restaurant], jumpToTab, targetTabId);
   },
 
-  addMultipleToRoute(restaurants, jumpToTab = false) {
+  addMultipleToRoute(restaurants, jumpToTab = false, targetTabId = null) {
     if (!Array.isArray(restaurants) || restaurants.length === 0) return;
+
+    if (targetTabId) {
+      this.executeAddMultipleToRoute(restaurants, targetTabId, jumpToTab);
+      return;
+    }
+
+    if (this.routeTabs.length <= 1) {
+      const soleTab = this.getActiveRouteTab();
+      this.executeAddMultipleToRoute(restaurants, soleTab.id, jumpToTab);
+      return;
+    }
+
+    this.openSelectTabModal(restaurants, jumpToTab);
+  },
+
+  executeAddMultipleToRoute(restaurants, targetTabId, jumpToTab = false) {
+    if (!Array.isArray(restaurants) || restaurants.length === 0) return;
+    const targetTab = this.routeTabs.find(t => t.id === targetTabId) || this.getActiveRouteTab();
+
     let addedCount = 0;
     restaurants.forEach(r => {
       r = this.normalizeRestaurantName(r);
-      const exists = this.routeWaypoints.some(w => (w.placeId && w.placeId === r.placeId) || w.name === r.name);
+      const exists = targetTab.waypoints.some(w => (w.placeId && w.placeId === r.placeId) || w.name === r.name);
       if (!exists) {
         if (!r._uid) {
           r._uid = r.placeId ? `wp_${r.placeId}` : `wp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
         }
-        this.routeWaypoints.push(r);
+        targetTab.waypoints.push(r);
         addedCount++;
       }
     });
 
     this.saveRouteWaypoints();
+    this.renderRouteTabs();
     this.renderRouteWaypoints();
 
     if (jumpToTab && window.switchTab) {
       window.switchTab("tab-fieldsale");
       this.switchSubTab("route");
     }
-    
+
     if (addedCount > 0) {
       const skipped = restaurants.length - addedCount;
-      const skipMsg = skipped > 0 ? i18n.t("fs_msg_batch_skipped", { count: skipped }) : "";
-      const msg = i18n.t("fs_msg_batch_added", { count: addedCount, skipMsg });
+      const skipMsg = skipped > 0 ? (i18n.t ? i18n.t("fs_msg_batch_skipped", { count: skipped }) : ` (跳过 ${skipped} 家已存在站点)`) : "";
+      const msg = (i18n.t ? i18n.t("fs_msg_batch_added", { count: addedCount, skipMsg }) : `成功添加 ${addedCount} 家餐馆到路线${skipMsg}`) + ` [${targetTab.name}]`;
       if (window.showToast) window.showToast(msg);
       else alert(msg);
     } else {
-      const msg = i18n.t("fs_msg_all_in_route");
+      const msg = (i18n.t ? i18n.t("fs_msg_all_in_route") : "所选餐馆均已在路线中") + ` [${targetTab.name}]`;
       if (window.showToast) window.showToast(msg);
       else alert(msg);
     }
@@ -578,7 +1167,11 @@ export const FieldSales = {
 
   buildGoogleMapsSlashUrl(originAddress, stops) {
     const originStr = encodeURIComponent(originAddress);
-    const stopStrs = stops.map(s => encodeURIComponent((s.name ? s.name + ", " : "") + (s.address || "")));
+    const stopStrs = stops.map(s => {
+      const isCustom = !!s.isCustomAddress || s.name === s.address;
+      const target = isCustom ? (s.address || s.name || "") : ((s.name ? s.name + ", " : "") + (s.address || ""));
+      return encodeURIComponent(target);
+    });
     return `https://www.google.com/maps/dir/${originStr}/${stopStrs.join("/")}/`;
   },
 
@@ -1022,7 +1615,23 @@ export const FieldSales = {
         ? `<span class="fs-wp-status-badge is-visited" style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ ${i18n.t("visited_yes")}</span>` 
         : `<span class="fs-wp-status-badge is-pending" style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${i18n.t("visited_pending")}</span>`;
 
-      const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` <span class="fs-wp-name-en" style="font-size: 0.82rem; color: #64748b; font-weight: normal;">(${w.nameEn})</span>` : "");
+      const isCustom = !!w.isCustomAddress || (!w.placeId && (!w.name || w.name === w.address)) || (w.name === w.address);
+      let displayName = "";
+      let addressRow = "";
+      let regionBadge = "";
+
+      if (isCustom) {
+        displayName = (typeof Restaurants !== "undefined" && Restaurants.escapeHtml) ? Restaurants.escapeHtml(w.address || w.name || "") : (w.address || w.name || "");
+        regionBadge = `<span class="fs-wp-region" style="background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem;">${i18n.t("fs_route_custom_address_tag") || "地址"}</span>`;
+        addressRow = "";
+      } else {
+        const escapedName = (typeof Restaurants !== "undefined" && Restaurants.escapeHtml) ? Restaurants.escapeHtml(w.name) : w.name;
+        const escapedNameEn = (typeof Restaurants !== "undefined" && Restaurants.escapeHtml) ? Restaurants.escapeHtml(w.nameEn) : w.nameEn;
+        const formattedRegion = (typeof Restaurants !== "undefined" && Restaurants.formatRegion) ? Restaurants.formatRegion(w.region) : w.region;
+        displayName = escapedName + (w.nameEn && w.nameEn !== w.name ? ` <span class="fs-wp-name-en" style="font-size: 0.82rem; color: #64748b; font-weight: normal;">(${escapedNameEn})</span>` : "");
+        regionBadge = `<span class="fs-wp-region">${formattedRegion || "GTA"}</span>`;
+        addressRow = `<div class="fs-wp-address">${(typeof Restaurants !== "undefined" && Restaurants.escapeHtml ? Restaurants.escapeHtml(w.address) : w.address) || i18n.t("no_address")}</div>`;
+      }
 
       return `
         <div class="fs-waypoint-card ${isVisited ? 'is-visited' : ''} ${isSelected ? 'is-selected' : ''}" data-uid="${w._uid}" style="${isVisited ? 'border-left: 4px solid #10b981;' : ''}">
@@ -1032,9 +1641,9 @@ export const FieldSales = {
             <div class="fs-wp-header">
               <span class="fs-wp-name">${displayName}</span>
               ${visitedBadge}
-              <span class="fs-wp-region">${Restaurants.formatRegion(w.region) || "GTA"}</span>
+              ${regionBadge}
             </div>
-            <div class="fs-wp-address">${w.address || i18n.t("no_address")}</div>
+            ${addressRow}
             <div class="fs-wp-meta">${phoneStr}</div>
           </div>
           <div class="fs-wp-actions">
@@ -1068,7 +1677,9 @@ export const FieldSales = {
         const idx = parseInt(btn.dataset.index, 10);
         if (action === "nav") {
           const rest = this.routeWaypoints[idx];
-          const query = encodeURIComponent((rest.name ? rest.name + " " : "") + (rest.address || ""));
+          const isCustom = !!rest.isCustomAddress || (!rest.placeId && (!rest.name || rest.name === rest.address)) || (rest.name === rest.address);
+          const queryText = isCustom ? (rest.address || rest.name) : ((rest.name ? rest.name + " " : "") + (rest.address || ""));
+          const query = encodeURIComponent(queryText);
           window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`, "_blank");
         }
         if (action === "up") this.moveWaypoint(idx, -1);
