@@ -1016,11 +1016,11 @@ export const FieldSales = {
       const isLast = origIndex === this.routeWaypoints.length - 1;
       const stopNumber = origIndex + 1;
       const isSelected = this.selectedWaypointIds.has(w._uid);
-      const phoneStr = w.phone && w.phone !== "无" ? `<a href="tel:${w.phone}" class="fs-link">${w.phone}</a>` : "";
+      const phoneStr = w.phone && w.phone !== "无" ? `<a href="tel:${w.phone}" class="fs-link fs-wp-phone">${w.phone}</a>` : "";
       const isVisited = !!w.visited;
       const visitedBadge = isVisited 
-        ? `<span style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ ${i18n.t("visited_yes")}</span>` 
-        : `<span style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${i18n.t("visited_pending")}</span>`;
+        ? `<span class="fs-wp-status-badge is-visited" style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ ${i18n.t("visited_yes")}</span>` 
+        : `<span class="fs-wp-status-badge is-pending" style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${i18n.t("visited_pending")}</span>`;
 
       const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` <span class="fs-wp-name-en" style="font-size: 0.82rem; color: #64748b; font-weight: normal;">(${w.nameEn})</span>` : "");
 
@@ -1041,8 +1041,8 @@ export const FieldSales = {
             <button class="fs-btn-action fs-btn-nav" data-action="nav" data-index="${origIndex}" title="${i18n.t("fs_btn_nav_title")}">${i18n.t("fs_btn_nav")}</button>
             <button class="fs-btn-action" data-action="up" data-index="${origIndex}" ${isFirst ? "disabled" : ""} title="${i18n.t("fs_btn_move_up")}">${i18n.t("fs_btn_move_up")}</button>
             <button class="fs-btn-action" data-action="down" data-index="${origIndex}" ${isLast ? "disabled" : ""} title="${i18n.t("fs_btn_move_down")}">${i18n.t("fs_btn_move_down")}</button>
-            <button class="fs-btn-action fs-btn-del" data-action="del" data-index="${origIndex}" title="${i18n.t("btn_delete")}">${i18n.t("btn_delete")}</button>
             <button class="fs-btn-action fs-btn-log" data-action="log" data-index="${origIndex}" title="${isVisited ? i18n.t('fs_btn_log_title_edit') : i18n.t('fs_btn_log_title_new')}" style="${isVisited ? 'background: #d1fae5; color: #065f46; border-color: #a7f3d0;' : ''}">${isVisited ? i18n.t('fs_btn_log_recorded') : i18n.t('fs_btn_log_new')}</button>
+            <button class="fs-btn-action fs-btn-del" data-action="del" data-index="${origIndex}" title="${i18n.t("btn_delete")}">${i18n.t("btn_delete")}</button>
           </div>
         </div>
       `;
