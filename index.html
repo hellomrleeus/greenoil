@@ -678,10 +678,21 @@
 
               <!-- Route Tabs Bar -->
               <div class="fs-route-tabs-wrapper" id="fsRouteTabsWrapper">
-                <div class="fs-route-tabs-bar" id="fsRouteTabsBar"></div>
-                <button class="btn btn-sm btn-outline fs-route-btn-new-tab" id="fsRouteBtnNewTab" title="新建路线标签" style="font-size: 0.8rem; padding: 0.3rem 0.65rem; border-style: dashed; white-space: nowrap;">
-                  <span data-i18n="fs_route_tab_new">+ 新建标签</span>
-                </button>
+                <div class="fs-route-tabs-bar" id="fsRouteTabsBar" role="tablist"></div>
+                <div class="fs-route-tabs-actions" id="fsRouteTabsActions">
+                  <button type="button" class="btn btn-sm btn-outline fs-route-tab-action-btn" id="fsRouteBtnNewTab" title="新建路线标签">
+                    <span data-i18n="fs_route_tab_new">+ 新建</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline fs-route-tab-action-btn" id="fsRouteBtnDuplicateTab" title="复制当前路线标签">
+                    <span data-i18n="fs_route_tab_duplicate">复制</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline fs-route-tab-action-btn fs-btn-danger" id="fsRouteBtnDeleteTab" title="删除当前路线标签">
+                    <span data-i18n="fs_route_tab_delete">删除</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline fs-route-tab-action-btn" id="fsRouteBtnRenameTab" title="重命名当前路线标签">
+                    <span data-i18n="fs_route_tab_rename">重命名</span>
+                  </button>
+                </div>
               </div>
 
               <!-- Waypoints Search & Batch Toolbar -->

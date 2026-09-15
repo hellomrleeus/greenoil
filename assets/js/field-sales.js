@@ -288,10 +288,31 @@ export const FieldSales = {
       btnManualAdd.addEventListener("click", () => this.openManualAddModal());
     }
 
-    // New Route Tab Button
+    // Route Tab Toolbar Buttons: 新建、复制、删除、重命名
     const btnNewTab = document.getElementById("fsRouteBtnNewTab");
     if (btnNewTab) {
       btnNewTab.addEventListener("click", () => this.createRouteTab());
+    }
+
+    const btnDupTab = document.getElementById("fsRouteBtnDuplicateTab");
+    if (btnDupTab) {
+      btnDupTab.addEventListener("click", () => {
+        this.duplicateRouteTab(this.activeRouteTabId);
+      });
+    }
+
+    const btnDelTab = document.getElementById("fsRouteBtnDeleteTab");
+    if (btnDelTab) {
+      btnDelTab.addEventListener("click", () => {
+        this.deleteRouteTab(this.activeRouteTabId);
+      });
+    }
+
+    const btnRenameTab = document.getElementById("fsRouteBtnRenameTab");
+    if (btnRenameTab) {
+      btnRenameTab.addEventListener("click", () => {
+        this.openRenameTabModal(this.activeRouteTabId);
+      });
     }
 
     // Bind Manual Add Modal events
@@ -585,40 +606,38 @@ export const FieldSales = {
     this.getActiveRouteTab();
     const canDelete = this.routeTabs.length > 1;
 
+    // Update delete button state in the right-aligned action toolbar
+    const btnDel = document.getElementById("fsRouteBtnDeleteTab");
+    if (btnDel) {
+      btnDel.disabled = !canDelete;
+      btnDel.style.opacity = canDelete ? "1" : "0.45";
+      btnDel.style.cursor = canDelete ? "pointer" : "not-allowed";
+      if (!canDelete) {
+        btnDel.title = i18n.t ? (i18n.t("fs_route_tab_min_alert") || "至少保留一个路线标签") : "至少保留一个路线标签";
+      } else {
+        btnDel.title = i18n.t ? (i18n.t("fs_route_tab_delete") || "删除当前路线标签") : "删除当前路线标签";
+      }
+    }
+
+    // Render tabs: ONLY the tab name!
     barEl.innerHTML = this.routeTabs.map(tab => {
       const isActive = tab.id === this.activeRouteTabId;
-      const count = tab.waypoints ? tab.waypoints.length : 0;
       return `
-        <div class="fs-route-tab-pill ${isActive ? 'active' : ''}" data-tab-id="${tab.id}">
-          <span class="fs-route-tab-name" title="${Restaurants.escapeHtml(tab.name)}">${Restaurants.escapeHtml(tab.name)}</span>
-          <span class="fs-route-tab-count">${count}</span>
-          <div class="fs-route-tab-actions">
-            <button class="fs-route-tab-action-btn" data-action="rename" data-tab-id="${tab.id}" title="${i18n.t("fs_route_tab_rename")}">${i18n.t("fs_route_tab_rename")}</button>
-            <button class="fs-route-tab-action-btn" data-action="duplicate" data-tab-id="${tab.id}" title="${i18n.t("fs_route_tab_duplicate")}">${i18n.t("fs_route_tab_duplicate")}</button>
-            ${canDelete ? `<button class="fs-route-tab-action-btn fs-route-tab-del-btn" data-action="delete" data-tab-id="${tab.id}" title="${i18n.t("fs_route_tab_delete")}">${i18n.t("fs_route_tab_delete")}</button>` : ''}
-          </div>
-        </div>
+        <button type="button" class="fs-route-tab-item ${isActive ? 'active' : ''}" data-tab-id="${tab.id}" role="tab" aria-selected="${isActive}" title="${Restaurants.escapeHtml(tab.name)}">
+          <span class="fs-route-tab-name">${Restaurants.escapeHtml(tab.name)}</span>
+        </button>
       `;
     }).join("");
 
-    // Bind tab pill click and action button clicks
-    barEl.querySelectorAll(".fs-route-tab-pill").forEach(pill => {
-      pill.addEventListener("click", (e) => {
-        const actionBtn = e.target.closest(".fs-route-tab-action-btn");
-        const tabId = pill.dataset.tabId;
-        if (actionBtn) {
-          e.stopPropagation();
-          const action = actionBtn.dataset.action;
-          if (action === "rename") {
-            this.openRenameTabModal(tabId);
-          } else if (action === "duplicate") {
-            this.duplicateRouteTab(tabId);
-          } else if (action === "delete") {
-            this.deleteRouteTab(tabId);
-          }
-        } else {
-          this.switchRouteTab(tabId);
-        }
+    // Bind tab item click and double-click to switch or rename
+    barEl.querySelectorAll(".fs-route-tab-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const tabId = item.dataset.tabId;
+        this.switchRouteTab(tabId);
+      });
+      item.addEventListener("dblclick", () => {
+        const tabId = item.dataset.tabId;
+        this.openRenameTabModal(tabId);
       });
     });
   },

@@ -595,10 +595,41 @@ Api.getRouteWaypoints = async () => ({
 await FieldSales.loadRouteWaypoints();
 assert.equal(FieldSales.routeTabs.length, 3, 'Existing multiple tabs must NOT be wiped by legacy server waypoints');
 
+// 8.10 Verify Tab UI: only tab name on each tab item, right toolbar buttons exist
+let tabsBarHtml = "";
+let deleteBtnDisabled = false;
+globalThis.document.getElementById = (id) => {
+  if (id === "fsRouteTabsBar") {
+    return {
+      set innerHTML(val) { tabsBarHtml = val; },
+      querySelectorAll: () => []
+    };
+  }
+  if (id === "fsRouteBtnDeleteTab") {
+    return {
+      set disabled(val) { deleteBtnDisabled = val; },
+      style: {}
+    };
+  }
+  return null;
+};
+
+FieldSales.renderRouteTabs();
+assert(tabsBarHtml.includes('class="fs-route-tab-item'), 'Tabs must use fs-route-tab-item styling');
+assert(!tabsBarHtml.includes('fs-route-tab-count'), 'Tab items must NOT include count badges');
+assert(!tabsBarHtml.includes('fs-route-tab-action-btn'), 'Tab items must NOT contain nested action buttons');
+assert.equal(deleteBtnDisabled, false, 'Delete button on right toolbar must be enabled when >1 tabs exist');
+
+// When only 1 tab exists, delete button must be disabled
+FieldSales.routeTabs = [{ id: 'tab_single', name: '独苗路线', waypoints: [] }];
+FieldSales.activeRouteTabId = 'tab_single';
+FieldSales.renderRouteTabs();
+assert.equal(deleteBtnDisabled, true, 'Delete button on right toolbar must be disabled when only 1 tab exists');
+
 // Restore
 FieldSales.openSelectTabModal = origOpenSelectTabModal;
 
-console.log('PASS: Route tabs lifecycle and operations verified.');
+console.log('PASS: Route tabs lifecycle, tab styling, and toolbar operations verified.');
 
 // -------------------------------------------------------------
 // 9. Test Address Matching Engine & Manual Add
