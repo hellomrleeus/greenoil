@@ -615,11 +615,22 @@
           <!-- SUBVIEW 1: ROUTE PLANNING -->
           <div class="fs-subview active" id="fs-view-route">
             <div class="card" style="margin-bottom: 1.25rem;">
-              <div class="fs-route-config-grid">
+              <div class="fs-route-config-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
                 <!-- Origin Config -->
                 <div class="form-group" style="margin-bottom: 0;">
                   <label class="form-label" for="fsRouteOriginInput" data-i18n="fs_route_origin">起点地址 (Green Oil Inc)</label>
                   <input type="text" class="form-input" id="fsRouteOriginInput" data-i18n-placeholder="fs_route_origin_placeholder" placeholder="Green Oil Inc, Toronto, ON">
+                </div>
+
+                <!-- Departure Time -->
+                <div class="form-group" style="margin-bottom: 0;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; min-height: 24px;">
+                    <label class="form-label" for="fsRouteDepartureTime" style="margin-bottom: 0;" data-i18n="fs_route_departure_time">出发时间</label>
+                    <button type="button" class="btn btn-secondary btn-sm" id="fsRouteBtnNow" style="font-size: 0.76rem; padding: 0.15rem 0.5rem; color: #059669; border-color: rgba(5,150,105,0.3);">
+                      <span data-i18n="fs_route_btn_now">当前时间</span>
+                    </button>
+                  </div>
+                  <input type="datetime-local" class="form-input" id="fsRouteDepartureTime" style="font-size: 0.88rem; width: 100%;">
                 </div>
 
                 <!-- Add Stops / Address Batch -->

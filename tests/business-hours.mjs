@@ -39,8 +39,22 @@ const monMorning = new Date("2026-09-14T09:30:00-04:00");
 const monLunch = new Date("2026-09-14T12:00:00-04:00");
 const monAfternoon = new Date("2026-09-14T19:30:00-04:00");
 const monNight = new Date("2026-09-14T22:30:00-04:00");
+const wedRestDay = new Date("2026-09-16T12:00:00-04:00");
 
-assert.equal(BusinessHours.getBusinessStatus(monSchedule, monMorning).status, "已打烊");
+// Morning 09:30 opens at 11:00 (in 90 min) -> "未开门" / "剩1小时30分开业"
+const statusMorning = BusinessHours.getBusinessStatus(monSchedule, monMorning);
+assert.equal(statusMorning.status, "未开门");
+assert.equal(statusMorning.statusKey, "status_opening");
+assert.equal(statusMorning.cls, "status-opening");
+assert.equal(statusMorning.remainingMinutes, 90);
+assert.equal(statusMorning.label, "剩1小时30分开业");
+
+// English & Korean translations for opening soon
+const statusMorningEn = BusinessHours.getBusinessStatus(monSchedule, monMorning, { lang: "en" });
+assert.equal(statusMorningEn.label, "Opens in 1h 30m");
+const statusMorningKo = BusinessHours.getBusinessStatus(monSchedule, monMorning, { lang: "ko" });
+assert.equal(statusMorningKo.label, "오픈 1시간 30분 전");
+
 const statusLunch = BusinessHours.getBusinessStatus(monSchedule, monLunch);
 assert.equal(statusLunch.status, "营业中");
 assert.equal(statusLunch.remainingMinutes, 600); // 10 hours left
@@ -51,7 +65,17 @@ assert.equal(statusDinner.status, "营业中");
 assert.equal(statusDinner.remainingMinutes, 150); // 2h 30m left
 assert.equal(statusDinner.label, "剩2小时30分打烊");
 
-assert.equal(BusinessHours.getBusinessStatus(monSchedule, monNight).status, "已打烊");
+// Monday night 22:30 opens Tuesday 11:00 (12.5h away) -> "未开门" / "剩12小时30分开业"
+const statusNight = BusinessHours.getBusinessStatus(monSchedule, monNight);
+assert.equal(statusNight.status, "未开门");
+assert.equal(statusNight.remainingMinutes, 750);
+assert.equal(statusNight.label, "剩12小时30分开业");
+
+// Wednesday 12:00 is rest day, next open is Monday (5 days away > 24h) -> "已打烊"
+const statusWed = BusinessHours.getBusinessStatus(monSchedule, wedRestDay);
+assert.equal(statusWed.status, "已打烊");
+assert.equal(statusWed.statusKey, "status_closed");
+assert.equal(statusWed.cls, "status-closed");
 
 // 5. Test overnight shift: Friday 16:00–01:30, Saturday 16:00–01:30
 console.log("  5. Testing overnight cross-midnight shifts...");
@@ -78,9 +102,16 @@ assert.equal(resSatEarly.status, "营业中");
 assert.equal(resSatEarly.remainingMinutes, 45); // 45 mins until 01:30
 assert.equal(resSatEarly.label, "剩45分钟打烊");
 
-// Saturday morning at 02:00 AM (EDT) - now closed!
+// Saturday morning at 02:00 AM (EDT) - next shift is Saturday 16:00 (14 hours away) -> "未开门"
 const satMorning = new Date("2026-09-19T02:00:00-04:00");
-assert.equal(BusinessHours.getBusinessStatus(overnightSchedule, satMorning).status, "已打烊");
+const resSatMorning = BusinessHours.getBusinessStatus(overnightSchedule, satMorning);
+assert.equal(resSatMorning.status, "未开门");
+assert.equal(resSatMorning.remainingMinutes, 840);
+assert.equal(resSatMorning.label, "剩14小时开业");
+
+// Monday morning on overnightSchedule - next shift is Friday 16:00 (> 24h) -> "已打烊"
+const monOvernight = new Date("2026-09-14T10:00:00-04:00");
+assert.equal(BusinessHours.getBusinessStatus(overnightSchedule, monOvernight).status, "已打烊");
 
 // 6. Test English standard formats
 console.log("  6. Testing English opening hours (12-hour AM/PM)...");
@@ -120,8 +151,8 @@ if (fs.existsSync(jsonPath)) {
   let parsedCount = 0;
   for (const r of data) {
     const res = BusinessHours.getBusinessStatus(r.openingHours);
-    assert.ok(["未知", "已打烊", "营业中"].includes(res.status));
-    assert.ok(["status-unknown", "status-closed", "status-open"].includes(res.cls));
+    assert.ok(["未知", "已打烊", "营业中", "未开门"].includes(res.status));
+    assert.ok(["status-unknown", "status-closed", "status-open", "status-opening"].includes(res.cls));
     if (res.status === "未知") {
       unknownCount++;
     } else {

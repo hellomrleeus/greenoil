@@ -736,4 +736,73 @@ assert(!zhDesc.includes('系统将优先匹配'), 'Verbose explanation must not 
 
 console.log('PASS: Zero emojis found and concise copy verified.');
 
+// -------------------------------------------------------------
+// 11. Testing Schedule-Aware TSP Optimization & Departure Time
+// -------------------------------------------------------------
+console.log('11. Testing Schedule-Aware TSP Optimization & Departure Time...');
+
+// Scenario: Depart at 10:00 AM on Monday
+// Store A is 1km away but opens at 14:00 (2:00 PM) -> Must NOT be visited first!
+// Store B is 8km away and opens at 10:00 AM -> Must be visited first!
+// Store C is 13km away and opens at 11:00 AM -> Visited after Store B!
+const depTime10Am = new Date('2026-09-14T10:00:00-04:00');
+
+const storeA = {
+  placeId: 'store_a',
+  name: 'Store A (Opens 2 PM)',
+  latitude: 43.6600,
+  longitude: -79.3800,
+  openingHours: '星期一: 14:00–22:00\n星期二: 14:00–22:00\n星期三: 14:00–22:00\n星期四: 14:00–22:00\n星期五: 14:00–22:00\n星期六: 14:00–22:00\n星期日: 14:00–22:00'
+};
+
+const storeB = {
+  placeId: 'store_b',
+  name: 'Store B (Opens 10 AM)',
+  latitude: 43.7200,
+  longitude: -79.4000,
+  openingHours: '星期一: 10:00–21:00\n星期二: 10:00–21:00\n星期三: 10:00–21:00\n星期四: 10:00–21:00\n星期五: 10:00–21:00\n星期六: 10:00–21:00\n星期日: 10:00–21:00'
+};
+
+const storeC = {
+  placeId: 'store_c',
+  name: 'Store C (Opens 11 AM)',
+  latitude: 43.7600,
+  longitude: -79.4100,
+  openingHours: '星期一: 11:00–22:00\n星期二: 11:00–22:00\n星期三: 11:00–22:00\n星期四: 11:00–22:00\n星期五: 11:00–22:00\n星期六: 11:00–22:00\n星期日: 11:00–22:00'
+};
+
+const scheduledRoute = FieldSales.sortWaypointsBySchedule(
+  [storeA, storeB, storeC],
+  depTime10Am,
+  { lat: 43.6532, lng: -79.3832 }
+);
+
+assert.equal(scheduledRoute.length, 3);
+assert.equal(scheduledRoute[0].placeId, 'store_b', 'Store B (open at 10 AM) must be visited first');
+assert.notEqual(scheduledRoute[0].placeId, 'store_a', 'Store A (opens at 2 PM) must NOT be visited first despite being closest');
+assert(scheduledRoute[0]._estArrivalStr, 'Waypoints must have estimated arrival time');
+
+// Verify Departure Time translations and absence of emojis
+const scheduleKeys = [
+  'status_opening',
+  'status_opening_hours_mins',
+  'status_opening_hours',
+  'status_opening_mins',
+  'fs_route_departure_time',
+  'fs_route_btn_now',
+  'fs_route_est_arrival'
+];
+
+['zh', 'en', 'ko'].forEach(lang => {
+  i18n.setLanguage(lang);
+  for (const k of scheduleKeys) {
+    const text = i18n.t(k, { hours: 2, mins: 30, time: '10:15' });
+    assert(text, `Key ${k} in ${lang} must exist`);
+    assert(!tabEmojiRegex.test(text), `Text for ${k} in ${lang} must not contain emojis (was: ${text})`);
+  }
+});
+i18n.setLanguage('zh');
+
+console.log('PASS: Schedule-Aware TSP optimization & departure time rules verified.');
+
 console.log('ALL ENHANCED ROUTE WAYPOINT TESTS PASSED!');

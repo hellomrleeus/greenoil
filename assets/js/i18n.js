@@ -87,11 +87,15 @@ export const TRANSLATIONS = {
     // Status Values
     status_open: "营业中",
     status_closed: "已打烊",
+    status_opening: "未开门",
     status_unknown: "未知",
     status_24h: "24小时营业",
     status_remaining_hours_mins: "剩{hours}小时{mins}分打烊",
     status_remaining_hours: "剩{hours}小时打烊",
     status_remaining_mins: "剩{mins}分钟打烊",
+    status_opening_hours_mins: "剩{hours}小时{mins}分开业",
+    status_opening_hours: "剩{hours}小时开业",
+    status_opening_mins: "剩{mins}分钟开业",
 
     // Card Action Buttons
     btn_calc_oil: "计算用油",
@@ -229,6 +233,9 @@ export const TRANSLATIONS = {
     fs_route_title: "外勤拜访路线规划",
     fs_route_origin: "起点地址 (Green Oil Inc)",
     fs_route_origin_placeholder: "Green Oil Inc, Toronto, ON",
+    fs_route_departure_time: "出发时间",
+    fs_route_btn_now: "当前时间",
+    fs_route_est_arrival: "预计抵达",
     fs_route_use_gps: "使用当前GPS位置为起点",
     fs_route_add_restaurant: "添加餐馆到路线",
     fs_route_add_stops: "添加站点到路线",
@@ -605,11 +612,15 @@ export const TRANSLATIONS = {
     // Status Values
     status_open: "Open",
     status_closed: "Closed",
+    status_opening: "Opening Soon",
     status_unknown: "Unknown",
     status_24h: "Open 24 hours",
     status_remaining_hours_mins: "Closes in {hours}h {mins}m",
     status_remaining_hours: "Closes in {hours}h",
     status_remaining_mins: "Closes in {mins}m",
+    status_opening_hours_mins: "Opens in {hours}h {mins}m",
+    status_opening_hours: "Opens in {hours}h",
+    status_opening_mins: "Opens in {mins}m",
 
     // Card Action Buttons
     btn_calc_oil: "Calculate Oil",
@@ -747,6 +758,9 @@ export const TRANSLATIONS = {
     fs_route_title: "Field Visit Route Planning",
     fs_route_origin: "Origin Address (Green Oil Inc)",
     fs_route_origin_placeholder: "Green Oil Inc, Toronto, ON",
+    fs_route_departure_time: "Departure Time",
+    fs_route_btn_now: "Now",
+    fs_route_est_arrival: "Est. Arrival",
     fs_route_use_gps: "Use My Current GPS Location",
     fs_route_add_restaurant: "Add Restaurant to Route",
     fs_route_add_stops: "Add Stops to Route",
@@ -1123,11 +1137,15 @@ export const TRANSLATIONS = {
     // Status Values
     status_open: "영업 중",
     status_closed: "영업 종료",
+    status_opening: "오픈 예정",
     status_unknown: "정보 없음",
     status_24h: "24시간 영업",
     status_remaining_hours_mins: "마감 {hours}시간 {mins}분 전",
     status_remaining_hours: "마감 {hours}시간 전",
     status_remaining_mins: "마감 {mins}분 전",
+    status_opening_hours_mins: "오픈 {hours}시간 {mins}분 전",
+    status_opening_hours: "오픈 {hours}시간 전",
+    status_opening_mins: "오픈 {mins}분 전",
 
     // Card Action Buttons
     btn_calc_oil: "기름 계산",
@@ -1265,6 +1283,9 @@ export const TRANSLATIONS = {
     fs_route_title: "현장 방문 경로 계획",
     fs_route_origin: "출발지 주소 (Green Oil Inc)",
     fs_route_origin_placeholder: "Green Oil Inc, Toronto, ON",
+    fs_route_departure_time: "출발 시간",
+    fs_route_btn_now: "현재 시간",
+    fs_route_est_arrival: "예상 도착",
     fs_route_use_gps: "현재 GPS 위치를 출발지로 사용",
     fs_route_add_restaurant: "경로에 식당 추가",
     fs_route_add_stops: "경로에 경유지 추가",

@@ -849,6 +849,11 @@ body {
   color: #15803d;
 }
 
+.status-opening {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .status-closed {
   background: #fee2e2;
   color: #b91c1c;

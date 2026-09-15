@@ -358,9 +358,9 @@ export const Restaurants = {
     }
   },
 
-  formatStatus(status, openingHours) {
+  formatStatus(status, openingHours, nowInput = null) {
     if (openingHours && typeof openingHours === "string" && openingHours.trim() && !["未提供", "未知", "Not provided", "暂无", "null"].includes(openingHours.trim())) {
-      return BusinessHours.getBusinessStatus(openingHours);
+      return BusinessHours.getBusinessStatus(openingHours, nowInput);
     }
     if (status === "营业中" || status === "Open") {
       return { status: "营业中", label: i18n.t("status_open"), cls: "status-open" };

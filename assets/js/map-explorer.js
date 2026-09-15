@@ -13,6 +13,8 @@ import { displayGeometry } from "./map-geometry.js";
 
 import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
+import { Restaurants } from "./restaurants.js";
+import { BusinessHours } from "./business-hours.js";
 
 function getFieldSales() {
   if (typeof window !== "undefined" && window.FieldSales) {
@@ -2250,6 +2252,13 @@ export const MapExplorer = {
         ? `<span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #6ee7b7; font-size:0.7rem; padding:2px 6px; border-radius:4px; font-weight:600;" title="${txtRecentVisit}: ${this.escapeHtml(r.lastVisitTime || '')}">${txtVisited} · ${this.escapeHtml(r.lastOutcome || txtLogged)}</span>`
         : `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; font-size:0.7rem; padding:2px 6px; border-radius:4px;">${txtUnvisited}</span>`;
 
+      const statusObj = (typeof Restaurants !== "undefined" && Restaurants.formatStatus)
+        ? Restaurants.formatStatus(r.status, r.openingHours)
+        : (r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null);
+      const hoursBadge = statusObj
+        ? `<span class="status-badge ${statusObj.cls}" style="font-size:0.7rem; padding:2px 6px; border-radius:4px; line-height:1.2;">${statusObj.label}</span>`
+        : "";
+
       const ratingStr = r.rating ? `★ ${parseFloat(r.rating).toFixed(1)}` : "★ 4.2";
       const reviewsStr = r.reviews ? `(${r.reviews})` : "(15+)";
       const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : txtDefaultCat);
@@ -2292,6 +2301,7 @@ export const MapExplorer = {
             </div>
 
             <div class="card-badges-row">
+              ${hoursBadge}
               ${kvBadge}
               ${visitBadge}
             </div>
@@ -2380,6 +2390,13 @@ export const MapExplorer = {
     const lang = this.getCurrentLanguage();
     const photoInfo = this.getRestaurantPhoto(r);
 
+    const statusObj = (typeof Restaurants !== "undefined" && Restaurants.formatStatus)
+      ? Restaurants.formatStatus(r.status, r.openingHours)
+      : (r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null);
+    const hoursBadge = statusObj
+      ? `<span class="status-badge ${statusObj.cls}" style="font-size:10px; padding:1px 5px; border-radius:4px;">${statusObj.label}</span>`
+      : "";
+
     const kvBadge = r.inKV 
       ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:600;">✓ ${lang === "en" ? "In DB" : (lang === "ko" ? "등록 매장" : "已入库")}</span>`
       : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:700;">${lang === "en" ? "Not in DB" : (lang === "ko" ? "미등록" : "未入库")}</span>`;
@@ -2400,7 +2417,10 @@ export const MapExplorer = {
           ${photoInfo.url ? `<div style="width:48px;height:48px;flex-shrink:0;overflow:hidden;border-radius:6px"><img src="${this.escapeHtml(photoInfo.url)}" alt="${this.escapeHtml(r.name)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()" /></div>` : ''}
           <div style="min-width: 0; flex: 1;">
             <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(r.name)}">${this.escapeHtml(r.name)}</h4>
-            <div style="margin-top: 3px;">${kvBadge}</div>
+            <div style="margin-top: 3px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+              ${hoursBadge}
+              ${kvBadge}
+            </div>
           </div>
         </div>
         <div style="font-size: 11px; color: #64748b; margin-bottom: 3px;">

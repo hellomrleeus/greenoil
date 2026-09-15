@@ -320,7 +320,35 @@ export const BusinessHours = {
       }
     }
 
-    // Neither yesterday's overnight nor today's shift matches -> restaurant is currently closed
+    // 3. If currently closed, find next upcoming opening shift
+    let nextShift = null;
+    let remMinutesUntilOpen = null;
+
+    // 3a. Check later shifts today
+    const laterShiftsToday = todayShifts.filter(s => s.start > nowMin).sort((a, b) => a.start - b.start);
+    if (laterShiftsToday.length > 0) {
+      nextShift = laterShiftsToday[0];
+      remMinutesUntilOpen = nextShift.start - nowMin;
+    } else {
+      // 3b. Check upcoming days (up to 7 days)
+      for (let offset = 1; offset <= 7; offset++) {
+        const nextDayIdx = (todayIdx + offset) % 7;
+        const nextDayShifts = (schedule[nextDayIdx] || []).filter(s => !s.isClosed).sort((a, b) => a.start - b.start);
+        if (nextDayShifts.length > 0) {
+          nextShift = nextDayShifts[0];
+          remMinutesUntilOpen = (1440 - nowMin) + (offset - 1) * 1440 + (nextShift.is24h ? 0 : nextShift.start);
+          break;
+        }
+      }
+    }
+
+    // If opens within next 24 hours, format as "剩XX开业"
+    if (remMinutesUntilOpen !== null && remMinutesUntilOpen <= 24 * 60) {
+      const openTimeStr = nextShift ? (nextShift.openStr || (nextShift.is24h ? "00:00" : null)) : null;
+      return this.formatOpeningSoonStatus(remMinutesUntilOpen, openTimeStr, { ...options, lang });
+    }
+
+    // Otherwise standard closed status
     const closedLabel = (typeof window !== "undefined" && window.i18n)
       ? window.i18n.t("status_closed")
       : (lang === "en" ? "Closed" : (lang === "ko" ? "영업 종료" : "已打烊"));
@@ -333,6 +361,73 @@ export const BusinessHours = {
       remainingMinutes: null,
       remainingHours: null,
       is24h: false,
+      closeTime: null
+    };
+  },
+
+  /**
+   * Format opening soon status details and countdown text.
+   */
+  formatOpeningSoonStatus(remMinutes, openStr, options = {}) {
+    const lang = options.lang || (typeof window !== "undefined" && window.i18n ? window.i18n.currentLang : "zh");
+
+    const hours = Math.floor(remMinutes / 60);
+    const mins = remMinutes % 60;
+    const roundedHours = Math.max(1, Math.round(remMinutes / 60));
+
+    let label = "";
+    let compactLabel = "";
+
+    if (typeof window !== "undefined" && window.i18n && window.i18n.t) {
+      if (hours >= 1) {
+        label = mins > 0
+          ? window.i18n.t("status_opening_hours_mins", { hours, mins })
+          : window.i18n.t("status_opening_hours", { hours });
+        compactLabel = window.i18n.t("status_opening_hours", { hours: roundedHours });
+      } else {
+        label = window.i18n.t("status_opening_mins", { mins });
+        compactLabel = label;
+      }
+    } else {
+      if (lang === "en") {
+        if (hours >= 1) {
+          label = mins > 0 ? `Opens in ${hours}h ${mins}m` : `Opens in ${hours}h`;
+          compactLabel = `Opens in ${roundedHours}h`;
+        } else {
+          label = `Opens in ${mins}m`;
+          compactLabel = `Opens in ${mins}m`;
+        }
+      } else if (lang === "ko") {
+        if (hours >= 1) {
+          label = mins > 0 ? `오픈 ${hours}시간 ${mins}분 전` : `오픈 ${hours}시간 전`;
+          compactLabel = `오픈 ${roundedHours}시간 전`;
+        } else {
+          label = `오픈 ${mins}분 전`;
+          compactLabel = `오픈 ${mins}분 전`;
+        }
+      } else {
+        // Default: Chinese
+        if (hours >= 1) {
+          label = mins > 0 ? `剩${hours}小时${mins}分开业` : `剩${hours}小时开业`;
+          compactLabel = `剩${roundedHours}小时开业`;
+        } else {
+          label = `剩${mins}分钟开业`;
+          compactLabel = `剩${mins}分钟开业`;
+        }
+      }
+    }
+
+    return {
+      status: "未开门",
+      statusKey: "status_opening",
+      label,
+      compactLabel,
+      cls: "status-opening",
+      remainingMinutes: remMinutes,
+      remainingHours: hours,
+      remainingMinutesPart: mins,
+      is24h: false,
+      openTime: openStr,
       closeTime: null
     };
   },

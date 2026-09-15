@@ -12,6 +12,7 @@ import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
 import { Restaurants } from "./restaurants.js";
 import { Auth } from "./auth.js";
+import { BusinessHours } from "./business-hours.js";
 
 const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc, Toronto, ON";
 const STORAGE_ORIGIN_KEY = "greenoil_start_address";
@@ -253,6 +254,31 @@ export const FieldSales = {
         this.originAddress = e.target.value.trim() || DEFAULT_ORIGIN_ADDRESS;
         localStorage.setItem(STORAGE_ORIGIN_KEY, this.originAddress);
         this.saveRouteWaypoints();
+      });
+    }
+
+    // Departure Time Initialization and Change Listener
+    const depInput = document.getElementById("fsRouteDepartureTime");
+    const btnNow = document.getElementById("fsRouteBtnNow");
+    const setLocalDepartureNow = () => {
+      if (!depInput) return;
+      const now = new Date();
+      const offsetMs = now.getTimezoneOffset() * 60000;
+      const localIso = new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
+      depInput.value = localIso;
+    };
+    if (depInput && !depInput.value) {
+      setLocalDepartureNow();
+    }
+    if (btnNow) {
+      btnNow.addEventListener("click", () => {
+        setLocalDepartureNow();
+        this.renderRouteWaypoints();
+      });
+    }
+    if (depInput) {
+      depInput.addEventListener("change", () => {
+        this.renderRouteWaypoints();
       });
     }
 
@@ -1186,40 +1212,119 @@ export const FieldSales = {
     this.openEnhancedGoogleMapsNavigation(targets);
   },
 
+  getDepartureDateTime() {
+    if (typeof document !== "undefined") {
+      const depInput = document.getElementById("fsRouteDepartureTime");
+      if (depInput && depInput.value) {
+        const d = new Date(depInput.value);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    return new Date();
+  },
+
+  sortWaypointsBySchedule(waypoints, departureTime = null, originCoords = null) {
+    if (!Array.isArray(waypoints) || waypoints.length <= 1) {
+      return Array.isArray(waypoints) ? [...waypoints] : [];
+    }
+
+    const startCoords = originCoords || { lat: 43.6532, lng: -79.3832 };
+    let curLat = parseFloat(startCoords.lat) || 43.6532;
+    let curLng = parseFloat(startCoords.lng) || -79.3832;
+
+    const depDate = departureTime instanceof Date
+      ? new Date(departureTime.getTime())
+      : (departureTime ? new Date(departureTime) : this.getDepartureDateTime());
+    let curTime = new Date(depDate.getTime());
+
+    const remaining = [...waypoints];
+    const optimized = [];
+    const VISIT_DURATION_MINS = 20;
+
+    while (remaining.length > 0) {
+      let bestIdx = 0;
+      let minCost = Infinity;
+
+      for (let i = 0; i < remaining.length; i++) {
+        const item = remaining[i];
+        const rLat = parseFloat(item.latitude) || curLat;
+        const rLng = parseFloat(item.longitude) || curLng;
+        const dist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
+        const driveMins = Math.max(5, Math.round((dist / 35) * 60));
+        const estArrival = new Date(curTime.getTime() + driveMins * 60000);
+
+        let cost = dist;
+        const hasHours = item.openingHours && typeof item.openingHours === "string" && item.openingHours.trim() && !["未提供", "未知", "Not provided", "暂无", "null"].includes(item.openingHours.trim());
+
+        if (hasHours) {
+          const statusObj = (typeof BusinessHours !== "undefined" && BusinessHours.getBusinessStatus)
+            ? BusinessHours.getBusinessStatus(item.openingHours, estArrival)
+            : { statusKey: "status_unknown", status: "未知" };
+
+          if (statusObj.statusKey === "status_open" || statusObj.status === "营业中") {
+            // Open: prioritize stops that are closing soonest
+            const remMins = statusObj.remainingMinutes;
+            if (remMins !== null && remMins < 90) {
+              const urgencyBonus = Math.max(0, (90 - remMins) * 0.15);
+              cost = dist - urgencyBonus;
+            } else {
+              cost = dist;
+            }
+          } else if (statusObj.statusKey === "status_opening" || statusObj.status === "未开门") {
+            // Not yet open at estimated arrival: apply heavy penalty so open stores are picked first
+            const waitMins = statusObj.remainingMinutes || 60;
+            cost = dist + 500 + waitMins * 2;
+          } else if (statusObj.statusKey === "status_closed" || statusObj.status === "已打烊") {
+            // Closed for the day or > 24h away: very high penalty
+            cost = dist + 5000;
+          } else {
+            cost = dist + 2;
+          }
+        } else {
+          // No opening hours (or custom address)
+          cost = dist + 2;
+        }
+
+        if (cost < minCost) {
+          minCost = cost;
+          bestIdx = i;
+        }
+      }
+
+      const bestItem = remaining.splice(bestIdx, 1)[0];
+      const rLat = parseFloat(bestItem.latitude) || curLat;
+      const rLng = parseFloat(bestItem.longitude) || curLng;
+      const legDist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
+      const legDriveMins = Math.max(5, Math.round((legDist / 35) * 60));
+      const arrival = new Date(curTime.getTime() + legDriveMins * 60000);
+
+      const arrHours = String(arrival.getHours()).padStart(2, "0");
+      const arrMins = String(arrival.getMinutes()).padStart(2, "0");
+      bestItem._estArrivalStr = `${arrHours}:${arrMins}`;
+      bestItem._estArrivalIso = arrival.toISOString();
+
+      optimized.push(bestItem);
+
+      // Advance clock by drive time + visit duration
+      curTime = new Date(arrival.getTime() + VISIT_DURATION_MINS * 60000);
+      curLat = rLat;
+      curLng = rLng;
+    }
+
+    return optimized;
+  },
+
   optimizeRoute() {
     if (this.routeWaypoints.length < 2) {
       alert(i18n.t("fs_alert_min_waypoints"));
       return;
     }
 
-    // Start location coordinates (Downtown Toronto / Green Oil HQ)
-    let curLat = 43.6532;
-    let curLng = -79.3832;
+    const origin = this.getEffectiveOrigin();
+    const originCoords = { lat: origin.lat || 43.6532, lng: origin.lng || -79.3832 };
+    const depTime = this.getDepartureDateTime();
 
-    const remaining = [...this.routeWaypoints];
-    const optimized = [];
-
-    while (remaining.length > 0) {
-      let closestIdx = 0;
-      let minDistance = Infinity;
-
-      for (let i = 0; i < remaining.length; i++) {
-        const item = remaining[i];
-        const rLat = parseFloat(item.latitude) || 43.76;
-        const rLng = parseFloat(item.longitude) || -79.41;
-        const dist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestIdx = i;
-        }
-      }
-
-      const closest = remaining.splice(closestIdx, 1)[0];
-      optimized.push(closest);
-      curLat = parseFloat(closest.latitude) || curLat;
-      curLng = parseFloat(closest.longitude) || curLng;
-    }
-
+    const optimized = this.sortWaypointsBySchedule(this.routeWaypoints, depTime, originCoords);
     this.routeWaypoints = optimized;
     this.saveRouteWaypoints();
     this.renderRouteWaypoints();
@@ -1677,6 +1782,27 @@ export const FieldSales = {
 
     if (emptyEl) emptyEl.style.display = "none";
 
+    const depTime = this.getDepartureDateTime();
+    const origin = this.getEffectiveOrigin();
+    let curLat = origin.lat || 43.6532;
+    let curLng = origin.lng || -79.3832;
+    let runningTime = new Date(depTime.getTime());
+
+    // Pre-calculate arrival times along the sequential route
+    const arrivalTimeMap = new Map();
+    this.routeWaypoints.forEach((w) => {
+      const wLat = parseFloat(w.latitude) || curLat;
+      const wLng = parseFloat(w.longitude) || curLng;
+      const dist = this.getHaversineDistance(curLat, curLng, wLat, wLng);
+      const legMinutes = Math.max(5, Math.round((dist / 35) * 60));
+      const arrTime = new Date(runningTime.getTime() + legMinutes * 60000);
+      arrivalTimeMap.set(w._uid, arrTime);
+
+      runningTime = new Date(arrTime.getTime() + 20 * 60000);
+      curLat = wLat;
+      curLng = wLng;
+    });
+
     listEl.innerHTML = visibleWaypoints.map((w) => {
       const origIndex = this.routeWaypoints.indexOf(w);
       const isFirst = origIndex === 0;
@@ -1688,6 +1814,28 @@ export const FieldSales = {
       const visitedBadge = isVisited 
         ? `<span class="fs-wp-status-badge is-visited" style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ ${i18n.t("visited_yes")}</span>` 
         : `<span class="fs-wp-status-badge is-pending" style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${i18n.t("visited_pending")}</span>`;
+
+      const estArrival = arrivalTimeMap.get(w._uid) || depTime;
+      const arrHours = String(estArrival.getHours()).padStart(2, "0");
+      const arrMins = String(estArrival.getMinutes()).padStart(2, "0");
+      const estArrivalStr = `${arrHours}:${arrMins}`;
+
+      let statusBadge = "";
+      if (w.openingHours && typeof w.openingHours === "string" && w.openingHours.trim() && !["未提供", "未知", "Not provided", "暂无", "null"].includes(w.openingHours.trim())) {
+        const statusObj = (typeof Restaurants !== "undefined" && Restaurants.formatStatus)
+          ? Restaurants.formatStatus(w.status, w.openingHours, estArrival)
+          : (typeof BusinessHours !== "undefined" ? BusinessHours.getBusinessStatus(w.openingHours, estArrival) : null);
+        if (statusObj) {
+          statusBadge = `<span class="status-badge ${statusObj.cls}" style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${statusObj.label}</span>`;
+        }
+      } else if (w.status && (w.status === "营业中" || w.status === "Open" || w.status === "已打烊" || w.status === "Closed")) {
+        const statusObj = (typeof Restaurants !== "undefined" && Restaurants.formatStatus)
+          ? Restaurants.formatStatus(w.status, null, estArrival)
+          : { label: w.status, cls: w.status.includes("营") ? "status-open" : "status-closed" };
+        statusBadge = `<span class="status-badge ${statusObj.cls}" style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${statusObj.label}</span>`;
+      }
+
+      const estArrivalTag = `<span class="fs-wp-est-time" style="font-size: 0.72rem; color: #4338ca; background: #e0e7ff; padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 500;" title="${i18n.t("fs_route_departure_time") || '出发时间'}: ${depTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}">${i18n.t("fs_route_est_arrival", { time: estArrivalStr }) || `预计 ${estArrivalStr} 抵达`}</span>`;
 
       const isCustom = !!w.isCustomAddress || (!w.placeId && (!w.name || w.name === w.address)) || (w.name === w.address);
       let displayName = "";
@@ -1714,6 +1862,8 @@ export const FieldSales = {
           <div class="fs-wp-content">
             <div class="fs-wp-header">
               <span class="fs-wp-name">${displayName}</span>
+              ${statusBadge}
+              ${estArrivalTag}
               ${visitedBadge}
               ${regionBadge}
             </div>
