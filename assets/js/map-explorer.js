@@ -14,6 +14,13 @@ import { displayGeometry } from "./map-geometry.js";
 import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
 
+function getFieldSales() {
+  if (typeof window !== "undefined" && window.FieldSales) {
+    return Promise.resolve(window.FieldSales);
+  }
+  return import("./field-sales.js").then(m => m.FieldSales);
+}
+
 /// GTA Region / City Hierarchy
 export const GTA_COMMUNITIES = [
   {
@@ -2848,8 +2855,8 @@ export const MapExplorer = {
           else alert(msg);
           return;
         }
-        import("./field-sales.js").then(({ FieldSales }) => {
-          FieldSales.addMultipleToRoute(places, false);
+        getFieldSales().then(fs => {
+          fs.addMultipleToRoute(places, false);
         });
       });
     }
@@ -2973,16 +2980,16 @@ if (typeof window !== "undefined") {
   window.mapExplorerAddSingleToRoute = function(key) {
     const r = MapExplorer.findPlace(key);
     if (!r) return;
-    import("./field-sales.js").then(({ FieldSales }) => {
-      FieldSales.addMultipleToRoute([r], false);
+    getFieldSales().then(fs => {
+      fs.addMultipleToRoute([r], false);
     });
   };
 
   window.mapExplorerLogVisit = function(key) {
     const r = MapExplorer.findPlace(key);
     if (!r) return;
-    import("./field-sales.js").then(({ FieldSales }) => {
-      FieldSales.openSalesRecordModal(null, r);
+    getFieldSales().then(fs => {
+      fs.openSalesRecordModal(null, r);
     });
   };
 

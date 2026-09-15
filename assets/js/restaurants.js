@@ -6,6 +6,13 @@ import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
+function getFieldSales() {
+  if (typeof window !== "undefined" && window.FieldSales) {
+    return Promise.resolve(window.FieldSales);
+  }
+  return import("./field-sales.js").then(m => m.FieldSales);
+}
+
 export const Restaurants = {
   currentPageData: [],
   selectedMap: new Map(),
@@ -212,14 +219,14 @@ export const Restaurants = {
     const handlePlanRoute = () => {
       const selectedList = Array.from(this.selectedMap.values());
       if (selectedList.length > 0) {
-        import("./field-sales.js").then(({ FieldSales }) => {
-          FieldSales.addMultipleToRoute(selectedList, false);
+        getFieldSales().then(fs => {
+          fs.addMultipleToRoute(selectedList, false);
         });
       } else {
         if (this.currentPageData && this.currentPageData.length > 0) {
           this.setSelectCurrentPage(true);
-          import("./field-sales.js").then(({ FieldSales }) => {
-            FieldSales.addMultipleToRoute(this.currentPageData, false);
+          getFieldSales().then(fs => {
+            fs.addMultipleToRoute(this.currentPageData, false);
           });
         } else {
           const msg = i18n.t("alert_select_first");
@@ -289,8 +296,8 @@ export const Restaurants = {
         if (this.selectedRestaurant) {
           const r = this.selectedRestaurant;
           this.closeDetailModal();
-          import("./field-sales.js").then(({ FieldSales }) => {
-            FieldSales.openSalesRecordModal(null, r);
+          getFieldSales().then(fs => {
+            fs.openSalesRecordModal(null, r);
           });
         }
       });
@@ -302,8 +309,8 @@ export const Restaurants = {
         if (this.selectedRestaurant) {
           const r = this.selectedRestaurant;
           this.closeDetailModal();
-          import("./field-sales.js").then(({ FieldSales }) => {
-            FieldSales.addMultipleToRoute([r], false);
+          getFieldSales().then(fs => {
+            fs.addMultipleToRoute([r], false);
           });
         }
       });
@@ -1046,8 +1053,8 @@ export const Restaurants = {
         pageSize: 300
       });
       if (res && res.data && res.data.length > 0) {
-        import("./field-sales.js").then(({ FieldSales }) => {
-          FieldSales.addMultipleToRoute(res.data, false);
+        getFieldSales().then(fs => {
+          fs.addMultipleToRoute(res.data, false);
         });
       } else {
         const msg = i18n.t("alert_hub_no_restaurants");
@@ -1102,8 +1109,8 @@ if (typeof window !== "undefined") {
   window.addRestaurantToRouteByIndex = function(idx) {
     const rest = Restaurants.currentPageData[idx];
     if (rest) {
-      import("./field-sales.js").then(({ FieldSales }) => {
-        FieldSales.addMultipleToRoute([rest], false);
+      getFieldSales().then(fs => {
+        fs.addMultipleToRoute([rest], false);
       });
     }
   };

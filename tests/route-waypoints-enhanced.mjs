@@ -547,7 +547,14 @@ assert.equal(FieldSales.routeTabs.length, 1, 'Last tab must not be deleted');
 
 // 8.6 Single tab vs Multi-tab adding behavior
 let modalOpened = false;
-FieldSales.openSelectTabModal = () => { modalOpened = true; };
+let modalTargetRestaurants = null;
+const origOpenSelectTabModal = FieldSales.openSelectTabModal.bind(FieldSales);
+FieldSales.openSelectTabModal = (restaurants, jumpToTab) => {
+  modalOpened = true;
+  modalTargetRestaurants = restaurants;
+  FieldSales._pendingImportRestaurants = restaurants;
+  FieldSales._pendingImportJumpToTab = jumpToTab;
+};
 
 // Single tab: adds directly without opening modal
 FieldSales.addRestaurantToRoute({ placeId: 'auto_p1', name: '自动直达餐馆' });
@@ -555,10 +562,41 @@ assert.equal(modalOpened, false, 'With 1 tab, addRestaurantToRoute should not op
 assert(FieldSales.getActiveRouteTab().waypoints.some(w => w.name === '自动直达餐馆'));
 
 // Multi tab: opens selection modal
-FieldSales.createRouteTab('路线 B');
+const tabB = FieldSales.createRouteTab('路线 B');
 assert.equal(FieldSales.routeTabs.length, 2);
 FieldSales.addRestaurantToRoute({ placeId: 'select_p2', name: '需选择餐馆' });
 assert.equal(modalOpened, true, 'With >1 tabs, addRestaurantToRoute must open selection modal');
+
+// 8.7 Verify adding to chosen tab from selection modal
+// Suppose user chose tabB ('路线 B')
+FieldSales.executeAddMultipleToRoute(modalTargetRestaurants, tabB.id, false);
+assert.equal(FieldSales.routeTabs.length, 2, 'Must not wipe out any tabs');
+assert.equal(FieldSales.activeRouteTabId, tabB.id, 'Active tab must switch to the target tab chosen by user');
+assert(tabB.waypoints.some(w => w.name === '需选择餐馆'), 'Must be added to 路线 B');
+const tab1 = FieldSales.routeTabs.find(t => t.id !== tabB.id);
+assert(!tab1.waypoints.some(w => w.name === '需选择餐馆'), 'Must NOT be added to 路线 1');
+
+// 8.8 Verify "+ 新建标签并添加" flow
+const newTabCreated = FieldSales.createRouteTab();
+FieldSales.executeAddMultipleToRoute([{ placeId: 'new_p3', name: '第三标签餐馆' }], newTabCreated.id, false);
+assert.equal(FieldSales.routeTabs.length, 3, 'Must have 3 tabs now');
+assert.equal(FieldSales.activeRouteTabId, newTabCreated.id, 'Must be active on new tab');
+assert(newTabCreated.waypoints.some(w => w.name === '第三标签餐馆'));
+
+// 8.9 Verify loadRouteWaypoints does NOT wipe multiple tabs when server returns legacy waypoints without tabs
+Api.getRouteWaypoints = async () => ({
+  success: true,
+  data: {
+    origin: 'Green Oil Inc, Toronto, ON',
+    waypoints: [{ placeId: 'legacy_p', name: '旧版站点' }]
+    // tabs is undefined/null!
+  }
+});
+await FieldSales.loadRouteWaypoints();
+assert.equal(FieldSales.routeTabs.length, 3, 'Existing multiple tabs must NOT be wiped by legacy server waypoints');
+
+// Restore
+FieldSales.openSelectTabModal = origOpenSelectTabModal;
 
 console.log('PASS: Route tabs lifecycle and operations verified.');
 

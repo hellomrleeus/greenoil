@@ -22,14 +22,72 @@ const STORAGE_ACTIVE_TAB_KEY = "greenoil_route_active_tab_v1";
 
 export const FieldSales = {
   activeSubTab: "route", // route | records | analytics
-  routeTabs: [
-    {
-      id: "tab_default",
-      name: "路线 1",
-      waypoints: []
+
+  get routeTabs() {
+    if (typeof window !== "undefined") {
+      if (!window.__greenoil_route_tabs__ || !Array.isArray(window.__greenoil_route_tabs__) || window.__greenoil_route_tabs__.length === 0) {
+        try {
+          const saved = localStorage.getItem(STORAGE_ROUTE_TABS_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              window.__greenoil_route_tabs__ = parsed;
+            }
+          }
+        } catch (e) {}
+      }
+      if (!window.__greenoil_route_tabs__ || !Array.isArray(window.__greenoil_route_tabs__) || window.__greenoil_route_tabs__.length === 0) {
+        window.__greenoil_route_tabs__ = [{
+          id: "tab_default",
+          name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+          waypoints: []
+        }];
+      }
+      return window.__greenoil_route_tabs__;
     }
-  ],
-  activeRouteTabId: "tab_default",
+    if (!this._routeTabs || !Array.isArray(this._routeTabs) || this._routeTabs.length === 0) {
+      this._routeTabs = [{
+        id: "tab_default",
+        name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+        waypoints: []
+      }];
+    }
+    return this._routeTabs;
+  },
+
+  set routeTabs(val) {
+    if (typeof window !== "undefined") {
+      window.__greenoil_route_tabs__ = Array.isArray(val) && val.length > 0 ? val : [{
+        id: "tab_default",
+        name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+        waypoints: []
+      }];
+    } else {
+      this._routeTabs = val;
+    }
+  },
+
+  get activeRouteTabId() {
+    if (typeof window !== "undefined") {
+      if (!window.__greenoil_active_tab_id__) {
+        try {
+          const saved = localStorage.getItem(STORAGE_ACTIVE_TAB_KEY);
+          if (saved) window.__greenoil_active_tab_id__ = saved;
+        } catch (e) {}
+      }
+      return window.__greenoil_active_tab_id__ || "tab_default";
+    }
+    return this._activeRouteTabId || "tab_default";
+  },
+
+  set activeRouteTabId(val) {
+    if (typeof window !== "undefined") {
+      window.__greenoil_active_tab_id__ = val;
+    } else {
+      this._activeRouteTabId = val;
+    }
+  },
+
   _renamingTabId: null,
   _pendingImportRestaurants: null,
   _pendingImportJumpToTab: false,
@@ -444,17 +502,20 @@ export const FieldSales = {
             localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
           } catch (e) {}
         } else if (Array.isArray(res.data.waypoints)) {
-          this.routeTabs = [{
-            id: "tab_default",
-            name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
-            waypoints: res.data.waypoints
-          }];
-          this.activeRouteTabId = "tab_default";
-          this.ensureWaypointUids();
-          try {
-            localStorage.setItem(STORAGE_ROUTE_TABS_KEY, JSON.stringify(this.routeTabs));
-            localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
-          } catch (e) {}
+          // If server only returned legacy waypoints, DO NOT overwrite if user already has multiple tabs
+          if (!this.routeTabs || this.routeTabs.length <= 1) {
+            this.routeTabs = [{
+              id: "tab_default",
+              name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+              waypoints: res.data.waypoints
+            }];
+            this.activeRouteTabId = "tab_default";
+            this.ensureWaypointUids();
+            try {
+              localStorage.setItem(STORAGE_ROUTE_TABS_KEY, JSON.stringify(this.routeTabs));
+              localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
+            } catch (e) {}
+          }
         }
 
         if (res.data.origin) {
@@ -709,19 +770,30 @@ export const FieldSales = {
     const listEl = document.getElementById("fsRouteSelectTabOptionsList");
     if (!modal || !listEl) return;
 
+    let hasChecked = false;
     listEl.innerHTML = this.routeTabs.map((tab) => {
-      const isChecked = tab.id === this.activeRouteTabId;
+      let isChecked = false;
+      if (tab.id === this.activeRouteTabId) {
+        isChecked = true;
+        hasChecked = true;
+      }
       return `
         <label style="display: flex; align-items: center; gap: 0.65rem; padding: 0.6rem 0.8rem; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; background: #fff; transition: background 0.15s;">
           <input type="radio" name="fsSelectRouteTabRadio" value="${tab.id}" ${isChecked ? "checked" : ""} style="width: 16px; height: 16px; cursor: pointer;">
           <div style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: 600; font-size: 0.9rem; color: #1e293b;">${Restaurants.escapeHtml(tab.name)}</span>
+            <span style="font-weight: 600; font-size: 0.9rem; color: #1e293b;">${(typeof Restaurants !== "undefined" && Restaurants.escapeHtml) ? Restaurants.escapeHtml(tab.name) : tab.name}</span>
             <span style="color: #64748b; font-size: 0.8rem;">(${tab.waypoints ? tab.waypoints.length : 0})</span>
           </div>
         </label>
       `;
     }).join("");
 
+    if (!hasChecked) {
+      const firstRadio = listEl.querySelector('input[name="fsSelectRouteTabRadio"]');
+      if (firstRadio) firstRadio.checked = true;
+    }
+
+    modal.style.zIndex = "10000";
     modal.classList.add("active");
   },
 
@@ -1044,6 +1116,8 @@ export const FieldSales = {
       }
     });
 
+    this.activeRouteTabId = targetTab.id;
+    this.selectedWaypointIds.clear();
     this.saveRouteWaypoints();
     this.renderRouteTabs();
     this.renderRouteWaypoints();
@@ -2769,3 +2843,7 @@ export const FieldSales = {
     return R * c;
   }
 };
+
+if (typeof window !== "undefined") {
+  window.FieldSales = FieldSales;
+}

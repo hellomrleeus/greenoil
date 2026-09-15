@@ -6,7 +6,7 @@ import { Auth } from "./auth.js";
 import { Restaurants } from "./restaurants.js";
 import { Calculator } from "./calculator.js";
 import { GreaseTrap } from "./grease-trap.js";
-import { FieldSales } from "./field-sales.js?v=20260914_03";
+import { FieldSales } from "./field-sales.js";
 import { MapExplorer } from "./map-explorer.js";
 import { i18n } from "./i18n.js";
 
