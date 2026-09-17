@@ -2144,9 +2144,28 @@ export const MapExplorer = {
 
       this.googleMap.addListener("click", event => {
         this.hideMapContextMenu();
-        if (!event.placeId) return;
-        event.stop();
-        this.openGooglePoi(event.placeId, event.latLng);
+        if (event.placeId) {
+          event.stop();
+          this.openGooglePoi(event.placeId, event.latLng);
+          return;
+        }
+
+        // Proximity hit-test: if clicked on POI text/canvas without explicit placeId
+        if (event.latLng && this.placesService) {
+          const lat = typeof event.latLng.lat === "function" ? event.latLng.lat() : event.latLng.lat;
+          const lng = typeof event.latLng.lng === "function" ? event.latLng.lng() : event.latLng.lng;
+          this.placesService.nearbySearch({
+            location: { lat, lng },
+            radius: 35
+          }, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+              const nearest = results[0];
+              if (nearest && nearest.place_id) {
+                this.openGooglePoi(nearest.place_id, nearest.geometry?.location || event.latLng);
+              }
+            }
+          });
+        }
       });
 
       this.googleMap.addListener("rightclick", event => {
