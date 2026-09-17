@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v7";
+import { Api } from "./api.js?v=20260918_v8";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -231,6 +231,8 @@ export const MapExplorer = {
     this.renderPopover();
     this.updateAreaSummaryBtn();
     this.updateFilterDropdownsLanguage();
+    this.updateResultsSummary();
+    this.renderPagination();
 
     const onLangChangeHandler = () => {
       this.updateAreaSummaryBtn();
@@ -239,6 +241,9 @@ export const MapExplorer = {
       this.updateFilterDropdownsLanguage();
       this.renderPlacesCards();
       this.renderWaypoints();
+      this.renderPagination();
+      const badgeEl = document.getElementById("mapWaypointsBadge");
+      if (badgeEl) badgeEl.textContent = `${this.routeWaypoints.length} ${i18n.t("map_waypoints_unit")}`;
     };
 
     if (i18n && typeof i18n.onLanguageChange === "function") {
@@ -406,7 +411,7 @@ export const MapExplorer = {
 
   clearRoute() {
     if (this.routeWaypoints.length === 0) return;
-    if (!confirm(this.getCurrentLanguage() === "en" ? "Clear all waypoints from route?" : "确定清空当前所有经停途经点？")) {
+    if (!confirm(i18n.t("confirm_clear_waypoints"))) {
       return;
     }
     this.routeWaypoints = [];
@@ -429,7 +434,7 @@ export const MapExplorer = {
     if (distEl) distEl.textContent = distanceKm;
     if (timeEl) timeEl.textContent = durationMins;
     if (stopsEl) stopsEl.textContent = this.routeWaypoints.length;
-    if (badgeEl) badgeEl.textContent = `${this.routeWaypoints.length} 站`;
+    if (badgeEl) badgeEl.textContent = `${this.routeWaypoints.length} ${i18n.t("map_waypoints_unit")}`;
   },
 
   updateRoute() {
@@ -437,7 +442,7 @@ export const MapExplorer = {
     const stopsEl = document.getElementById("mapRouteStopsCount");
     const badgeEl = document.getElementById("mapWaypointsBadge");
     if (stopsEl) stopsEl.textContent = stopsCount;
-    if (badgeEl) badgeEl.textContent = `${stopsCount} 站`;
+    if (badgeEl) badgeEl.textContent = `${stopsCount} ${i18n.t("map_waypoints_unit")}`;
 
     // Clear previous directions or polyline
     if (this.directionsRenderer) {
@@ -664,9 +669,9 @@ export const MapExplorer = {
           <div style="display: flex; justify-content: center; margin-bottom: 0.6rem;">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
           </div>
-          <div style="font-weight: 600; font-size: 0.95rem; color: #475569;">暂无途经点</div>
+          <div style="font-weight: 600; font-size: 0.95rem; color: #475569;">${i18n.t("waypoints_empty_title")}</div>
           <div style="font-size: 0.8rem; margin-top: 0.35rem; color: #94a3b8; line-height: 1.5;">
-            在左侧餐馆列表点击 <b>「+ 途经点」</b><br/>或在地图上点击标记即可添加至经停路线
+            ${i18n.t("waypoints_empty_desc")}
           </div>
         </div>
       `;
@@ -682,7 +687,7 @@ export const MapExplorer = {
 
       return `
         <div class="map-waypoint-card" draggable="true" data-index="${index}" data-key="${this.escapeHtml(key)}" onclick="window.mapExplorerWaypointClick('${this.escapeQuotes(key)}', ${index});">
-          <div class="waypoint-drag-handle" title="按住上下拖拽调整途经顺序">⋮⋮</div>
+          <div class="waypoint-drag-handle" title="${this.escapeHtml(i18n.t("waypoints_drag_tip"))}">⋮⋮</div>
           <div class="waypoint-seq-badge">${index + 1}</div>
           <div class="waypoint-card-body">
             <div class="waypoint-card-header">
@@ -691,15 +696,15 @@ export const MapExplorer = {
             </div>
             <div class="waypoint-meta">
               <span class="waypoint-rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${w.rating ? parseFloat(w.rating).toFixed(1) : "4.2"}</span>
-              <span class="waypoint-address" title="${this.escapeHtml(w.address || '')}">${this.escapeHtml(w.address || "安大略省 GTA")}</span>
+              <span class="waypoint-address" title="${this.escapeHtml(w.address || '')}">${this.escapeHtml(w.address || "Ontario GTA")}</span>
             </div>
-            ${w._estArrivalStr ? `<div style="font-size: 0.72rem; color: #4338ca; margin-top: 2px;">预计 ${w._estArrivalStr} 抵达</div>` : ""}
+            ${w._estArrivalStr ? `<div style="font-size: 0.72rem; color: #4338ca; margin-top: 2px;">${i18n.t("fs_route_est_arrival")} ${w._estArrivalStr}</div>` : ""}
           </div>
           <div class="waypoint-card-actions">
-            <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, -1);" ${index === 0 ? "disabled" : ""} title="上移">↑</button>
-            <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, 1);" ${index === list.length - 1 ? "disabled" : ""} title="下移">↓</button>
-            <button type="button" class="btn-wp-action btn-wp-nav" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(w.name)}', '${this.escapeQuotes(w.address)}');" title="在 Google 地图中导航此站"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg></button>
-            <button type="button" class="btn-wp-action btn-wp-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveWaypoint(${index});" title="从路线中删除此站">&times;</button>
+            <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, -1);" ${index === 0 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_up"))}">↑</button>
+            <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, 1);" ${index === list.length - 1 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_down"))}">↓</button>
+            <button type="button" class="btn-wp-action btn-wp-nav" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(w.name)}', '${this.escapeQuotes(w.address)}');" title="${this.escapeHtml(i18n.t("fs_btn_nav_title"))}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg></button>
+            <button type="button" class="btn-wp-action btn-wp-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveWaypoint(${index});" title="${this.escapeHtml(i18n.t("btn_remove_stop"))}">&times;</button>
           </div>
         </div>
       `;
@@ -781,8 +786,7 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   optimizeRoute() {
     if (this.routeWaypoints.length < 2) {
-      const msg = this.getCurrentLanguage() === "en" ? "Please add at least 2 stops to optimize route." : "路线中至少需要 2 个经停点才能进行优化排序。";
-      alert(msg);
+      alert(i18n.t("alert_min_2_stops_optimize"));
       return;
     }
 
@@ -796,7 +800,7 @@ export const MapExplorer = {
     this.renderMarkers();
     this.renderPlacesCards();
 
-    const toastMsg = this.getCurrentLanguage() === "en" ? "Route order optimized successfully." : "路线已完成优化排序";
+    const toastMsg = i18n.t("toast_route_optimized");
     if (window.showToast) window.showToast(toastMsg);
     else alert(toastMsg);
   },
@@ -1090,8 +1094,7 @@ export const MapExplorer = {
   exportWaypoints() {
     const targets = this.routeWaypoints;
     if (targets.length === 0) {
-      const msg = this.getCurrentLanguage() === "en" ? "No waypoints in route to export." : "当前路线清单中暂无经停点可导出。";
-      alert(msg);
+      alert(i18n.t("alert_no_waypoints_export"));
       return;
     }
 
@@ -1156,7 +1159,7 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   openGoogleMapsNavigation() {
     if (this.routeWaypoints.length === 0) {
-      alert(this.getCurrentLanguage() === "en" ? "Please add waypoints first." : "请先在左侧或地图中添加餐馆至途经点清单。");
+      alert(i18n.t("alert_add_waypoints_first"));
       return;
     }
 
@@ -1194,8 +1197,8 @@ export const MapExplorer = {
       const legOrigin = i === 0 ? originAddress : ((stops[startIdx - 1].name ? stops[startIdx - 1].name + ", " : "") + (stops[startIdx - 1].address || ""));
       const legUrl = this.buildGoogleMapsSlashUrl(legOrigin, legStops);
 
-      const fromLabel = i === 0 ? "Green Oil HQ" : (stops[startIdx - 1].name || `第 ${startIdx} 站`);
-      const toLabel = legStops[legStops.length - 1].name || `第 ${endIdx} 站`;
+      const fromLabel = i === 0 ? "Green Oil HQ" : (stops[startIdx - 1].name || i18n.t("map_card_stop_num", { n: startIdx }));
+      const toLabel = legStops[legStops.length - 1].name || i18n.t("map_card_stop_num", { n: endIdx });
 
       legs.push({
         legIndex: i + 1,
@@ -1220,9 +1223,7 @@ export const MapExplorer = {
     if (!modalOverlay) return;
 
     if (tipEl) {
-      tipEl.textContent = this.getCurrentLanguage() === "en"
-        ? `The route contains ${targetWaypoints.length} stops. Segmented navigation is recommended for mobile devices; full route view is available for desktop or in-car displays.`
-        : `当前路线包含 ${targetWaypoints.length} 个经停点。建议移动端采用分段导航；桌面端或车载终端可直接查看完整路线。`;
+      tipEl.textContent = i18n.t("fs_route_nav_modal_tip", { count: targetWaypoints.length });
     }
 
     const legs = this.buildRouteLegs(originAddress, targetWaypoints);
@@ -1242,14 +1243,14 @@ export const MapExplorer = {
         <div class="fs-route-nav-leg-card">
           <div class="fs-route-nav-leg-info">
             <div class="fs-route-nav-leg-title">
-              第 ${leg.legIndex} 段：${leg.from} → ${leg.to} (共 ${leg.stopsCount} 站)
+              ${i18n.t("fs_route_nav_leg_title", { leg: leg.legIndex, from: leg.from, to: leg.to, count: leg.stopsCount })}
             </div>
             <div class="fs-route-nav-leg-stops" title="${this.escapeHtml(leg.stopNames)}">
               ${this.escapeHtml(leg.stopNames)}
             </div>
           </div>
           <button class="btn btn-sm btn-primary fs-btn-leg-nav" data-url="${encodeURI(leg.url)}" style="white-space: nowrap; font-size: 0.8rem; padding: 0.4rem 0.75rem; background: #2563eb; border-color: #2563eb; color: white;">
-            开启此段导航
+            ${i18n.t("fs_route_nav_btn_leg")}
           </button>
         </div>
       `).join("");
@@ -1283,8 +1284,7 @@ export const MapExplorer = {
     this.cancelMarkerBatches();
     this.filteredPlaces = this.filteredPlaces || [];
     const container = document.getElementById("mapPlacesCardsContainer");
-    const lang = this.getCurrentLanguage();
-    const loadingMsg = lang === "en" ? "Fetching Google Maps places..." : "正在获取区域 Google Maps 餐馆列表...";
+    const loadingMsg = i18n.t("map_loading_places");
 
     if (container) {
       container.innerHTML = `
@@ -1475,7 +1475,7 @@ export const MapExplorer = {
     }
 
     if (summaryEl) {
-      summaryEl.innerHTML = `共检索到 <span style="font-weight:700; color:#2563eb;">${total}</span> 家 Google 商家`;
+      summaryEl.innerHTML = i18n.t("map_results_found", { count: `<span style="font-weight:700; color:#2563eb;">${total}</span>` });
     } else if (countEl) {
       countEl.textContent = total;
     }
@@ -1489,8 +1489,8 @@ export const MapExplorer = {
     if (list.length === 0) {
       container.innerHTML = `
         <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-          <div style="font-weight: 600; font-size: 0.95rem;">当前区域暂未检索到餐馆</div>
-          <div style="font-size: 0.8rem; margin-top: 0.35rem;">尝试切换品类或在上方搜索其它商圈/城市</div>
+          <div style="font-weight: 600; font-size: 0.95rem;">${i18n.t("map_empty_title")}</div>
+          <div style="font-size: 0.8rem; margin-top: 0.35rem;">${i18n.t("map_empty_desc")}</div>
         </div>
       `;
       this.renderPagination(0);
@@ -1517,12 +1517,12 @@ export const MapExplorer = {
       const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : "餐饮美食");
 
       const routeBtn = !isInRoute ? `
-        <button class="btn btn-primary btn-sm btn-card-add-route" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="background:#2563eb; border-color:#2563eb; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="添加至经停路线">
-          <span>+ 途经点</span>
+        <button class="btn btn-primary btn-sm btn-card-add-route" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="background:#2563eb; border-color:#2563eb; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="${this.escapeHtml(i18n.t('map_card_add_stop'))}">
+          <span>${this.escapeHtml(i18n.t('map_card_add_stop'))}</span>
         </button>
       ` : `
-        <button class="btn btn-secondary btn-sm btn-card-in-route" onclick="event.stopPropagation(); window.mapExplorerRemoveSingleFromRoute('${this.escapeQuotes(key)}');" style="background:#eff6ff; color:#2563eb; border-color:#bfdbfe; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="点击从路线中移除">
-          <span>第 ${inRouteIdx + 1} 站</span>
+        <button class="btn btn-secondary btn-sm btn-card-in-route" onclick="event.stopPropagation(); window.mapExplorerRemoveSingleFromRoute('${this.escapeQuotes(key)}');" style="background:#eff6ff; color:#2563eb; border-color:#bfdbfe; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="${this.escapeHtml(i18n.t('btn_remove_stop'))}">
+          <span>${this.escapeHtml(i18n.t('map_card_stop_num', { n: inRouteIdx + 1 }))}</span>
         </button>
       `;
 
@@ -1555,7 +1555,7 @@ export const MapExplorer = {
             <div class="card-actions-row">
               ${routeBtn}
               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="Google Maps 导航">
-                导航
+                ${this.escapeHtml(i18n.t("map_card_nav"))}
               </button>
             </div>
           </div>
@@ -1567,7 +1567,7 @@ export const MapExplorer = {
       cardsHtml += `
         <div style="padding: 0.75rem 0.25rem 0.5rem; text-align: center;">
           <button type="button" class="btn btn-outline btn-sm w-100" id="btnLoadMorePlaces" onclick="window.mapExplorerLoadMore();" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;font-weight:600;font-size:0.82rem;border-color:#cbd5e1;color:#1e293b;background:#ffffff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);cursor:pointer;">
-            ${this.isLoadingMore ? '正在拉取后续商户...' : `加载更多商铺 (当前共 ${this.displayedPlaces.length} 家)`}
+            ${this.isLoadingMore ? i18n.t('map_loading_more') : i18n.t('map_load_more', { count: this.displayedPlaces.length })}
           </button>
         </div>
       `;
@@ -1579,12 +1579,15 @@ export const MapExplorer = {
   },
 
   renderPagination(total) {
+    if (total === undefined || total === null) {
+      total = Array.isArray(this.filteredPlaces) ? this.filteredPlaces.length : 0;
+    }
     const infoEl = document.getElementById("mapPaginationInfo");
     const controlsEl = document.getElementById("mapPaginationControls");
     if (!infoEl || !controlsEl) return;
 
     if (total === 0) {
-      infoEl.textContent = "显示 0 - 0 / 共 0 家";
+      infoEl.textContent = i18n.t("pagination_showing_empty");
       controlsEl.innerHTML = "";
       return;
     }
@@ -1593,7 +1596,7 @@ export const MapExplorer = {
     const startIdx = (this.currentPage - 1) * this.pageSize + 1;
     const endIdx = Math.min(this.currentPage * this.pageSize, total);
 
-    infoEl.textContent = `显示 ${startIdx} - ${endIdx} / 共 ${total} 家餐馆`;
+    infoEl.textContent = i18n.t("pagination_showing", { start: startIdx, end: endIdx, total });
 
     let html = `<button class="btn btn-secondary btn-sm" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.mapExplorerGoToPage(${this.currentPage - 1})">&lt;</button>`;
 
@@ -1621,7 +1624,7 @@ export const MapExplorer = {
   addAllToRoute() {
     const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
     if (list.length === 0) {
-      alert("当前列表暂无餐馆可加入路线。");
+      alert(i18n.t("alert_no_places_to_add"));
       return;
     }
 
@@ -1653,11 +1656,11 @@ export const MapExplorer = {
       this.updateRoute();
       this.renderMarkers();
       this.renderPlacesCards();
-      const msg = `已将 ${addedCount} 家餐馆加入经停点清单`;
+      const msg = i18n.t("toast_added_stops", { count: addedCount });
       if (window.showToast) window.showToast(msg);
       else alert(msg);
     } else {
-      alert("当前列表餐馆均已在路线清单中。");
+      alert(i18n.t("alert_all_places_already_in_route"));
     }
   },
 
@@ -1899,11 +1902,11 @@ export const MapExplorer = {
 
     const routeBtn = !isInRoute ? `
       <button onclick="window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}')" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:4px 9px; font-size:11px; font-weight:600; cursor:pointer;">
-        + 途经点
+        ${this.escapeHtml(i18n.t("map_card_add_stop"))}
       </button>
     ` : `
       <button onclick="window.mapExplorerRemoveSingleFromRoute('${this.escapeQuotes(key)}')" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:4px 9px; font-size:11px; font-weight:600; cursor:pointer;">
-        移除途经点
+        ${this.escapeHtml(i18n.t("btn_remove_stop"))}
       </button>
     `;
 
@@ -1927,7 +1930,7 @@ export const MapExplorer = {
         <div style="display:flex; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
           ${routeBtn}
           <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer;">
-            导航
+            ${this.escapeHtml(i18n.t("map_card_nav"))}
           </button>
         </div>
       </div>

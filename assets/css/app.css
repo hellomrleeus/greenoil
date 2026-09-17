@@ -4571,11 +4571,14 @@ body {
   .map-explorer-left-column {
     width: 100%;
     max-width: 100%;
+    min-width: 0 !important;
     height: 420px;
     flex: none;
   }
   .map-explorer-map-column {
     width: 100%;
+    max-width: 100%;
+    min-width: 0 !important;
     height: 480px;
     min-height: 420px;
     flex: none;
@@ -4583,11 +4586,67 @@ body {
   .map-explorer-right-column {
     width: 100%;
     max-width: 100%;
+    min-width: 0 !important;
     height: 440px;
     flex: none;
   }
   .area-popover-panel {
     width: 95vw;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-area {
+    padding: 0.75rem 0.5rem !important;
+  }
+  .map-explorer-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .area-search-pill-container,
+  .area-search-pill-btn {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .toolbar-filter-item {
+    width: 100%;
+  }
+  .toolbar-select {
+    width: 100% !important;
+  }
+  .toolbar-search-wrap {
+    width: 100% !important;
+    display: flex;
+    gap: 0.5rem;
+  }
+  .toolbar-search-wrap .form-input {
+    flex: 1;
+    min-width: 0;
+  }
+  .map-floating-route-ribbon {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 10px;
+    left: 8px;
+    right: 8px;
+  }
+  .route-ribbon-left {
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.75rem;
+  }
+  .route-ribbon-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .map-list-header {
+    padding: 0.6rem 0.75rem;
+  }
+  .map-list-title {
+    font-size: 0.88rem;
   }
 }
 

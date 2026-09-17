@@ -5,7 +5,7 @@
 import { Auth } from "./auth.js";
 import { Calculator } from "./calculator.js";
 import { GreaseTrap } from "./grease-trap.js";
-import { MapExplorer } from "./map-explorer.js?v=20260918_v7";
+import { MapExplorer } from "./map-explorer.js?v=20260918_v8";
 import { i18n } from "./i18n.js";
 
 // Global Toast Notification System
@@ -117,10 +117,23 @@ function setupNavigation() {
   });
 
   try {
-    const savedTab = localStorage.getItem("greenoil_active_tab");
-    const initialTab = (savedTab && document.getElementById(savedTab) && !["tab-restaurants", "tab-fieldsale"].includes(savedTab))
-      ? savedTab
-      : "tab-mapexplorer";
+    let initialTab = null;
+    if (typeof window !== "undefined" && window.location && window.location.search) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get("tab");
+      if (tabParam) {
+        const candidate = tabParam.startsWith("tab-") ? tabParam : `tab-${tabParam}`;
+        if (document.getElementById(candidate) && !["tab-restaurants", "tab-fieldsale"].includes(candidate)) {
+          initialTab = candidate;
+        }
+      }
+    }
+    if (!initialTab) {
+      const savedTab = localStorage.getItem("greenoil_active_tab");
+      initialTab = (savedTab && document.getElementById(savedTab) && !["tab-restaurants", "tab-fieldsale"].includes(savedTab))
+        ? savedTab
+        : "tab-mapexplorer";
+    }
     window.switchTab(initialTab);
   } catch (e) {}
 }
@@ -199,7 +212,16 @@ function setupAuth() {
   function checkAndRenderAuth() {
     if (Auth.isAuthenticated()) {
       if (loginOverlay) loginOverlay.classList.remove("active");
-      if (userDisplay) userDisplay.textContent = Auth.getUser();
+      if (userDisplay) {
+        const u = Auth.getUser();
+        if (u === "demo" || u === "演示操作员" || u === "操作员") {
+          userDisplay.setAttribute("data-i18n", "operator_demo_name");
+          userDisplay.textContent = i18n?.t("operator_demo_name") || "Operator";
+        } else {
+          userDisplay.removeAttribute("data-i18n");
+          userDisplay.textContent = u;
+        }
+      }
     } else {
       if (loginOverlay) loginOverlay.classList.add("active");
     }

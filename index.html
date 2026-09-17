@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title data-i18n="app_title">Green Oil 工作台</title>
-  <link rel="stylesheet" href="assets/css/app.css?v=20260918_v7">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260918_v8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%2316a34a%22/><text x=%2250%22 y=%2267%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2252%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-weight=%22700%22>G</text></svg>">
   <script src="assets/js/vendor/xlsx.full.min.js"></script>
 </head>
@@ -54,7 +54,7 @@
         <div class="user-profile">
           <div class="avatar">GO</div>
           <div class="user-info">
-            <div class="user-name" id="sidebarUserName">greenoil</div>
+            <div class="user-name" id="sidebarUserName" data-i18n="operator_demo_name">greenoil</div>
           </div>
         </div>
         <button class="btn-logout" id="btnLogout" title="退出登录" data-i18n-title="btn_logout">
@@ -480,9 +480,9 @@
               </div>
 
               <!-- Hidden legacy selects for script compatibility -->
-              <select id="mapCitySelect" style="display: none;"><option value="all">全部</option></select>
-              <select id="mapNeighborhoodSelect" style="display: none;"><option value="all">全部</option></select>
-              <select id="mapStreetSelect" style="display: none;"><option value="all">全部</option></select>
+              <select id="mapCitySelect" style="display: none;"><option value="all">All</option></select>
+              <select id="mapNeighborhoodSelect" style="display: none;"><option value="all">All</option></select>
+              <select id="mapStreetSelect" style="display: none;"><option value="all">All</option></select>
             </div>
           </div>
 
@@ -490,15 +490,15 @@
           <div id="mapApiNotice" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
               <div>
-                <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;">
+                <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;" data-i18n="map_alert_title">
                   地图服务提示
                 </div>
-                <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;">
+                <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;" data-i18n="map_alert_body">
                   Google Maps 服务未激活，已自动切换至备用地图视图（路线规划与地点检索功能正常可用）。
                 </div>
               </div>
               <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;">
+                <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;" data-i18n="map_alert_btn">
                   服务配置说明
                 </a>
               </div>
@@ -512,28 +512,26 @@
             <div class="map-explorer-left-column">
               <div class="map-list-header">
                 <div>
-                  <h3 class="map-list-title" id="mapResultsRegionTitle">餐馆列表 (Google Maps)</h3>
-                  <div class="map-list-subtitle" id="mapResultsSummary">
-                    共检索到 <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">0</span> 家 Google 商家
-                  </div>
+                  <h3 class="map-list-title" id="mapResultsRegionTitle" data-i18n="map_results_header">餐馆列表 (Google Maps)</h3>
+                  <div class="map-list-subtitle" id="mapResultsSummary"></div>
                 </div>
                 <div class="map-list-actions">
-                  <button class="btn btn-primary btn-sm" id="mapBtnAddAllToRoute" style="background: #2563eb; border-color: #2563eb; font-size: 0.78rem; padding: 0.25rem 0.6rem;" title="将当前列表全部加入途经点">
-                    <span>+ 全部加入路线</span>
+                  <button class="btn btn-primary btn-sm" id="mapBtnAddAllToRoute" style="background: #2563eb; border-color: #2563eb; font-size: 0.78rem; padding: 0.25rem 0.6rem;" title="将当前列表全部加入途经点" data-i18n-title="btn_add_all_to_route">
+                    <span data-i18n="btn_add_all_to_route">+ 全部加入路线</span>
                   </button>
                 </div>
               </div>
 
               <!-- Scrollable Restaurant Cards Container -->
               <div class="map-places-cards-container custom-scrollbar" id="mapPlacesCardsContainer">
-                <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);" data-i18n="map_loading_places">
                   正在加载 Google Maps 餐馆数据...
                 </div>
               </div>
 
               <!-- List Pagination -->
               <div class="map-list-pagination" id="mapPaginationWrap">
-                <div id="mapPaginationInfo" style="color: var(--text-muted); font-size: 0.8rem;">显示 0 - 0 / 共 0 家</div>
+                <div id="mapPaginationInfo" style="color: var(--text-muted); font-size: 0.8rem;"></div>
                 <div id="mapPaginationControls" style="display: flex; gap: 0.35rem;"></div>
               </div>
             </div>
@@ -544,18 +542,18 @@
               <div class="map-floating-route-ribbon" id="mapFloatingRouteRibbon">
                 <div class="route-ribbon-left">
                   <span class="route-ribbon-pulse"></span>
-                  <span class="route-ribbon-title">动态路径规划</span>
+                  <span class="route-ribbon-title" data-i18n="map_ribbon_title">动态路径规划</span>
                   <span class="route-ribbon-divider">|</span>
-                  <span class="route-ribbon-stat">经停: <b id="mapRouteStopsCount" style="color: #2563eb;">0</b> 站</span>
-                  <span class="route-ribbon-stat">总里程: <b id="mapRouteDistance">0</b> km</span>
-                  <span class="route-ribbon-stat">预估耗时: <b id="mapRouteTime">0</b> 分钟</span>
+                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_stops">经停:</span> <b id="mapRouteStopsCount" style="color: #2563eb;">0</b> <span data-i18n="map_ribbon_stop_unit">站</span></span>
+                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_distance">总里程:</span> <b id="mapRouteDistance">0</b> km</span>
+                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_duration">预估耗时:</span> <b id="mapRouteTime">0</b> <span data-i18n="map_ribbon_min_unit">分钟</span></span>
                 </div>
                 <div class="route-ribbon-actions">
-                  <button type="button" class="btn btn-secondary btn-sm route-ribbon-btn" id="mapBtnFitRoute" title="居中展示全路线视野">
+                  <button type="button" class="btn btn-secondary btn-sm route-ribbon-btn" id="mapBtnFitRoute" title="居中展示全路线视野" data-i18n-title="map_btn_fit_route" data-i18n="map_btn_fit_route">
                     居中全景
                   </button>
                   <button type="button" class="btn btn-primary btn-sm route-ribbon-btn" id="mapBtnToggleRoute" style="background: #2563eb; border-color: #2563eb;">
-                    <span id="mapRouteToggleLabel">规划中</span>
+                    <span id="mapRouteToggleLabel" data-i18n="map_route_planning">规划中</span>
                   </button>
                 </div>
               </div>
@@ -563,7 +561,7 @@
               <!-- Floating Search In Current Viewport Button -->
               <button type="button" id="mapSearchThisAreaBtn" class="map-search-this-area-btn" onclick="window.mapExplorerSearchThisArea();" style="display:none;">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <span>在当前地图视野内找店</span>
+                <span data-i18n="btn_search_this_area">在当前地图视野内找店</span>
               </button>
 
               <!-- Map Canvas -->
@@ -571,9 +569,9 @@
 
               <!-- Map Legend -->
               <div class="map-floating-legend">
-                <span class="legend-item"><span class="legend-dot start-point">HQ</span> 起点</span>
-                <span class="legend-item"><span class="legend-dot route-point">1</span> 途经点</span>
-                <span class="legend-item"><span class="legend-dot search-point"></span> 候选餐馆</span>
+                <span class="legend-item"><span class="legend-dot start-point">HQ</span> <span data-i18n="map_legend_hq">起点</span></span>
+                <span class="legend-item"><span class="legend-dot route-point">1</span> <span data-i18n="map_legend_waypoint">途经点</span></span>
+                <span class="legend-item"><span class="legend-dot search-point"></span> <span data-i18n="map_legend_candidate">候选餐馆</span></span>
               </div>
             </div>
 
@@ -583,10 +581,10 @@
                 <div class="waypoints-header-top">
                   <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2563eb;"></span>
-                    <h3 class="waypoints-title">途经经停点清单</h3>
-                    <span class="waypoints-count-badge" id="mapWaypointsBadge">0 站</span>
+                    <h3 class="waypoints-title" data-i18n="fs_route_waypoints_title">途经站点清单</h3>
+                    <span class="waypoints-count-badge" id="mapWaypointsBadge">0</span>
                   </div>
-                  <button type="button" class="btn-clear-waypoints" id="mapBtnClearRoute" title="清空所有经停点">
+                  <button type="button" class="btn-clear-waypoints" id="mapBtnClearRoute" title="清空所有经停点" data-i18n-title="btn_clear_waypoints" data-i18n="btn_clear_waypoints">
                     清空路线
                   </button>
                 </div>
@@ -594,26 +592,26 @@
                 <!-- Starting Point Selector Box -->
                 <div class="waypoints-origin-box">
                   <div class="origin-label-row">
-                    <span class="origin-label">起点</span>
+                    <span class="origin-label" data-i18n="route_origin_label">起点</span>
                     <span class="origin-tag">Green Oil HQ</span>
                   </div>
                   <div class="origin-address-row">
-                    <input type="text" id="mapRouteOriginInput" class="form-input origin-input" value="Green Oil Inc, 888 Progress Ave, Scarborough, ON" placeholder="输入或修改起点地址..." />
+                    <input type="text" id="mapRouteOriginInput" class="form-input origin-input" value="Green Oil Inc, 888 Progress Ave, Scarborough, ON" placeholder="输入或修改起点地址..." data-i18n-placeholder="route_origin_placeholder" />
                   </div>
                 </div>
 
                 <!-- Action Toolbar: Route Optimize & Export -->
                 <div class="waypoints-toolbar">
-                  <button type="button" class="btn btn-primary btn-sm btn-optimize" id="mapBtnOptimizeRoute" title="优化经停路线顺序">
+                  <button type="button" class="btn btn-primary btn-sm btn-optimize" id="mapBtnOptimizeRoute" title="优化经停路线顺序" data-i18n-title="btn_optimize_route" data-i18n="btn_optimize_route">
                     路线优化
                   </button>
-                  <button type="button" class="btn btn-secondary btn-sm btn-export" id="mapBtnExportWaypoints" title="导出当前调整后顺序的Excel/CSV清单">
+                  <button type="button" class="btn btn-secondary btn-sm btn-export" id="mapBtnExportWaypoints" title="导出当前调整后顺序的Excel/CSV清单" data-i18n-title="btn_export_waypoints" data-i18n="btn_export_waypoints">
                     导出清单
                   </button>
                 </div>
 
                 <div class="waypoints-drag-tip">
-                  <span>拖拽调整途经点顺序，路线实时更新</span>
+                  <span data-i18n="waypoints_drag_tip">拖拽调整途经点顺序，路线实时更新</span>
                 </div>
               </div>
 
@@ -626,7 +624,7 @@
               <div class="map-waypoints-footer">
                 <button type="button" class="btn btn-primary btn-nav-google" id="mapBtnExternalNav">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
-                  在 Google 地图开启导航
+                  <span data-i18n="btn_launch_google_nav">在 Google 地图开启导航</span>
                 </button>
               </div>
             </div>
@@ -655,7 +653,7 @@
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
           <span class="status-badge status-open" id="modalRestStatus" data-i18n="status_open">营业中</span>
           <span class="price-tag" id="modalRestPrice">$$</span>
-          <span class="api-badge" id="modalRestRegion">万锦 (Markham)</span>
+          <span class="api-badge" id="modalRestRegion">-</span>
         </div>
 
         <div class="detail-field-group">
@@ -791,6 +789,6 @@
   </div>
 
   <!-- App Entry Scripts -->
-  <script type="module" src="assets/js/app.js?v=20260918_v7"></script>
+  <script type="module" src="assets/js/app.js?v=20260918_v8"></script>
 </body>
 </html>

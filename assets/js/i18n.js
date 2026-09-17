@@ -526,7 +526,60 @@ export const TRANSLATIONS = {
     fs_col_expiry: "竞品合同到期日",
     fs_col_notes: "沟通纪要",
     fs_col_sales_rep: "业务员",
-    fs_col_created_at: "创建时间"
+    fs_col_created_at: "创建时间",
+    btn_close: "关闭",
+    select: "选择",
+    operator_demo_name: "演示操作员",
+    operator_default_name: "操作员",
+    map_ribbon_title: "动态路径规划",
+    map_ribbon_stops: "经停:",
+    map_ribbon_stop_unit: "站",
+    map_ribbon_distance: "总里程:",
+    map_ribbon_duration: "预估耗时:",
+    map_ribbon_min_unit: "分钟",
+    map_btn_fit_route: "居中全景",
+    map_route_planning: "规划中",
+    map_route_realtime: "实时路线",
+    btn_search_this_area: "在当前地图视野内找店",
+    map_legend_hq: "起点",
+    map_legend_waypoint: "途经点",
+    map_legend_candidate: "候选餐馆",
+    fs_route_waypoints_title: "途经站点清单",
+    map_waypoints_unit: "站",
+    btn_clear_waypoints: "清空路线",
+    route_origin_label: "起点",
+    route_origin_placeholder: "输入或修改起点地址...",
+    btn_optimize_route: "路线优化",
+    btn_export_waypoints: "导出清单",
+    waypoints_drag_tip: "拖拽调整途经点顺序，路线实时更新",
+    waypoints_empty_title: "暂无途经点",
+    waypoints_empty_desc: "在左侧餐馆列表点击「+ 途经点」或在地图上点击标记即可添加至经停路线",
+    btn_launch_google_nav: "在 Google 地图开启导航",
+    map_results_header: "餐馆列表 (Google Maps)",
+    map_results_found: "共检索到 {count} 家 Google 商家",
+    btn_add_all_to_route: "+ 全部加入路线",
+    map_loading_places: "正在加载 Google Maps 餐馆数据...",
+    map_empty_title: "当前区域暂未检索到餐馆",
+    map_empty_desc: "尝试切换品类或在上方搜索其它商圈/城市",
+    map_load_more: "加载更多商铺 (当前共 {count} 家)",
+    map_loading_more: "正在拉取后续商户...",
+    map_card_add_stop: "+ 途经点",
+    map_card_stop_num: "第 {n} 站",
+    map_card_nav: "导航",
+    map_alert_title: "地图服务提示",
+    map_alert_body: "Google Maps 服务未激活，已自动切换至备用地图视图（路线规划与地点检索功能正常可用）。",
+    map_alert_btn: "服务配置说明",
+    btn_remove_stop: "移除途经点",
+    pagination_showing: "显示 {start} - {end} / 共 {total} 家餐馆",
+    pagination_showing_empty: "显示 0 - 0 / 共 0 家",
+    confirm_clear_waypoints: "确定清空当前所有经停途经点？",
+    alert_min_2_stops_optimize: "路线中至少需要 2 个经停点才能进行优化排序。",
+    toast_route_optimized: "路线已完成优化排序",
+    alert_no_waypoints_export: "当前路线清单中暂无经停点可导出。",
+    alert_add_waypoints_first: "请先在左侧或地图中添加餐馆至途经点清单。",
+    alert_no_places_to_add: "当前列表暂无餐馆可加入路线。",
+    toast_added_stops: "已将 {count} 家餐馆加入经停点清单",
+    alert_all_places_already_in_route: "当前列表餐馆均已在经停路线清单中。"
   },
 
   en: {
@@ -1051,7 +1104,60 @@ export const TRANSLATIONS = {
     fs_col_expiry: "Contract Expiry Date",
     fs_col_notes: "Meeting Notes",
     fs_col_sales_rep: "Sales Rep",
-    fs_col_created_at: "Created At"
+    fs_col_created_at: "Created At",
+    btn_close: "Close",
+    select: "Select",
+    operator_demo_name: "Demo Operator",
+    operator_default_name: "Operator",
+    map_ribbon_title: "Dynamic Route Planning",
+    map_ribbon_stops: "Stops:",
+    map_ribbon_stop_unit: "stops",
+    map_ribbon_distance: "Distance:",
+    map_ribbon_duration: "Est. Time:",
+    map_ribbon_min_unit: "mins",
+    map_btn_fit_route: "Fit Route",
+    map_route_planning: "Planning",
+    map_route_realtime: "Live Route",
+    btn_search_this_area: "Search This Area",
+    map_legend_hq: "Start",
+    map_legend_waypoint: "Stop",
+    map_legend_candidate: "Place",
+    fs_route_waypoints_title: "Route Schedule",
+    map_waypoints_unit: "stops",
+    btn_clear_waypoints: "Clear Route",
+    route_origin_label: "Origin",
+    route_origin_placeholder: "Enter or edit starting address...",
+    btn_optimize_route: "Optimize Route",
+    btn_export_waypoints: "Export List",
+    waypoints_drag_tip: "Drag to reorder stops; route updates in real time",
+    waypoints_empty_title: "No Waypoints Added",
+    waypoints_empty_desc: "Click '+ Stop' in the restaurant list or click any map marker to add stops",
+    btn_launch_google_nav: "Start Navigation in Google Maps",
+    map_results_header: "Places Search (Google Maps)",
+    map_results_found: "Found {count} Google Places",
+    btn_add_all_to_route: "+ Add All to Route",
+    map_loading_places: "Loading Google Maps places data...",
+    map_empty_title: "No places found in current area",
+    map_empty_desc: "Try switching categories or searching other cities/neighborhoods",
+    map_load_more: "Load More Places (Total: {count})",
+    map_loading_more: "Loading more places...",
+    map_card_add_stop: "+ Stop",
+    map_card_stop_num: "Stop {n}",
+    map_card_nav: "Navigate",
+    map_alert_title: "Map Service Notice",
+    map_alert_body: "Google Maps service is inactive, automatically switched to fallback map view (routing and place search fully operational).",
+    map_alert_btn: "Configuration Guide",
+    btn_remove_stop: "Remove Stop",
+    pagination_showing: "Showing {start} - {end} of {total} places",
+    pagination_showing_empty: "Showing 0 - 0 of 0 places",
+    confirm_clear_waypoints: "Are you sure you want to clear all waypoints?",
+    alert_min_2_stops_optimize: "At least 2 waypoints are required to optimize the route.",
+    toast_route_optimized: "Route order optimized successfully",
+    alert_no_waypoints_export: "No waypoints in the current route to export.",
+    alert_add_waypoints_first: "Please add restaurants to the waypoints list first.",
+    alert_no_places_to_add: "No restaurants in the current list to add to route.",
+    toast_added_stops: "Added {count} restaurants to route waypoints",
+    alert_all_places_already_in_route: "All restaurants in current list are already in route waypoints."
   },
 
   ko: {
@@ -1576,16 +1682,83 @@ export const TRANSLATIONS = {
     fs_col_expiry: "계약 만료일",
     fs_col_notes: "상담 메모",
     fs_col_sales_rep: "영업 담당자",
-    fs_col_created_at: "생성 일시"
+    fs_col_created_at: "생성 일시",
+    btn_close: "닫기",
+    select: "선택",
+    operator_demo_name: "데모 운영자",
+    operator_default_name: "운영자",
+    map_ribbon_title: "동적 경로 계획",
+    map_ribbon_stops: "경유지:",
+    map_ribbon_stop_unit: "개소",
+    map_ribbon_distance: "총 거리:",
+    map_ribbon_duration: "예상 시간:",
+    map_ribbon_min_unit: "분",
+    map_btn_fit_route: "전체 맞춤",
+    map_route_planning: "계획 중",
+    map_route_realtime: "실시간 경로",
+    btn_search_this_area: "현재 지도 영역에서 검색",
+    map_legend_hq: "출발점",
+    map_legend_waypoint: "경유지",
+    map_legend_candidate: "후보 매장",
+    fs_route_waypoints_title: "경유지 일정 목록",
+    map_waypoints_unit: "개소",
+    btn_clear_waypoints: "경로 비우기",
+    route_origin_label: "출발지",
+    route_origin_placeholder: "출발지 주소 입력 또는 변경...",
+    btn_optimize_route: "경로 최적화",
+    btn_export_waypoints: "목록 내보내기",
+    waypoints_drag_tip: "경유지를 드래그하여 순서를 변경하면 경로가 실시간 갱신됩니다",
+    waypoints_empty_title: "경유지가 없습니다",
+    waypoints_empty_desc: "왼쪽 식당 목록의 '+ 경유지'를 클릭하거나 지도의 마커를 클릭하여 추가하세요",
+    btn_launch_google_nav: "Google 지도에서 내비게이션 시작",
+    map_results_header: "식당 검색 목록 (Google Maps)",
+    map_results_found: "총 {count}개 Google 매장 검색됨",
+    btn_add_all_to_route: "+ 전체 경로에 추가",
+    map_loading_places: "Google Maps 식당 데이터를 불러오는 중...",
+    map_empty_title: "현재 지역에서 검색된 식당이 없습니다",
+    map_empty_desc: "업종 카테고리를 변경하거나 다른 상권/도시를 검색해보세요",
+    map_load_more: "더 많은 식당 불러오기 (현재 {count}개)",
+    map_loading_more: "추가 식당 불러오는 중...",
+    map_card_add_stop: "+ 경유지",
+    map_card_stop_num: "{n}번째 경유지",
+    map_card_nav: "내비",
+    map_alert_title: "지도 서비스 알림",
+    map_alert_body: "Google Maps 서비스가 비활성화되어 대체 지도 뷰로 자동 전환되었습니다 (경로 계획 및 매장 검색은 정상 작동합니다).",
+    map_alert_btn: "서비스 설정 안내",
+    btn_remove_stop: "경유지 삭제",
+    pagination_showing: "{start} - {end} 표시 중 / 총 {total}개 매장",
+    pagination_showing_empty: "0 - 0 표시 중 / 총 0개 매장",
+    confirm_clear_waypoints: "현재 모든 경유지를 삭제하시겠습니까?",
+    alert_min_2_stops_optimize: "경로를 최적화하려면 최소 2개 이상의 경유지가 필요합니다.",
+    toast_route_optimized: "경로 순서가 최적화되었습니다",
+    alert_no_waypoints_export: "내보낼 경유지가 없습니다.",
+    alert_add_waypoints_first: "먼저 왼쪽 목록 또는 지도에서 식당을 경유지에 추가해주세요.",
+    alert_no_places_to_add: "경로에 추가할 식당이 현재 목록에 없습니다.",
+    toast_added_stops: "{count}개 식당이 경유지 목록에 추가되었습니다",
+    alert_all_places_already_in_route: "현재 목록의 모든 식당이 이미 경유지 목록에 포함되어 있습니다."
   }
 };
 
 class I18nManager {
   constructor() {
-    this.currentLang = (typeof localStorage !== "undefined" && localStorage.getItem("greenoil_lang")) || "zh";
-    if (!TRANSLATIONS[this.currentLang]) {
-      this.currentLang = "zh";
+    let initialLang = null;
+    try {
+      if (typeof window !== "undefined" && window.location && window.location.search) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlLang = urlParams.get("lang");
+        if (urlLang && TRANSLATIONS[urlLang]) {
+          initialLang = urlLang;
+        }
+      }
+    } catch (e) {}
+
+    if (!initialLang) {
+      initialLang = (typeof localStorage !== "undefined" && localStorage.getItem("greenoil_lang")) || "zh";
     }
+    if (!TRANSLATIONS[initialLang]) {
+      initialLang = "zh";
+    }
+    this.currentLang = initialLang;
     this.listeners = [];
   }
 
