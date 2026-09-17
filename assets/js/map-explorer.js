@@ -118,6 +118,7 @@ export const MapExplorer = {
   googleApiKey: "",
   mapContextMenuEl: null,
   mapContextMenuPoint: null,
+  routeRenderGeneration: 0,
 
   // Route Planning State
   routeWaypoints: [],
@@ -500,12 +501,48 @@ export const MapExplorer = {
     }
   },
 
-  renderFallbackPolyline() {
+  async renderFallbackPolyline() {
+    const routeGen = ++this.routeRenderGeneration;
     const origin = this.getEffectiveOrigin();
     const coords = [
       { lat: origin.lat, lng: origin.lng },
       ...this.routeWaypoints.map(w => ({ lat: parseFloat(w.latitude), lng: parseFloat(w.longitude) }))
     ].filter(c => !isNaN(c.lat) && !isNaN(c.lng));
+
+    if (coords.length < 2) {
+      if (this.routePolyline) {
+        if (this.googleMap && this.routePolyline.setMap) this.routePolyline.setMap(null);
+        else if (this.fallbackMap) this.fallbackMap.removeLayer(this.routePolyline);
+        this.routePolyline = null;
+      }
+      this.updateRouteMetrics("0.0", 0);
+      return;
+    }
+
+    let finalPath = coords;
+    let totalKm = null;
+    let totalMins = null;
+
+    // Fetch turn-by-turn road geometry from open road network (OSRM)
+    try {
+      const osrmQuery = coords.map(c => `${c.lng.toFixed(6)},${c.lat.toFixed(6)}`).join(";");
+      const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${osrmQuery}?overview=full&geometries=geojson`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.code === "Ok" && data.routes && data.routes[0]) {
+          const route = data.routes[0];
+          if (route.geometry && Array.isArray(route.geometry.coordinates) && route.geometry.coordinates.length > 0) {
+            finalPath = route.geometry.coordinates.map(pt => ({ lat: pt[1], lng: pt[0] }));
+            totalKm = (route.distance / 1000).toFixed(1);
+            totalMins = Math.max(5, Math.round(route.duration / 60));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("OSRM road routing fallback failed, using geodesic coordinates:", e);
+    }
+
+    if (routeGen !== this.routeRenderGeneration) return;
 
     if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
       if (this.directionsRenderer) {
@@ -515,7 +552,7 @@ export const MapExplorer = {
         this.routePolyline.setMap(null);
       }
       this.routePolyline = new google.maps.Polyline({
-        path: coords,
+        path: finalPath,
         geodesic: true,
         strokeColor: "#2563eb",
         strokeOpacity: 0.85,
@@ -527,7 +564,7 @@ export const MapExplorer = {
       if (this.routePolyline) {
         this.fallbackMap.removeLayer(this.routePolyline);
       }
-      const latLngs = coords.map(c => [c.lat, c.lng]);
+      const latLngs = finalPath.map(c => [c.lat, c.lng]);
       this.routePolyline = L.polyline(latLngs, {
         color: "#2563eb",
         weight: 6,
@@ -535,12 +572,15 @@ export const MapExplorer = {
       }).addTo(this.fallbackMap);
     }
 
-    let totalKm = 0;
-    for (let i = 0; i < coords.length - 1; i++) {
-      totalKm += this.getHaversineDistance(coords[i].lat, coords[i].lng, coords[i + 1].lat, coords[i + 1].lng);
+    if (totalKm === null) {
+      let straightKm = 0;
+      for (let i = 0; i < coords.length - 1; i++) {
+        straightKm += this.getHaversineDistance(coords[i].lat, coords[i].lng, coords[i + 1].lat, coords[i + 1].lng);
+      }
+      totalKm = (straightKm * 1.3).toFixed(1);
+      totalMins = Math.max(5, Math.round((straightKm * 1.3 / 35) * 60));
     }
-    const mins = Math.max(5, Math.round((totalKm / 35) * 60));
-    this.updateRouteMetrics(totalKm.toFixed(1), mins);
+    this.updateRouteMetrics(totalKm, totalMins);
   },
 
   updateOriginMarker() {
@@ -1844,21 +1884,87 @@ export const MapExplorer = {
   async openGooglePoi(placeId, position) {
     const requestId = ++this.poiRequestId;
     this.activePopupKey = placeId;
-    this.infoWindow.setContent(`<div style="padding:8px">正在获取店铺详情...</div>`);
+    this.infoWindow.setContent(`<div style="padding:8px">正在获取地点详情...</div>`);
     if (position) this.infoWindow.setPosition(position);
     this.infoWindow.open({ map: this.googleMap });
 
     let restaurant = this.findPlace(placeId);
     if (!restaurant) {
-      const result = await Api.getGooglePlaceDetails(placeId, "zh-CN");
-      if (requestId !== this.poiRequestId) return;
-      if (!result.success || !result.place) {
-        this.infoWindow.setContent(`<div style="padding:8px">店铺详情加载失败，请重试</div>`);
-        return;
+      // 1. Direct modern Google Places API (New) from browser with referrer
+      try {
+        const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
+        if (apiKey) {
+          const resp = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+            headers: {
+              "X-Goog-Api-Key": apiKey,
+              "X-Goog-FieldMask": "id,displayName,formattedAddress,location,rating,userRatingCount,types,regularOpeningHours,internationalPhoneNumber"
+            }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            const lat = data.location?.latitude || (position && typeof position.lat === "function" ? position.lat() : 0);
+            const lng = data.location?.longitude || (position && typeof position.lng === "function" ? position.lng() : 0);
+            restaurant = {
+              placeId: data.id || placeId,
+              name: data.displayName?.text || "Unknown Place",
+              address: data.formattedAddress || "",
+              latitude: lat,
+              longitude: lng,
+              rating: data.rating || "",
+              reviews: data.userRatingCount || "",
+              phone: data.internationalPhoneNumber || "",
+              openingHours: data.regularOpeningHours?.weekdayDescriptions?.join(" | ") || "",
+              types: data.types || []
+            };
+          }
+        }
+      } catch (err) {
+        console.warn("Direct Places API (New) details failed:", err);
       }
-      restaurant = result.place;
     }
+
+    // 2. Client-side PlacesService fallback
+    if (!restaurant && this.placesService) {
+      restaurant = await new Promise(resolve => {
+        this.placesService.getDetails({
+          placeId: placeId,
+          fields: ["place_id", "name", "formatted_address", "geometry", "rating", "user_ratings_total", "formatted_phone_number", "opening_hours", "types"]
+        }, (place, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+            resolve({
+              placeId: place.place_id || placeId,
+              name: place.name || "Unknown Place",
+              address: place.formatted_address || "",
+              latitude: place.geometry?.location?.lat() || (position && typeof position.lat === "function" ? position.lat() : 0),
+              longitude: place.geometry?.location?.lng() || (position && typeof position.lng === "function" ? position.lng() : 0),
+              rating: place.rating || "",
+              reviews: place.user_ratings_total || "",
+              phone: place.formatted_phone_number || "",
+              openingHours: place.opening_hours?.weekday_text?.join(" | ") || "",
+              types: place.types || []
+            });
+          } else {
+            resolve(null);
+          }
+        });
+      });
+    }
+
+    // 3. Fallback to API worker proxy
+    if (!restaurant) {
+      try {
+        const result = await Api.getGooglePlaceDetails(placeId, "zh-CN");
+        if (result && result.success && result.place) {
+          restaurant = result.place;
+        }
+      } catch (e) {}
+    }
+
     if (requestId !== this.poiRequestId) return;
+    if (!restaurant) {
+      this.infoWindow.setContent(`<div style="padding:10px;font-size:13px;color:#64748b;">地点详情加载失败，请重试</div>`);
+      return;
+    }
 
     this.poiPlaces.set(placeId, restaurant);
     this.infoWindow.setContent(this.getPopupHtml(restaurant));
