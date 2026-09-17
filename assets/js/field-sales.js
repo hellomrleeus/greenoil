@@ -1242,29 +1242,219 @@ export const FieldSales = {
     return new Date();
   },
 
+  projectToCorridor(lat, lon, originLat, originLon, uX, uY) {
+    const meanLatRad = (originLat * Math.PI) / 180;
+    const dxKm = (lon - originLon) * (Math.PI / 180) * 6371 * Math.cos(meanLatRad);
+    const dyKm = (lat - originLat) * (Math.PI / 180) * 6371;
+    const s = dxKm * uX + dyKm * uY;
+    const w = Math.abs(dxKm * (-uY) + dyKm * uX);
+    return { s, w, dxKm, dyKm };
+  },
+
+  calculatePrincipalTravelAxis(originCoords, waypoints) {
+    const oLat = parseFloat(originCoords.lat) || 43.6532;
+    const oLng = parseFloat(originCoords.lng) || -79.3832;
+    const validPts = (waypoints || []).filter(w => {
+      const lat = parseFloat(w.latitude);
+      const lng = parseFloat(w.longitude);
+      return !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0);
+    });
+
+    if (validPts.length === 0) {
+      return { uX: 1, uY: 0, isCorridor: false, spanKm: 0 };
+    }
+
+    let sumLat = 0, sumLng = 0;
+    validPts.forEach(p => {
+      sumLat += parseFloat(p.latitude);
+      sumLng += parseFloat(p.longitude);
+    });
+    const centLat = sumLat / validPts.length;
+    const centLng = sumLng / validPts.length;
+
+    const meanLatRad = (oLat * Math.PI) / 180;
+    const dx = (centLng - oLng) * (Math.PI / 180) * 6371 * Math.cos(meanLatRad);
+    const dy = (centLat - oLat) * (Math.PI / 180) * 6371;
+    const norm = Math.hypot(dx, dy);
+
+    if (norm < 0.5) {
+      return { uX: 1, uY: 0, isCorridor: false, spanKm: norm };
+    }
+
+    const uX = dx / norm;
+    const uY = dy / norm;
+
+    let minS = Infinity, maxS = -Infinity;
+    validPts.forEach(p => {
+      const { s } = this.projectToCorridor(parseFloat(p.latitude), parseFloat(p.longitude), oLat, oLng, uX, uY);
+      if (s < minS) minS = s;
+      if (s > maxS) maxS = s;
+    });
+
+    const spanKm = Math.max(0, maxS - minS);
+    return { uX, uY, isCorridor: spanKm >= 2.5, spanKm, minS, maxS };
+  },
+
+  isTourScheduleFeasible(tour, originCoords, depDate) {
+    let curTime = new Date(depDate.getTime());
+    let curLat = parseFloat(originCoords.lat) || 43.6532;
+    let curLng = parseFloat(originCoords.lng) || -79.3832;
+
+    for (const item of tour) {
+      const rLat = parseFloat(item.latitude) || curLat;
+      const rLng = parseFloat(item.longitude) || curLng;
+      const dist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
+      const driveMins = Math.max(5, Math.round((dist / 35) * 60));
+      const estArrival = new Date(curTime.getTime() + driveMins * 60000);
+
+      const hasHours = item.openingHours && typeof item.openingHours === "string" && item.openingHours.trim() &&
+        !["未提供", "未知", "Not provided", "暂无", "null"].includes(item.openingHours.trim());
+
+      if (hasHours && typeof BusinessHours !== "undefined" && BusinessHours.getBusinessStatus) {
+        const statusObj = BusinessHours.getBusinessStatus(item.openingHours, estArrival);
+        if (statusObj && (statusObj.statusKey === "status_opening" || statusObj.status === "未开门")) {
+          if (statusObj.remainingMinutes && statusObj.remainingMinutes > 90) {
+            return false;
+          }
+        }
+        if (statusObj && (statusObj.statusKey === "status_closed" || statusObj.status === "已打烊")) {
+          return false;
+        }
+      }
+
+      curTime = new Date(estArrival.getTime() + 20 * 60000);
+      curLat = rLat;
+      curLng = rLng;
+    }
+    return true;
+  },
+
+  twoOptOptimization(route, originCoords, depDate) {
+    if (!Array.isArray(route) || route.length < 4) return route;
+
+    const oLat = parseFloat(originCoords.lat) || 43.6532;
+    const oLng = parseFloat(originCoords.lng) || -79.3832;
+
+    const calcTotalDistance = (tour) => {
+      let total = 0;
+      let curL = oLat, curG = oLng;
+      for (const item of tour) {
+        const rLat = parseFloat(item.latitude) || curL;
+        const rLng = parseFloat(item.longitude) || curG;
+        total += this.getHaversineDistance(curL, curG, rLat, rLng);
+        curL = rLat;
+        curG = rLng;
+      }
+      return total;
+    };
+
+    let bestTour = [...route];
+    let bestDist = calcTotalDistance(bestTour);
+    let improved = true;
+    let iterations = 0;
+    const MAX_ITERATIONS = 40;
+
+    while (improved && iterations < MAX_ITERATIONS) {
+      improved = false;
+      iterations++;
+
+      for (let i = 0; i < bestTour.length - 1; i++) {
+        for (let k = i + 1; k < bestTour.length; k++) {
+          const candidate = [
+            ...bestTour.slice(0, i),
+            ...bestTour.slice(i, k + 1).reverse(),
+            ...bestTour.slice(k + 1)
+          ];
+
+          const candDist = calcTotalDistance(candidate);
+          if (candDist < bestDist - 0.005) {
+            if (this.isTourScheduleFeasible(candidate, originCoords, depDate)) {
+              bestTour = candidate;
+              bestDist = candDist;
+              improved = true;
+              break;
+            }
+          }
+        }
+        if (improved) break;
+      }
+    }
+
+    return bestTour;
+  },
+
   sortWaypointsBySchedule(waypoints, departureTime = null, originCoords = null) {
     if (!Array.isArray(waypoints) || waypoints.length <= 1) {
       return Array.isArray(waypoints) ? [...waypoints] : [];
     }
 
     const startCoords = originCoords || { lat: 43.6532, lng: -79.3832 };
-    let curLat = parseFloat(startCoords.lat) || 43.6532;
-    let curLng = parseFloat(startCoords.lng) || -79.3832;
+    const oLat = parseFloat(startCoords.lat) || 43.6532;
+    const oLng = parseFloat(startCoords.lng) || -79.3832;
 
     const depDate = departureTime instanceof Date
       ? new Date(departureTime.getTime())
       : (departureTime ? new Date(departureTime) : this.getDepartureDateTime());
-    let curTime = new Date(depDate.getTime());
 
-    const remaining = [...waypoints];
-    const optimized = [];
+    // 1. Calculate corridor principal travel axis & check if corridor routing applies
+    const axisInfo = this.calculatePrincipalTravelAxis({ lat: oLat, lng: oLng }, waypoints);
+    const SLICE_LENGTH_KM = 2.0;
+
+    // Decorate waypoints with along-track (s) and cross-track (w)
+    const decoratedWaypoints = waypoints.map(w => {
+      const rLat = parseFloat(w.latitude);
+      const rLng = parseFloat(w.longitude);
+      if (isNaN(rLat) || isNaN(rLng) || (rLat === 0 && rLng === 0)) {
+        return { ...w, _along_track_km: 0, _cross_track_km: 0, _slice_idx: 0 };
+      }
+      const { s, w: lateral } = this.projectToCorridor(rLat, rLng, oLat, oLng, axisInfo.uX, axisInfo.uY);
+      const sliceIdx = axisInfo.isCorridor ? Math.max(0, Math.floor(Math.max(0, s) / SLICE_LENGTH_KM)) : 0;
+      return { ...w, _along_track_km: s, _cross_track_km: lateral, _slice_idx: sliceIdx };
+    });
+
+    // 2. Anti-Shuttle Corridor Slicing & Progressive Sweep with Schedule Awareness
+    let curLat = oLat;
+    let curLng = oLng;
+    let curTime = new Date(depDate.getTime());
+    const remaining = [...decoratedWaypoints];
+    const initialRoute = [];
     const VISIT_DURATION_MINS = 20;
+
+    let currentSliceIdx = 0;
+    if (axisInfo.isCorridor) {
+      const sliceIds = Array.from(new Set(remaining.map(r => r._slice_idx))).sort((a, b) => a - b);
+      if (sliceIds.length > 0) currentSliceIdx = sliceIds[0];
+    }
 
     while (remaining.length > 0) {
       let bestIdx = 0;
       let minCost = Infinity;
 
-      for (let i = 0; i < remaining.length; i++) {
+      // Filter to current slice candidates if any, or advance slice if exhausted or all unopened
+      let candidateIndices = [];
+      if (axisInfo.isCorridor) {
+        candidateIndices = remaining
+          .map((item, idx) => ({ item, idx }))
+          .filter(({ item }) => item._slice_idx === currentSliceIdx)
+          .map(x => x.idx);
+
+        if (candidateIndices.length === 0) {
+          const remainingSlices = Array.from(new Set(remaining.map(r => r._slice_idx))).sort((a, b) => a - b);
+          if (remainingSlices.length > 0) {
+            currentSliceIdx = remainingSlices[0];
+            candidateIndices = remaining
+              .map((item, idx) => ({ item, idx }))
+              .filter(({ item }) => item._slice_idx === currentSliceIdx)
+              .map(x => x.idx);
+          }
+        }
+      }
+
+      if (candidateIndices.length === 0) {
+        candidateIndices = remaining.map((_, idx) => idx);
+      }
+
+      for (const i of candidateIndices) {
         const item = remaining[i];
         const rLat = parseFloat(item.latitude) || curLat;
         const rLng = parseFloat(item.longitude) || curLng;
@@ -1273,7 +1463,8 @@ export const FieldSales = {
         const estArrival = new Date(curTime.getTime() + driveMins * 60000);
 
         let cost = dist;
-        const hasHours = item.openingHours && typeof item.openingHours === "string" && item.openingHours.trim() && !["未提供", "未知", "Not provided", "暂无", "null"].includes(item.openingHours.trim());
+        const hasHours = item.openingHours && typeof item.openingHours === "string" && item.openingHours.trim() &&
+          !["未提供", "未知", "Not provided", "暂无", "null"].includes(item.openingHours.trim());
 
         if (hasHours) {
           const statusObj = (typeof BusinessHours !== "undefined" && BusinessHours.getBusinessStatus)
@@ -1281,7 +1472,6 @@ export const FieldSales = {
             : { statusKey: "status_unknown", status: "未知" };
 
           if (statusObj.statusKey === "status_open" || statusObj.status === "营业中") {
-            // Open: prioritize stops that are closing soonest
             const remMins = statusObj.remainingMinutes;
             if (remMins !== null && remMins < 90) {
               const urgencyBonus = Math.max(0, (90 - remMins) * 0.15);
@@ -1290,18 +1480,21 @@ export const FieldSales = {
               cost = dist;
             }
           } else if (statusObj.statusKey === "status_opening" || statusObj.status === "未开门") {
-            // Not yet open at estimated arrival: apply heavy penalty so open stores are picked first
             const waitMins = statusObj.remainingMinutes || 60;
             cost = dist + 500 + waitMins * 2;
           } else if (statusObj.statusKey === "status_closed" || statusObj.status === "已打烊") {
-            // Closed for the day or > 24h away: very high penalty
             cost = dist + 5000;
           } else {
             cost = dist + 2;
           }
         } else {
-          // No opening hours (or custom address)
           cost = dist + 2;
+        }
+
+        if (axisInfo.isCorridor) {
+          const sliceDiff = item._slice_idx - currentSliceIdx;
+          if (sliceDiff > 0) cost += sliceDiff * 20;
+          else if (sliceDiff < 0) cost += Math.abs(sliceDiff) * 100;
         }
 
         if (cost < minCost) {
@@ -1310,27 +1503,79 @@ export const FieldSales = {
         }
       }
 
+      // If best candidate in current slice has high wait/closed penalty (> 400),
+      // look ahead across other slices for an already-open restaurant
+      if (axisInfo.isCorridor && minCost >= 400) {
+        let betterOpenIdx = -1;
+        let betterOpenCost = Infinity;
+        for (let j = 0; j < remaining.length; j++) {
+          const item = remaining[j];
+          const rLat = parseFloat(item.latitude) || curLat;
+          const rLng = parseFloat(item.longitude) || curLng;
+          const dist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
+          const driveMins = Math.max(5, Math.round((dist / 35) * 60));
+          const estArrival = new Date(curTime.getTime() + driveMins * 60000);
+          const hasHours = item.openingHours && typeof item.openingHours === "string" && item.openingHours.trim() &&
+            !["未提供", "未知", "Not provided", "暂无", "null"].includes(item.openingHours.trim());
+
+          if (hasHours && typeof BusinessHours !== "undefined" && BusinessHours.getBusinessStatus) {
+            const statusObj = BusinessHours.getBusinessStatus(item.openingHours, estArrival);
+            if (statusObj && (statusObj.statusKey === "status_open" || statusObj.status === "营业中")) {
+              const c = dist + (item._slice_idx * 5);
+              if (c < betterOpenCost) {
+                betterOpenCost = c;
+                betterOpenIdx = j;
+              }
+            }
+          }
+        }
+        if (betterOpenIdx !== -1) {
+          bestIdx = betterOpenIdx;
+        }
+      }
+
       const bestItem = remaining.splice(bestIdx, 1)[0];
+      currentSliceIdx = bestItem._slice_idx;
+
       const rLat = parseFloat(bestItem.latitude) || curLat;
       const rLng = parseFloat(bestItem.longitude) || curLng;
       const legDist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
       const legDriveMins = Math.max(5, Math.round((legDist / 35) * 60));
       const arrival = new Date(curTime.getTime() + legDriveMins * 60000);
 
-      const arrHours = String(arrival.getHours()).padStart(2, "0");
-      const arrMins = String(arrival.getMinutes()).padStart(2, "0");
-      bestItem._estArrivalStr = `${arrHours}:${arrMins}`;
-      bestItem._estArrivalIso = arrival.toISOString();
+      initialRoute.push(bestItem);
 
-      optimized.push(bestItem);
-
-      // Advance clock by drive time + visit duration
       curTime = new Date(arrival.getTime() + VISIT_DURATION_MINS * 60000);
       curLat = rLat;
       curLng = rLng;
     }
 
-    return optimized;
+    // 3. Apply 2-Opt local search refinement (untangles crossing edges)
+    const refinedRoute = this.twoOptOptimization(initialRoute, { lat: oLat, lng: oLng }, depDate);
+
+    // 4. Final calculation of estimated arrival timestamps
+    let finalTime = new Date(depDate.getTime());
+    let fLat = oLat;
+    let fLng = oLng;
+
+    for (const item of refinedRoute) {
+      const rLat = parseFloat(item.latitude) || fLat;
+      const rLng = parseFloat(item.longitude) || fLng;
+      const legDist = this.getHaversineDistance(fLat, fLng, rLat, rLng);
+      const legDriveMins = Math.max(5, Math.round((legDist / 35) * 60));
+      const arrival = new Date(finalTime.getTime() + legDriveMins * 60000);
+
+      const arrHours = String(arrival.getHours()).padStart(2, "0");
+      const arrMins = String(arrival.getMinutes()).padStart(2, "0");
+      item._estArrivalStr = `${arrHours}:${arrMins}`;
+      item._estArrivalIso = arrival.toISOString();
+
+      finalTime = new Date(arrival.getTime() + VISIT_DURATION_MINS * 60000);
+      fLat = rLat;
+      fLng = rLng;
+    }
+
+    return refinedRoute;
   },
 
   optimizeRoute() {

@@ -836,4 +836,84 @@ i18n.setLanguage('zh');
 
 console.log('PASS: Schedule-Aware TSP optimization & departure time rules verified.');
 
+// -------------------------------------------------------------
+// 12. Testing Anti-Shuttle Corridor Slicing & 2-Opt Optimization
+// -------------------------------------------------------------
+console.log('12. Testing Anti-Shuttle Corridor Slicing & 2-Opt Optimization...');
+
+// 12.1 Corridor Projection & Principal Travel Axis
+const originPoint = { lat: 43.6532, lng: -79.3832 }; // Downtown Toronto
+const eastWaypoints = [
+  { placeId: 'e1', name: 'Danforth Stop', latitude: 43.6800, longitude: -79.3200 },
+  { placeId: 'e2', name: 'Scarborough Stop', latitude: 43.7400, longitude: -79.2500 },
+  { placeId: 'e3', name: 'Markham East Stop', latitude: 43.8500, longitude: -79.2400 }
+];
+
+const axis = FieldSales.calculatePrincipalTravelAxis(originPoint, eastWaypoints);
+assert.equal(axis.isCorridor, true, 'Eastward sequence must be detected as travel corridor');
+assert(axis.uX > 0, 'Principal axis uX component should be Eastward (positive)');
+assert(axis.spanKm > 10, 'Along-track span across GTA should exceed 10km');
+
+// 12.2 Anti-Shuttle Corridor Slice Monotonic Forward Progression
+// Candidates positioned in three progressive slices along the corridor
+const corridorCandidates = [
+  { placeId: 's3_far', name: 'Far Stop 1 (Markham)', latitude: 43.8500, longitude: -79.2600, openingHours: 'Mon-Sun 10:00-22:00' },
+  { placeId: 's1_near1', name: 'Near Stop 1 (Danforth)', latitude: 43.6750, longitude: -79.3300, openingHours: 'Mon-Sun 10:00-22:00' },
+  { placeId: 's2_mid', name: 'Mid Stop 1 (Scarborough)', latitude: 43.7400, longitude: -79.2700, openingHours: 'Mon-Sun 10:00-22:00' },
+  { placeId: 's1_near2', name: 'Near Stop 2 (Greektown)', latitude: 43.6800, longitude: -79.3250, openingHours: 'Mon-Sun 10:00-22:00' },
+  { placeId: 's3_far2', name: 'Far Stop 2 (Unionville)', latitude: 43.8600, longitude: -79.2500, openingHours: 'Mon-Sun 10:00-22:00' }
+];
+
+const sweptRoute = FieldSales.sortWaypointsBySchedule(
+  corridorCandidates,
+  new Date('2026-09-18T10:00:00'),
+  originPoint
+);
+
+assert.equal(sweptRoute.length, 5);
+const sweptIds = sweptRoute.map(r => r.placeId);
+// Near stops (s1) must be visited BEFORE mid stop (s2)
+assert(sweptIds.indexOf('s1_near1') < sweptIds.indexOf('s2_mid'), 'Near stop 1 must precede mid stop');
+assert(sweptIds.indexOf('s1_near2') < sweptIds.indexOf('s2_mid'), 'Near stop 2 must precede mid stop');
+// Mid stop (s2) must be visited BEFORE far stops (s3)
+assert(sweptIds.indexOf('s2_mid') < sweptIds.indexOf('s3_far'), 'Mid stop must precede far stop 1');
+assert(sweptIds.indexOf('s2_mid') < sweptIds.indexOf('s3_far2'), 'Mid stop must precede far stop 2');
+
+// 12.3 2-Opt Tour Untangling Verification (Eliminating Crossed Edges)
+// Construct a crossed "hourglass" quad of points:
+// p1: (43.70, -79.30) -> p2: (43.71, -79.20)
+// p3: (43.71, -79.30) -> p4: (43.70, -79.20)
+// Visiting in crossed order p1 -> p2 -> p3 -> p4 causes crossed edges.
+// 2-Opt should uncross to p1 -> p3 -> p2 -> p4 (or equivalent loop without crossings).
+const crossedTour = [
+  { placeId: 'p1', latitude: 43.7000, longitude: -79.3000 },
+  { placeId: 'p2', latitude: 43.7100, longitude: -79.2000 },
+  { placeId: 'p3', latitude: 43.7100, longitude: -79.3000 },
+  { placeId: 'p4', latitude: 43.7000, longitude: -79.2000 }
+];
+
+const calcDist = (tour) => {
+  let d = 0;
+  let lat = 43.6532, lng = -79.3832;
+  for (const p of tour) {
+    d += FieldSales.getHaversineDistance(lat, lng, p.latitude, p.longitude);
+    lat = p.latitude;
+    lng = p.longitude;
+  }
+  return d;
+};
+
+const initialCrossedDist = calcDist(crossedTour);
+const uncrossedTour = FieldSales.twoOptOptimization(
+  crossedTour,
+  originPoint,
+  new Date('2026-09-18T10:00:00')
+);
+const uncrossedDist = calcDist(uncrossedTour);
+
+assert(uncrossedDist < initialCrossedDist, `2-Opt must reduce tour distance (was ${initialCrossedDist.toFixed(2)} km, now ${uncrossedDist.toFixed(2)} km)`);
+
+console.log(`PASS: 2-Opt tour optimization untangled crossings (distance reduced from ${initialCrossedDist.toFixed(2)} km to ${uncrossedDist.toFixed(2)} km).`);
+console.log('PASS: Anti-Shuttle Corridor Slicing & 2-Opt verified.');
+
 console.log('ALL ENHANCED ROUTE WAYPOINT TESTS PASSED!');
