@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v4";
+import { Api } from "./api.js?v=20260918_v7";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -1576,7 +1576,6 @@ export const MapExplorer = {
     container.innerHTML = cardsHtml;
 
     this.renderPagination(total);
-    this.resolveVisibleGooglePhotos(pageItems);
   },
 
   renderPagination(total) {
@@ -1953,15 +1952,6 @@ export const MapExplorer = {
     this.activePopupKey = r.placeId || r.name;
     this.infoWindow.setContent(this.getPopupHtml(r));
     this.infoWindow.open(this.googleMap, marker);
-
-    if (r.placeId && r.placeId.startsWith("ChIJ") && !r.photoUrl && !this.googlePhotosCache.has(r.placeId)) {
-      this.fetchGooglePhotoForPlace(r.placeId).then(photoUrl => {
-        if (photoUrl && this.infoWindow && this.activePopupKey === (r.placeId || r.name)) {
-          r.photoUrl = photoUrl;
-          this.infoWindow.setContent(this.getPopupHtml(r));
-        }
-      });
-    }
   },
 
   async openGooglePoi(placeId, position) {
@@ -2054,94 +2044,24 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
-  // Authentic Photos
-  // -------------------------------------------------------------
   getRestaurantPhoto(r) {
     if (!r) return { url: null, isGoogle: false };
     const raw = r.photoUrl;
-    if (typeof raw === "string" && raw.startsWith("http")) {
+    // Omit places.googleapis / googleusercontent photo URLs to avoid connection errors and billing
+    if (typeof raw === "string" && raw.startsWith("http") && !raw.includes("places.googleapis.com") && !raw.includes("googleusercontent.com")) {
       return { url: raw, isGoogle: true };
     }
-    let cached = this.googlePhotosCache.get(r.placeId);
-    if (!cached && r.placeId) {
-      try { cached = sessionStorage.getItem("gphoto_" + r.placeId); } catch {}
-      if (cached) this.googlePhotosCache.set(r.placeId, cached);
-    }
-    return { url: cached || null, isGoogle: !!cached };
+    return { url: null, isGoogle: false };
   },
 
   async fetchGooglePhotoForPlace(placeId) {
-    if (!placeId || !placeId.startsWith("ChIJ")) return null;
-    if (this.googlePhotosCache && this.googlePhotosCache.has(placeId)) {
-      return this.googlePhotosCache.get(placeId);
-    }
-    try {
-      const cached = sessionStorage.getItem("gphoto_" + placeId);
-      if (cached) {
-        if (this.googlePhotosCache) this.googlePhotosCache.set(placeId, cached);
-        return cached;
-      }
-    } catch (e) {}
-
-    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
-    if (!apiKey) return null;
-
-    try {
-      const resp = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
-        headers: {
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "photos"
-        }
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.photos && data.photos.length > 0 && data.photos[0].name) {
-          const photoUrl = `https://places.googleapis.com/v1/${data.photos[0].name}/media?maxHeightPx=300&maxWidthPx=300&key=${apiKey}`;
-          if (this.googlePhotosCache) this.googlePhotosCache.set(placeId, photoUrl);
-          try { sessionStorage.setItem("gphoto_" + placeId, photoUrl); } catch (e) {}
-          return photoUrl;
-        }
-      }
-    } catch (err) {
-      console.warn("fetchGooglePhotoForPlace error:", err);
-    }
+    // Disabled: prevent "无法连接服务器" errors from lh3.googleusercontent.com CDN
     return null;
   },
 
   async resolveVisibleGooglePhotos(pageItems) {
-    if (!Array.isArray(pageItems) || pageItems.length === 0) return;
-    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
-    if (!apiKey) return;
-
-    const itemsToFetch = pageItems.filter(r => {
-      if (!r || !r.placeId || !r.placeId.startsWith("ChIJ")) return false;
-      if (this.getRestaurantPhoto(r).isGoogle) return false;
-      if (this.googlePhotosCache && this.googlePhotosCache.has(r.placeId)) return false;
-      try {
-        if (sessionStorage.getItem("gphoto_" + r.placeId)) return false;
-      } catch (e) {}
-      return true;
-    });
-
-    if (itemsToFetch.length === 0) return;
-
-    const batchSize = 4;
-    for (let i = 0; i < itemsToFetch.length; i += batchSize) {
-      const batch = itemsToFetch.slice(i, i + batchSize);
-      await Promise.all(batch.map(async r => {
-        const photoUrl = await this.fetchGooglePhotoForPlace(r.placeId);
-        if (photoUrl) {
-          r.photoUrl = photoUrl;
-          const key = r.placeId || r.name;
-          const safeKey = this.escapeQuotes(key);
-          const cardEl = document.querySelector(`.map-place-card[data-key="${safeKey}"]`);
-          if (cardEl) {
-            const imgEl = cardEl.querySelector(".card-thumb img");
-            if (imgEl) imgEl.src = photoUrl;
-          }
-        }
-      }));
-    }
+    // Disabled: prevent "无法连接服务器" errors from lh3.googleusercontent.com CDN
+    return;
   },
 
   // -------------------------------------------------------------

@@ -295,7 +295,6 @@ export const Api = {
       "places.priceLevel",
       "places.primaryType",
       "places.location",
-      "places.photos",
       "nextPageToken"
     ].join(",");
 
@@ -387,10 +386,9 @@ export const Api = {
     };
     const price = priceMap[p.priceLevel] || "$$ (适中消费)";
 
-    let photoUrl = "";
-    if (p.photos && p.photos.length > 0 && p.photos[0].name) {
-      photoUrl = `https://places.googleapis.com/v1/${p.photos[0].name}/media?maxHeightPx=300&maxWidthPx=300&key=${apiKey}`;
-    }
+    // Photo media URLs are omitted to prevent 302 redirects to lh3.googleusercontent.com
+    // which fail with "无法连接服务器" in restricted/proxy networks and trigger billable Place Photo requests.
+    const photoUrl = "";
 
     return {
       placeId: p.id,
