@@ -681,7 +681,9 @@ export const FieldSales = {
     this.renderRouteTabs();
     this.renderRouteWaypoints();
 
-    const msg = `已新建路线标签「${newTab.name}」`;
+    const msg = (typeof i18n !== "undefined" && i18n.t)
+      ? i18n.t("toast_created_tab", { name: newTab.name })
+      : `已新建路线标签「${newTab.name}」`;
     if (window.showToast) window.showToast(msg);
     return newTab;
   },
@@ -710,7 +712,9 @@ export const FieldSales = {
     this.renderRouteTabs();
     this.renderRouteWaypoints();
 
-    const msg = `已复制为新路线标签「${newTab.name}」`;
+    const msg = (typeof i18n !== "undefined" && i18n.t)
+      ? i18n.t("toast_copied_tab", { name: newTab.name })
+      : `已复制为新路线标签「${newTab.name}」`;
     if (window.showToast) window.showToast(msg);
     return newTab;
   },

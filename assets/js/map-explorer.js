@@ -104,6 +104,7 @@ export const MapExplorer = {
   placesService: null,
   directionsService: null,
   directionsRenderer: null,
+  routesApiDisabled: false,
   routePolyline: null,
   originMarker: null,
   markersMap: new Map(), // key -> Google Marker or Leaflet Marker
@@ -437,19 +438,19 @@ export const MapExplorer = {
     if (badgeEl) badgeEl.textContent = `${this.routeWaypoints.length} ${i18n.t("map_waypoints_unit")}`;
   },
 
-  updateRoute() {
+  async updateRoute() {
     const stopsCount = this.routeWaypoints.length;
     const stopsEl = document.getElementById("mapRouteStopsCount");
     const badgeEl = document.getElementById("mapWaypointsBadge");
     if (stopsEl) stopsEl.textContent = stopsCount;
     if (badgeEl) badgeEl.textContent = `${stopsCount} ${i18n.t("map_waypoints_unit")}`;
 
-    // Clear previous directions or polyline
+    // Clear previous polyline
     if (this.directionsRenderer) {
       this.directionsRenderer.set("directions", null);
     }
     if (this.routePolyline) {
-      if (this.routePolyline.setMap) this.routePolyline.setMap(null);
+      if (this.googleMap && this.routePolyline.setMap) this.routePolyline.setMap(null);
       else if (this.fallbackMap && this.fallbackMap.removeLayer) this.fallbackMap.removeLayer(this.routePolyline);
       this.routePolyline = null;
     }
@@ -461,57 +462,46 @@ export const MapExplorer = {
     }
 
     this.updateOriginMarker();
-
-    // Render road directions if Google Maps is active and stops <= 25
-    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-      const origin = this.getEffectiveOrigin();
-      const originLocation = { lat: origin.lat, lng: origin.lng };
-      const destWp = this.routeWaypoints[stopsCount - 1];
-      const destinationLocation = {
-        lat: parseFloat(destWp.latitude),
-        lng: parseFloat(destWp.longitude)
-      };
-
-      if (this.directionsService && this.directionsRenderer && stopsCount <= 25) {
-        const intermediateWaypoints = this.routeWaypoints.slice(0, -1).map(w => ({
-          location: { lat: parseFloat(w.latitude), lng: parseFloat(w.longitude) },
-          stopover: true
-        }));
-
-        this.directionsService.route({
-          origin: originLocation,
-          destination: destinationLocation,
-          waypoints: intermediateWaypoints,
-          travelMode: google.maps.TravelMode.DRIVING
-        }, (response, status) => {
-          if (status === google.maps.DirectionsStatus.OK) {
-            if (this.routePolyline) {
-              this.routePolyline.setMap(null);
-              this.routePolyline = null;
-            }
-            this.directionsRenderer.setDirections(response);
-            let totalMeters = 0;
-            let totalSecs = 0;
-            response.routes[0].legs.forEach(leg => {
-              totalMeters += leg.distance.value;
-              totalSecs += leg.duration.value;
-            });
-            const km = (totalMeters / 1000).toFixed(1);
-            const mins = Math.round(totalSecs / 60);
-            this.updateRouteMetrics(km, mins);
-          } else {
-            this.renderFallbackPolyline();
-          }
-        });
-      } else {
-        this.renderFallbackPolyline();
-      }
-    } else {
-      this.renderFallbackPolyline();
-    }
+    await this.renderRoadRoute();
   },
 
-  async renderFallbackPolyline() {
+  decodePolyline(encoded) {
+    if (!encoded) return [];
+    if (window.google && window.google.maps && window.google.maps.geometry && window.google.maps.geometry.encoding) {
+      try {
+        const decoded = google.maps.geometry.encoding.decodePath(encoded);
+        return decoded.map(p => ({ lat: p.lat(), lng: p.lng() }));
+      } catch (e) {}
+    }
+    const points = [];
+    let index = 0, len = encoded.length;
+    let lat = 0, lng = 0;
+    while (index < len) {
+      let b, shift = 0, result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      const dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      const dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      points.push({ lat: lat / 1e5, lng: lng / 1e5 });
+    }
+    return points;
+  },
+
+  async renderRoadRoute() {
     const routeGen = ++this.routeRenderGeneration;
     const origin = this.getEffectiveOrigin();
     const coords = [
@@ -529,31 +519,98 @@ export const MapExplorer = {
       return;
     }
 
-    let finalPath = coords;
+    let finalPath = null;
     let totalKm = null;
     let totalMins = null;
 
-    // Fetch turn-by-turn road geometry from open road network (OSRM)
-    try {
-      const osrmQuery = coords.map(c => `${c.lng.toFixed(6)},${c.lat.toFixed(6)}`).join(";");
-      const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${osrmQuery}?overview=full&geometries=geojson`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.code === "Ok" && data.routes && data.routes[0]) {
-          const route = data.routes[0];
-          if (route.geometry && Array.isArray(route.geometry.coordinates) && route.geometry.coordinates.length > 0) {
-            finalPath = route.geometry.coordinates.map(pt => ({ lat: pt[1], lng: pt[0] }));
-            totalKm = (route.distance / 1000).toFixed(1);
-            totalMins = Math.max(5, Math.round(route.duration / 60));
+    // 1. Attempt modern Google Routes API (v2:computeRoutes) if not disabled
+    if (!this.routesApiDisabled && window.google && window.google.maps) {
+      try {
+        const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
+        if (apiKey) {
+          const originCoord = coords[0];
+          const destCoord = coords[coords.length - 1];
+          const intermediates = coords.slice(1, -1);
+
+          const resp = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": apiKey,
+              "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+              "X-Goog-Maps-Solution-ID": "gmp_git_agentskills_v1"
+            },
+            body: JSON.stringify({
+              origin: { location: { latLng: { latitude: originCoord.lat, longitude: originCoord.lng } } },
+              destination: { location: { latLng: { latitude: destCoord.lat, longitude: destCoord.lng } } },
+              intermediates: intermediates.map(pt => ({
+                location: { latLng: { latitude: pt.lat, longitude: pt.lng } }
+              })),
+              travelMode: "DRIVE",
+              routingPreference: "TRAFFIC_UNAWARE"
+            })
+          });
+
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data.routes && data.routes[0]) {
+              const r = data.routes[0];
+              if (r.polyline?.encodedPolyline) {
+                finalPath = this.decodePolyline(r.polyline.encodedPolyline);
+              }
+              if (r.distanceMeters) {
+                totalKm = (r.distanceMeters / 1000).toFixed(1);
+              }
+              if (r.duration) {
+                const secs = parseInt(r.duration.replace("s", ""), 10);
+                if (!isNaN(secs)) totalMins = Math.max(5, Math.round(secs / 60));
+              }
+            }
+          } else {
+            // Suppress repeating failed calls if Routes API is not enabled in Google Cloud Console
+            this.routesApiDisabled = true;
           }
         }
+      } catch (err) {
+        this.routesApiDisabled = true;
       }
-    } catch (e) {
-      console.warn("OSRM road routing fallback failed, using geodesic coordinates:", e);
+    }
+
+    // 2. Open Road Network Routing (OSRM) Turn-by-Turn Road Geometry
+    if (!finalPath) {
+      try {
+        const osrmQuery = coords.map(c => `${c.lng.toFixed(6)},${c.lat.toFixed(6)}`).join(";");
+        const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${osrmQuery}?overview=full&geometries=geojson`);
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.code === "Ok" && data.routes && data.routes[0]) {
+            const route = data.routes[0];
+            if (route.geometry && Array.isArray(route.geometry.coordinates) && route.geometry.coordinates.length > 0) {
+              finalPath = route.geometry.coordinates.map(pt => ({ lat: pt[1], lng: pt[0] }));
+              totalKm = (route.distance / 1000).toFixed(1);
+              totalMins = Math.max(5, Math.round(route.duration / 60));
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("OSRM road routing fallback failed, using geodesic coordinates:", e);
+      }
+    }
+
+    // 3. Last-resort fallback: straight-line path
+    if (!finalPath) {
+      finalPath = coords;
+      let straightKm = 0;
+      for (let i = 0; i < coords.length - 1; i++) {
+        straightKm += this.getHaversineDistance(coords[i].lat, coords[i].lng, coords[i + 1].lat, coords[i + 1].lng);
+      }
+      totalKm = (straightKm * 1.3).toFixed(1);
+      totalMins = Math.max(5, Math.round((straightKm * 1.3 / 35) * 60));
     }
 
     if (routeGen !== this.routeRenderGeneration) return;
 
+    // Render smooth road polyline on active map
     if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
       if (this.directionsRenderer) {
         this.directionsRenderer.set("directions", null);
@@ -563,7 +620,7 @@ export const MapExplorer = {
       }
       this.routePolyline = new google.maps.Polyline({
         path: finalPath,
-        geodesic: true,
+        geodesic: false,
         strokeColor: "#2563eb",
         strokeOpacity: 0.85,
         strokeWeight: 6,
@@ -582,27 +639,21 @@ export const MapExplorer = {
       }).addTo(this.fallbackMap);
     }
 
-    if (totalKm === null) {
-      let straightKm = 0;
-      for (let i = 0; i < coords.length - 1; i++) {
-        straightKm += this.getHaversineDistance(coords[i].lat, coords[i].lng, coords[i + 1].lat, coords[i + 1].lng);
-      }
-      totalKm = (straightKm * 1.3).toFixed(1);
-      totalMins = Math.max(5, Math.round((straightKm * 1.3 / 35) * 60));
-    }
-    this.updateRouteMetrics(totalKm, totalMins);
+    this.updateRouteMetrics(totalKm || "0.0", totalMins || 0);
   },
 
   updateOriginMarker() {
     const origin = this.getEffectiveOrigin();
     const pos = { lat: origin.lat, lng: origin.lng };
+    const hqTitle = i18n.t("map_origin_hq_title") || "Green Oil HQ (Origin)";
+    const hqPopup = i18n.t("map_origin_hq_popup") || "Origin: Green Oil HQ";
 
     if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
       if (!this.originMarker) {
         this.originMarker = new google.maps.Marker({
           position: pos,
           map: this.googleMap,
-          title: "Green Oil HQ (起点)",
+          title: hqTitle,
           icon: this.getOriginIcon(),
           zIndex: 1000
         });
@@ -610,7 +661,7 @@ export const MapExplorer = {
           if (this.infoWindow) {
             this.infoWindow.setContent(`
               <div style="padding: 4px 6px; font-family: -apple-system, sans-serif;">
-                <div style="font-weight: 700; color: #dc2626; font-size: 13px;">起点：Green Oil HQ</div>
+                <div style="font-weight: 700; color: #dc2626; font-size: 13px;">${this.escapeHtml(hqPopup)}</div>
                 <div style="font-size: 11px; color: #475569; margin-top: 4px;">${this.escapeHtml(origin.address)}</div>
               </div>
             `);
@@ -632,7 +683,7 @@ export const MapExplorer = {
           iconAnchor: [14, 14]
         })
       }).addTo(this.fallbackMap);
-      this.originMarker.bindPopup(`<b>起点：Green Oil HQ</b><br/><span style="font-size:11px;">${this.escapeHtml(origin.address)}</span>`);
+      this.originMarker.bindPopup(`<b>${this.escapeHtml(hqPopup)}</b><br/><span style="font-size:11px;">${this.escapeHtml(origin.address)}</span>`);
     }
   },
 
@@ -1105,12 +1156,12 @@ export const MapExplorer = {
       const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` (${w.nameEn})` : "");
 
       return {
-        "序号": idx + 1,
-        "餐厅名称": displayName,
-        "地址": w.address || "",
-        "电话": phone,
-        "营业时间": openHours,
-        "预计抵达": w._estArrivalStr || "-"
+        [i18n.t("excel_col_index") || "序号"]: idx + 1,
+        [i18n.t("excel_col_name") || "餐厅名称"]: displayName,
+        [i18n.t("excel_col_address") || "地址"]: w.address || "",
+        [i18n.t("excel_col_phone") || "电话"]: phone,
+        [i18n.t("excel_col_hours") || "营业时间"]: openHours,
+        [i18n.t("excel_col_eta") || "预计抵达"]: w._estArrivalStr || "-"
       };
     });
 
@@ -1514,7 +1565,7 @@ export const MapExplorer = {
 
       const ratingStr = `<svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"}`;
       const reviewsStr = r.reviews ? `(${r.reviews})` : "(15+)";
-      const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : "餐饮美食");
+      const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : (i18n.t("cat_food") || "Food & Dining"));
 
       const routeBtn = !isInRoute ? `
         <button class="btn btn-primary btn-sm btn-card-add-route" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="background:#2563eb; border-color:#2563eb; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="${this.escapeHtml(i18n.t('map_card_add_stop'))}">
@@ -1549,7 +1600,7 @@ export const MapExplorer = {
             </div>
 
             <div class="card-address" title="${this.escapeHtml(r.address || '')}">
-              ${this.escapeHtml(r.address || "安大略省 GTA")}
+              ${this.escapeHtml(r.address || "Ontario, GTA")}
             </div>
 
             <div class="card-actions-row">
@@ -1925,7 +1976,7 @@ export const MapExplorer = {
           <svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"} (${r.reviews || 10}) · <b>${this.escapeHtml(r.price || "$$")}</b>
         </div>
         <div style="font-size: 11px; color: #334155; margin-bottom: 6px; line-height: 1.3;">
-          ${this.escapeHtml(r.address || "安大略省 GTA")}
+          ${this.escapeHtml(r.address || "Ontario, GTA")}
         </div>
         <div style="display:flex; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
           ${routeBtn}
@@ -1960,7 +2011,7 @@ export const MapExplorer = {
   async openGooglePoi(placeId, position) {
     const requestId = ++this.poiRequestId;
     this.activePopupKey = placeId;
-    this.infoWindow.setContent(`<div style="padding:8px">正在获取地点详情...</div>`);
+    this.infoWindow.setContent(`<div style="padding:8px">${this.escapeHtml(i18n.t("map_loading_place_details") || "Loading place details...")}</div>`);
     if (position) this.infoWindow.setPosition(position);
     this.infoWindow.open({ map: this.googleMap });
 
@@ -2038,7 +2089,7 @@ export const MapExplorer = {
 
     if (requestId !== this.poiRequestId) return;
     if (!restaurant) {
-      this.infoWindow.setContent(`<div style="padding:10px;font-size:13px;color:#64748b;">地点详情加载失败，请重试</div>`);
+      this.infoWindow.setContent(`<div style="padding:10px;font-size:13px;color:#64748b;">${this.escapeHtml(i18n.t("map_place_details_failed") || "Failed to load place details. Please try again.")}</div>`);
       return;
     }
 
@@ -2125,21 +2176,6 @@ export const MapExplorer = {
 
       if (google.maps.places) {
         this.placesService = new google.maps.places.PlacesService(this.googleMap);
-      }
-
-      if (google.maps.DirectionsService) {
-        this.directionsService = new google.maps.DirectionsService();
-      }
-      if (google.maps.DirectionsRenderer) {
-        this.directionsRenderer = new google.maps.DirectionsRenderer({
-          map: this.googleMap,
-          suppressMarkers: true,
-          polylineOptions: {
-            strokeColor: "#2563eb",
-            strokeWeight: 6,
-            strokeOpacity: 0.85
-          }
-        });
       }
 
       this.infoWindow = new google.maps.InfoWindow();
@@ -2694,12 +2730,16 @@ export const MapExplorer = {
     menu.style.padding = "6px";
     menu.style.minWidth = "180px";
 
+    const coordsText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    const coordsHeader = i18n.t("map_context_coords", { coords: coordsText }) || `Coordinates: ${coordsText}`;
+    const setOriginText = i18n.t("map_context_set_origin") || "Set as Route Origin";
+
     menu.innerHTML = `
       <div style="padding: 6px 10px; font-size: 11px; font-weight: 600; color: #64748b; border-bottom: 1px solid #f1f5f9;">
-        坐标: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+        ${this.escapeHtml(coordsHeader)}
       </div>
       <button type="button" class="btn btn-secondary btn-sm" id="mapContextSetOrigin" style="width: 100%; text-align: left; margin-top: 4px; font-size: 12px; border: none; padding: 6px 10px;">
-        设为路线起点
+        ${this.escapeHtml(setOriginText)}
       </button>
     `;
 
@@ -2710,7 +2750,7 @@ export const MapExplorer = {
     if (setOriginBtn) {
       setOriginBtn.addEventListener("click", () => {
         this.originCoords = { lat, lng };
-        this.originAddress = `坐标: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        this.originAddress = `${i18n.t("map_coord_prefix") || "Coordinates: "}${coordsText}`;
         const input = document.getElementById("mapRouteOriginInput");
         if (input) input.value = this.originAddress;
         this.updateOriginMarker();
@@ -2870,7 +2910,7 @@ export const MapExplorer = {
       toggleRouteBtn.addEventListener("click", () => {
         this.isRouteMode = !this.isRouteMode;
         const label = document.getElementById("mapRouteToggleLabel");
-        if (label) label.textContent = this.isRouteMode ? "规划中" : "已暂停";
+        if (label) label.textContent = this.isRouteMode ? (i18n.t("map_route_status_active") || "规划中") : (i18n.t("map_route_status_paused") || "已暂停");
         toggleRouteBtn.style.background = this.isRouteMode ? "#2563eb" : "#64748b";
         toggleRouteBtn.style.borderColor = this.isRouteMode ? "#2563eb" : "#64748b";
       });
