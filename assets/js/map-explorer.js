@@ -119,6 +119,11 @@ export const MapExplorer = {
   mapContextMenuEl: null,
   mapContextMenuPoint: null,
   routeRenderGeneration: 0,
+  googleNextPageToken: null,
+  isLoadingMore: false,
+  isViewportSearchMode: false,
+  lastSearchedCenter: null,
+  lastSearchedZoom: null,
 
   // Route Planning State
   routeWaypoints: [],
@@ -1298,7 +1303,16 @@ export const MapExplorer = {
     const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
     let areaQuery = "";
-    if (this.searchKeyword) {
+    let bounds = null;
+
+    if (this.isViewportSearchMode && this.googleMap && this.googleMap.getBounds()) {
+      const b = this.googleMap.getBounds();
+      bounds = {
+        sw: { lat: b.getSouthWest().lat(), lng: b.getSouthWest().lng() },
+        ne: { lat: b.getNorthEast().lat(), lng: b.getNorthEast().lng() }
+      };
+      areaQuery = this.searchKeyword ? this.searchKeyword : "restaurants";
+    } else if (this.searchKeyword) {
       areaQuery = this.searchKeyword;
     } else if (selectedNbs.length > 0) {
       const nbNames = selectedNbs.map(nb => nb.nameEn || nb.name.split(" (")[0]).join(" ");
@@ -1313,10 +1327,11 @@ export const MapExplorer = {
 
     if (searchGoogle) {
       try {
-        const result = await Api.searchGooglePlaces(areaQuery);
+        const result = await Api.searchGooglePlaces(areaQuery, { bounds });
         if (requestId !== this.areaLoadId) return;
         if (searchId === this.googleSearchId) {
           this.googleAreaPlaces = result?.success ? (result.places || []) : [];
+          this.googleNextPageToken = result?.nextPageToken || null;
           this.displayedPlaces = this.googleAreaPlaces;
           this.filterAndRenderPlaces();
         }
@@ -1324,6 +1339,7 @@ export const MapExplorer = {
         if (requestId !== this.areaLoadId) return;
         console.warn("Google discovery failed:", error);
         this.displayedPlaces = [];
+        this.googleNextPageToken = null;
         this.filterAndRenderPlaces();
       }
     } else {
@@ -1332,13 +1348,68 @@ export const MapExplorer = {
     }
   },
 
+  searchPlacesInCurrentBounds() {
+    if (!this.googleMap || !this.googleMap.getBounds()) return;
+    this.isViewportSearchMode = true;
+    const btn = document.getElementById("mapSearchThisAreaBtn");
+    if (btn) btn.style.display = "none";
+    const center = this.googleMap.getCenter();
+    if (center) {
+      this.lastSearchedCenter = { lat: center.lat(), lng: center.lng() };
+      this.lastSearchedZoom = this.googleMap.getZoom();
+    }
+    this.loadCommunityPlaces(true);
+  },
+
+  async loadMoreGooglePlaces() {
+    if (!this.googleNextPageToken || this.isLoadingMore) return;
+    this.isLoadingMore = true;
+    this.renderPlacesCards();
+
+    let bounds = null;
+    if (this.isViewportSearchMode && this.googleMap && this.googleMap.getBounds()) {
+      const b = this.googleMap.getBounds();
+      bounds = {
+        sw: { lat: b.getSouthWest().lat(), lng: b.getSouthWest().lng() },
+        ne: { lat: b.getNorthEast().lat(), lng: b.getNorthEast().lng() }
+      };
+    }
+
+    const query = this.searchKeyword || "restaurants";
+    try {
+      const result = await Api.searchGooglePlaces(query, {
+        bounds,
+        pageToken: this.googleNextPageToken
+      });
+
+      this.isLoadingMore = false;
+      if (result && result.success && Array.isArray(result.places) && result.places.length > 0) {
+        this.googleNextPageToken = result.nextPageToken || null;
+        const existingKeys = new Set(this.googleAreaPlaces.map(p => p.placeId || p.name));
+        const newPlaces = result.places.filter(p => !existingKeys.has(p.placeId || p.name));
+        this.googleAreaPlaces = [...this.googleAreaPlaces, ...newPlaces];
+        this.displayedPlaces = this.googleAreaPlaces;
+        this.filterAndRenderPlaces(true);
+      } else {
+        this.googleNextPageToken = null;
+        this.renderPlacesCards();
+      }
+    } catch (e) {
+      this.isLoadingMore = false;
+      this.googleNextPageToken = null;
+      this.renderPlacesCards();
+    }
+  },
+
   filterAndRenderPlaces(preservePage = false) {
     const selectedSubareas = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
     const selectedAreas = selectedSubareas.length > 0 ? selectedSubareas :
       this.activeCityIds.has("all") ? [] : GTA_COMMUNITIES.filter(city => this.activeCityIds.has(city.id));
 
-    let result = (this.displayedPlaces || []).filter(place => selectedAreas.length === 0 ||
-      selectedAreas.some(area => this.isPlaceInGeometry(place, area.geometry)));
+    let result = (this.displayedPlaces || []).filter(place => {
+      if (this.isViewportSearchMode) return true;
+      return selectedAreas.length === 0 || selectedAreas.some(area => this.isPlaceInGeometry(place, area.geometry));
+    });
 
     // Category filter
     if (this.activeCategory !== "全部") {
@@ -1430,7 +1501,7 @@ export const MapExplorer = {
     const startIdx = (this.currentPage - 1) * this.pageSize;
     const pageItems = list.slice(startIdx, startIdx + this.pageSize);
 
-    container.innerHTML = pageItems.map(r => {
+    let cardsHtml = pageItems.map(r => {
       const key = r.placeId || r.name;
       const photoInfo = this.getRestaurantPhoto(r);
       const inRouteIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
@@ -1491,6 +1562,18 @@ export const MapExplorer = {
         </div>
       `;
     }).join("");
+
+    if (this.googleNextPageToken) {
+      cardsHtml += `
+        <div style="padding: 0.75rem 0.25rem 0.5rem; text-align: center;">
+          <button type="button" class="btn btn-outline btn-sm w-100" id="btnLoadMorePlaces" onclick="window.mapExplorerLoadMore();" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;font-weight:600;font-size:0.82rem;border-color:#cbd5e1;color:#1e293b;background:#ffffff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);cursor:pointer;">
+            ${this.isLoadingMore ? '正在拉取后续商户...' : `加载更多商铺 (当前共 ${this.displayedPlaces.length} 家)`}
+          </button>
+        </div>
+      `;
+    }
+
+    container.innerHTML = cardsHtml;
 
     this.renderPagination(total);
     this.resolveVisibleGooglePhotos(pageItems);
@@ -2175,6 +2258,25 @@ export const MapExplorer = {
         if (!coordinate) return;
         const domEvent = event.domEvent;
         this.showMapContextMenu(coordinate.lat, coordinate.lng, domEvent?.clientX ?? 0, domEvent?.clientY ?? 0);
+      });
+
+      this.googleMap.addListener("idle", () => {
+        const center = this.googleMap.getCenter();
+        const zoom = this.googleMap.getZoom();
+        if (!center) return;
+        if (this.lastSearchedCenter) {
+          const dist = this.getHaversineDistance(
+            this.lastSearchedCenter.lat, this.lastSearchedCenter.lng,
+            center.lat(), center.lng()
+          );
+          if (dist > 0.35 || Math.abs(zoom - (this.lastSearchedZoom || zoom)) >= 1) {
+            const btn = document.getElementById("mapSearchThisAreaBtn");
+            if (btn) btn.style.display = "inline-flex";
+          }
+        } else {
+          this.lastSearchedCenter = { lat: center.lat(), lng: center.lng() };
+          this.lastSearchedZoom = zoom;
+        }
       });
 
       this.updateOriginMarker();
@@ -2991,5 +3093,13 @@ if (typeof window !== "undefined") {
 
   window.mapExplorerRemoveNeighborhood = function(nbId) {
     MapExplorer.removeNeighborhood(nbId);
+  };
+
+  window.mapExplorerSearchThisArea = function() {
+    MapExplorer.searchPlacesInCurrentBounds();
+  };
+
+  window.mapExplorerLoadMore = function() {
+    MapExplorer.loadMoreGooglePlaces();
   };
 }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title data-i18n="app_title">Green Oil 工作台</title>
-  <link rel="stylesheet" href="assets/css/app.css?v=20260915_01">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260918_v5">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%2316a34a%22/><text x=%2250%22 y=%2267%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2252%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-weight=%22700%22>G</text></svg>">
   <script src="assets/js/vendor/xlsx.full.min.js"></script>
 </head>
@@ -560,6 +560,12 @@
                 </div>
               </div>
 
+              <!-- Floating Search In Current Viewport Button -->
+              <button type="button" id="mapSearchThisAreaBtn" class="map-search-this-area-btn" onclick="window.mapExplorerSearchThisArea();" style="display:none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span>在当前地图视野内找店</span>
+              </button>
+
               <!-- Map Canvas -->
               <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
 
@@ -785,6 +791,6 @@
   </div>
 
   <!-- App Entry Scripts -->
-  <script type="module" src="assets/js/app.js?v=20260918_v4"></script>
+  <script type="module" src="assets/js/app.js?v=20260918_v5"></script>
 </body>
 </html>

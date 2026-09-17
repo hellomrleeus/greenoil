@@ -4797,3 +4797,41 @@ body {
 @media (max-width: 600px) {
   .area-popover-panel { position: fixed; left: 12px; right: 12px; top: 120px; width: auto; max-width: none; max-height: calc(100dvh - 144px); }
 }
+
+/* Floating "Search This Area" Pill on Map */
+.map-search-this-area-btn {
+  position: absolute;
+  top: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  padding: 7px 18px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeInDown 0.25s ease-out;
+}
+.map-search-this-area-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #94a3b8;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  transform: translateX(-50%) translateY(-1px);
+}
+.map-search-this-area-btn:active {
+  transform: translateX(-50%) translateY(1px);
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+

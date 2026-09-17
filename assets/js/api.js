@@ -268,15 +268,16 @@ export const Api = {
     }
   },
 
-  async searchGooglePlaces(query) {
+  async searchGooglePlaces(query, { bounds = null, pageToken = null } = {}) {
     const apiKey = await this.getGoogleMapsApiKey();
     if (!apiKey) {
-      return { success: false, error: "API key missing", places: [] };
+      return { success: false, error: "API key missing", places: [], nextPageToken: null };
     }
 
     let finalQuery = (query || "").trim();
+    if (!finalQuery) finalQuery = "restaurants";
     const qLower = finalQuery.toLowerCase();
-    if (!qLower.includes("ontario") && !qLower.includes("canada")) {
+    if (!bounds && !qLower.includes("ontario") && !qLower.includes("canada")) {
       finalQuery = `${finalQuery} Ontario Canada`;
     }
 
@@ -294,8 +295,42 @@ export const Api = {
       "places.priceLevel",
       "places.primaryType",
       "places.location",
-      "places.photos"
+      "places.photos",
+      "nextPageToken"
     ].join(",");
+
+    const requestBody = {
+      textQuery: finalQuery,
+      maxResultCount: 20,
+      languageCode: "zh-CN",
+      regionCode: "CA"
+    };
+
+    if (pageToken) {
+      requestBody.pageToken = pageToken;
+    }
+
+    if (bounds && bounds.sw && bounds.ne) {
+      requestBody.locationRestriction = {
+        rectangle: {
+          low: {
+            latitude: Math.min(bounds.sw.lat, bounds.ne.lat),
+            longitude: Math.min(bounds.sw.lng, bounds.ne.lng)
+          },
+          high: {
+            latitude: Math.max(bounds.sw.lat, bounds.ne.lat),
+            longitude: Math.max(bounds.sw.lng, bounds.ne.lng)
+          }
+        }
+      };
+    } else {
+      requestBody.locationBias = {
+        circle: {
+          center: { latitude: 43.7282, longitude: -79.3832 },
+          radius: 45000
+        }
+      };
+    }
 
     try {
       const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -305,18 +340,7 @@ export const Api = {
           "X-Goog-Api-Key": apiKey,
           "X-Goog-FieldMask": fieldMask
         },
-        body: JSON.stringify({
-          textQuery: finalQuery,
-          maxResultCount: 20,
-          languageCode: "zh-CN",
-          regionCode: "CA",
-          locationBias: {
-            circle: {
-              center: { latitude: 43.7282, longitude: -79.3832 },
-              radius: 45000
-            }
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!resp.ok) {
@@ -326,10 +350,10 @@ export const Api = {
       const data = await resp.json();
       const rawPlaces = data.places || [];
       const places = rawPlaces.map(p => this.transformGooglePlace(p, apiKey));
-      return { success: true, places };
+      return { success: true, places, nextPageToken: data.nextPageToken || null };
     } catch (e) {
       console.warn("Direct Google Places search failed:", e);
-      return { success: false, error: e.message, places: [] };
+      return { success: false, error: e.message, places: [], nextPageToken: null };
     }
   },
 
