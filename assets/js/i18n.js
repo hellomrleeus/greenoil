@@ -357,8 +357,8 @@ export const TRANSLATIONS = {
     fs_btn_export_sales: "导出销售报告 (Excel/CSV)",
 
     // Map Explorer
-    page_title_mapexplorer: "地图找店",
-    nav_mapexplorer: "地图找店",
+    page_title_mapexplorer: "地图找店与路径规划",
+    nav_mapexplorer: "地图找店与路径规划",
     map_filter_city: "大区 / 城市",
     map_poi_loading: "正在加载店铺详情…",
     map_filter_neighborhood: "社区 / 行政选区",
@@ -882,8 +882,8 @@ export const TRANSLATIONS = {
     fs_btn_export_sales: "Export Sales Report (Excel/CSV)",
 
     // Map Explorer
-    page_title_mapexplorer: "Map Explorer",
-    nav_mapexplorer: "Map Explorer",
+    page_title_mapexplorer: "Map & Route Planning",
+    nav_mapexplorer: "Map & Route Planning",
     map_filter_city: "Region / City",
     map_poi_loading: "Loading place details…",
     map_filter_neighborhood: "Neighbourhoods / Wards",
@@ -1407,8 +1407,8 @@ export const TRANSLATIONS = {
     fs_btn_export_sales: "영업 보고서 내보내기 (Excel/CSV)",
 
     // Map Explorer
-    page_title_mapexplorer: "지도 탐색",
-    nav_mapexplorer: "지도 탐색",
+    page_title_mapexplorer: "지도 및 경로 계획",
+    nav_mapexplorer: "지도 및 경로 계획",
     map_filter_city: "지역 / 도시",
     map_poi_loading: "장소 정보를 불러오는 중…",
     map_filter_neighborhood: "지역 / 선거구",

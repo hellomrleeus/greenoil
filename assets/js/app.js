@@ -3,10 +3,8 @@
  */
 
 import { Auth } from "./auth.js";
-import { Restaurants } from "./restaurants.js";
 import { Calculator } from "./calculator.js";
 import { GreaseTrap } from "./grease-trap.js";
-import { FieldSales } from "./field-sales.js";
 import { MapExplorer } from "./map-explorer.js";
 import { i18n } from "./i18n.js";
 
@@ -42,15 +40,11 @@ export function initApp() {
   setupAuth();
   setupMobileMenu();
 
-  Restaurants.init();
   Calculator.init();
   GreaseTrap.init();
-  FieldSales.init();
   MapExplorer.init();
 
   if (typeof window !== "undefined") {
-    window.Restaurants = Restaurants;
-    window.FieldSales = FieldSales;
     window.MapExplorer = MapExplorer;
   }
   setupEscKeyHandler();
@@ -124,9 +118,10 @@ function setupNavigation() {
 
   try {
     const savedTab = localStorage.getItem("greenoil_active_tab");
-    if (savedTab && document.getElementById(savedTab) && savedTab !== "tab-restaurants") {
-      window.switchTab(savedTab);
-    }
+    const initialTab = (savedTab && document.getElementById(savedTab) && !["tab-restaurants", "tab-fieldsale"].includes(savedTab))
+      ? savedTab
+      : "tab-mapexplorer";
+    window.switchTab(initialTab);
   } catch (e) {}
 }
 
@@ -177,9 +172,6 @@ function setupSidebarCollapse() {
         MapExplorer.fallbackMap.invalidateSize(true);
       }
     }
-    if (window.FieldSales && FieldSales.activeSubTab === "analytics") {
-      FieldSales.renderAnalytics();
-    }
   }
 
   toggleBtns.forEach(btn => {
@@ -225,7 +217,6 @@ function setupAuth() {
       if (res.success) {
         if (loginAlert) loginAlert.style.display = "none";
         checkAndRenderAuth();
-        Restaurants.fetchData();
       } else {
         if (loginAlert) {
           loginAlert.textContent = res.error || i18n.t("login_error");

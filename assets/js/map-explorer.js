@@ -1,29 +1,20 @@
 /**
- * Green Oil Map Explorer (地图找店)
- * Embedded Google Maps with GTA Communities, Exact Geometric Polygon Boundaries,
- * Google Places Discovery & Live Cloudflare KV Matching,
- * Apartments.com-style Left-Right Split Screen, Floating Area Popover,
- * and Synchronized Card-to-Marker Hover & Scroll Highlighting.
+ * Green Oil Map Explorer & Dynamic Route Planner (地图找店与路径规划)
+ * 3-Column Split Workbench:
+ * - Left Column: Google Maps places search results & 1-click add to route
+ * - Middle Column: Interactive Google Map with live Google-blue route polyline & floating status ribbon
+ * - Right Column: User waypoints with HTML5 drag-and-drop, schedule optimization, and navigation
  *
- * Terms of Service: Subject to Google Maps Platform Terms of Service:
+ * Subject to Google Maps Platform Terms of Service:
  * https://cloud.google.com/maps-platform/terms?utm_campaign=gmp_git_agentskills_v1
  */
 
 import { displayGeometry } from "./map-geometry.js";
-
 import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
-import { Restaurants } from "./restaurants.js";
 import { BusinessHours } from "./business-hours.js";
 
-function getFieldSales() {
-  if (typeof window !== "undefined" && window.FieldSales) {
-    return Promise.resolve(window.FieldSales);
-  }
-  return import("./field-sales.js").then(m => m.FieldSales);
-}
-
-/// GTA Region / City Hierarchy
+// GTA Region / City Hierarchy
 export const GTA_COMMUNITIES = [
   {
     id: "all",
@@ -104,23 +95,35 @@ export const GTA_COMMUNITIES = [
   }
 ];
 
+const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc, 888 Progress Ave, Scarborough, ON";
+const DEFAULT_ORIGIN_COORDS = { lat: 43.7764, lng: -79.2318 };
+
 export const MapExplorer = {
   isInitialized: false,
   googleMap: null,
   placesService: null,
+  directionsService: null,
+  directionsRenderer: null,
+  routePolyline: null,
+  originMarker: null,
   markersMap: new Map(), // key -> Google Marker or Leaflet Marker
   infoWindow: null,
-  allRestaurants: [],
   displayedPlaces: [],
   filteredPlaces: [],
-  selectedMap: new Map(), // key -> Restaurant
+  googleAreaPlaces: [],
   poiPlaces: new Map(),
   activePopupKey: null,
   poiRequestId: 0,
-  googlePhotosCache: new Map(), // placeId -> Google Places photo URL
+  googlePhotosCache: new Map(),
   googleApiKey: "",
   mapContextMenuEl: null,
   mapContextMenuPoint: null,
+
+  // Route Planning State
+  routeWaypoints: [],
+  isRouteMode: true,
+  originAddress: DEFAULT_ORIGIN_ADDRESS,
+  originCoords: { ...DEFAULT_ORIGIN_COORDS },
 
   // GeoJSON Municipal Boundaries Dataset & Hash Map Index
   neighbourhoodsGeoJson: null,
@@ -131,89 +134,77 @@ export const MapExplorer = {
   fallbackMap: null,
   fallbackLayerGroup: null,
 
-  // KV Identification Tracking Sets
-  kvPlaceIdsSet: new Set(),
-  kvNormalizedNamesSet: new Set(),
-  
-  // Filter States (Locality / Cities Multi-Select & Neighborhoods)
-  // Start the map explorer in Scarborough and load only Scarborough restaurants.
-  // Users can still choose All GTA from the area popover when needed.
+  // Filter States
   activeCityIds: new Set(["scarborough"]),
   activeNeighborhoodIds: new Set(),
-  polygonsMap: new Map(), // Boundary polygons
+  polygonsMap: new Map(),
   activeCategory: "全部",
-  activeVisited: "all", // "all", "visited", "unvisited"
-  activeOutcome: "all",
   searchKeyword: "",
   popoverSearchQuery: "",
   resizeObserver: null,
 
-  // Pagination for right list
+  // Pagination
   currentPage: 1,
-  pageSize: 20,
+  pageSize: 15,
+  areaLoadId: 0,
+  areaAbort: null,
+  googleSearchId: 0,
 
+  // Marker animation & caching
+  markerRenderGeneration: 0,
+  markerBatchTimer: null,
+  growingMarkers: new Map(),
+  pinIconCache: new Map(),
+  pinZoomScale: 1,
+  highlightedPinKey: null,
+
+  // -------------------------------------------------------------
+  // Filter State Persistence
+  // -------------------------------------------------------------
   saveFilterState() {
     try {
       const state = {
         activeCityIds: Array.from(this.activeCityIds),
         activeNeighborhoodIds: Array.from(this.activeNeighborhoodIds),
         activeCategory: this.activeCategory,
-        activeVisited: this.activeVisited,
-        activeOutcome: this.activeOutcome,
         searchKeyword: this.searchKeyword
       };
-      localStorage.setItem("greenoil_map_filter_state", JSON.stringify(state));
+      sessionStorage.setItem("greenoil_map_filter_state_v2", JSON.stringify(state));
     } catch (e) {
-      console.warn("Failed to save map filter state to localStorage:", e);
+      console.warn("Failed to save map filter state:", e);
     }
   },
 
   restoreFilterState() {
     try {
-      const raw = localStorage.getItem("greenoil_map_filter_state");
-      if (!raw) return false;
-      const state = JSON.parse(raw);
-      if (state && typeof state === "object") {
-        if (Array.isArray(state.activeCityIds) && state.activeCityIds.length > 0) {
-          this.activeCityIds = new Set(state.activeCityIds);
+      const saved = sessionStorage.getItem("greenoil_map_filter_state_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed.activeCityIds)) {
+          this.activeCityIds = new Set(parsed.activeCityIds);
         }
-        if (Array.isArray(state.activeNeighborhoodIds)) {
-          this.activeNeighborhoodIds = new Set(state.activeNeighborhoodIds);
+        if (Array.isArray(parsed.activeNeighborhoodIds)) {
+          this.activeNeighborhoodIds = new Set(parsed.activeNeighborhoodIds);
         }
-        if (typeof state.activeCategory === "string") {
-          this.activeCategory = state.activeCategory;
-        }
-        if (typeof state.activeVisited === "string") {
-          this.activeVisited = state.activeVisited;
-        }
-        if (typeof state.activeOutcome === "string") {
-          this.activeOutcome = state.activeOutcome;
-        }
-        if (typeof state.searchKeyword === "string") {
-          this.searchKeyword = state.searchKeyword;
-        }
-        return true;
+        if (parsed.activeCategory) this.activeCategory = parsed.activeCategory;
+        if (typeof parsed.searchKeyword === "string") this.searchKeyword = parsed.searchKeyword;
       }
     } catch (e) {
-      console.warn("Failed to restore map filter state from localStorage:", e);
+      console.warn("Failed to restore map filter state:", e);
     }
-    return false;
   },
 
   syncFilterControlsFromState() {
     const catSelect = document.getElementById("mapCategorySelect");
     if (catSelect && this.activeCategory) catSelect.value = this.activeCategory;
 
-    const visitedSelect = document.getElementById("mapVisitedSelect");
-    if (visitedSelect && this.activeVisited) visitedSelect.value = this.activeVisited;
-
-    const outcomeSelect = document.getElementById("mapOutcomeSelect");
-    if (outcomeSelect && this.activeOutcome) outcomeSelect.value = this.activeOutcome;
-
-    const searchInput = document.getElementById("mapKeywordInput");
-    if (searchInput && this.searchKeyword) searchInput.value = this.searchKeyword;
+    const keywordInput = document.getElementById("mapKeywordInput");
+    if (keywordInput && this.searchKeyword) keywordInput.value = this.searchKeyword;
   },
 
+  // -------------------------------------------------------------
+  // Initialization
+  // -------------------------------------------------------------
   async init() {
     if (this.isInitialized) return;
     this.isInitialized = true;
@@ -223,8 +214,9 @@ export const MapExplorer = {
     // 1. Load official GTA municipal GeoJSON boundaries dataset
     await this.loadNeighbourhoodsGeoJson();
 
-    // Restore map filters from localStorage
+    // 2. Restore filter state & route waypoints
     this.restoreFilterState();
+    this.initRouteState();
 
     this.setupAuthFailureHandler();
     this.bindEvents();
@@ -240,29 +232,30 @@ export const MapExplorer = {
       this.updateResultsSummary();
       this.updateFilterDropdownsLanguage();
       this.renderPlacesCards();
+      this.renderWaypoints();
     };
 
     if (i18n && typeof i18n.onLanguageChange === "function") {
       i18n.onLanguageChange(onLangChangeHandler);
     }
-    if (typeof window !== "undefined" && window.i18n && typeof window.i18n.onLanguageChange === "function" && window.i18n !== i18n) {
-      window.i18n.onLanguageChange(onLangChangeHandler);
-    }
 
-    // 1. Fetch Google Maps API Key and initialize map
+    // 3. Initialize Google Map instance
     await this.initGoogleMap();
 
-
-    // 3. Fit the initial Scarborough selection and load only its restaurants.
-    // Explicit city/ward changes use the same pan-and-load path.
+    // 4. Fit initial Scarborough area & load places
     const hasExplicitInitialArea = !(this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0);
     if (hasExplicitInitialArea) this.panToSelectedArea();
     await this.loadPlacesForCurrentArea();
+
+    // 5. Initial route render
+    this.updateRoute();
   },
 
   setupAuthFailureHandler() {
     window.gm_authFailure = () => {
-      console.warn("Google Maps JavaScript API error (ApiNotActivatedMapError / authFailure). Switching to resilient fallback interactive map.");
+      console.warn("Google Maps JavaScript API error (authFailure). Switching to fallback map.");
+      const notice = document.getElementById("mapApiNotice");
+      if (notice) notice.style.display = "block";
       this.triggerFallbackMode();
     };
   },
@@ -270,1031 +263,1696 @@ export const MapExplorer = {
   triggerFallbackMode() {
     if (this.isFallbackMode) return;
     this.isFallbackMode = true;
-
-    const noticeEl = document.getElementById("mapApiNotice");
-    if (noticeEl) {
-      noticeEl.style.display = "block";
-    }
-
+    this.googleMap = null;
     this.initFallbackMap();
   },
 
-  checkIsInKv(r) {
-    if (!r) return false;
-    if (r.inKV === true) return true;
-    if (r.placeId && this.kvPlaceIdsSet.has(r.placeId)) return true;
-    const norm = (r.name || "").trim().toLowerCase();
-    if (norm && this.kvNormalizedNamesSet.has(norm)) return true;
-    return false;
-  },
-
-  areaLoadId: 0,
-  areaAbort: null,
-  mapQueryTimer: null,
-  mapQueryPage: 0,
-  mapQueryTotal: 0,
-  mapQueryHasMore: false,
-  mapQueryLoading: false,
-  mapQueryBbox: null,
-  googleAreaPlaces: [],
-  googleSearchId: 0,
-
   getQueryBounds() {
-    // The selected city/subarea defines the result set. Map panning only changes
-    // the camera and must not trigger a second query for the same fixed area.
-    const subareas = this.getAllNeighborhoods().filter(n => this.activeNeighborhoodIds.has(n.id));
-    const areas = subareas.length ? subareas : GTA_COMMUNITIES.filter(c => c.id !== "all" && (this.activeCityIds.has("all") || this.activeCityIds.has(c.id)));
-    const boxes = areas.map(a => a.bbox).filter(b => Array.isArray(b) && b.length === 4);
-    if (boxes.length) {
-      return [Math.min(...boxes.map(b=>b[0])),Math.min(...boxes.map(b=>b[1])),Math.max(...boxes.map(b=>b[2])),Math.max(...boxes.map(b=>b[3]))];
+    const selectedAreas = this.activeNeighborhoodIds.size > 0
+      ? this.getAllNeighborhoods().filter(nb => this.activeNeighborhoodIds.has(nb.id))
+      : this.activeCityIds.has("all")
+        ? []
+        : GTA_COMMUNITIES.filter(c => this.activeCityIds.has(c.id));
+
+    if (selectedAreas.length === 0) {
+      return [-79.7200, 43.5800, -79.1600, 43.9500];
     }
-    return [-79.72,43.58,-79.16,43.95];
-  },
-
-  scheduleViewportQuery() {
-    // Kept as a no-op for callers from older cached bundles. Viewport changes
-    // intentionally never reload the selected-area result set.
-  },
-
-  async loadMoreMapRestaurants() {
-    if (this.mapQueryLoading || !this.mapQueryHasMore) return;
-    const requestId = this.areaLoadId;
-    this.mapQueryLoading = true;
-    try {
-      const result = await Api.getMapRestaurants({bbox:this.mapQueryBbox,page:this.mapQueryPage+1,category:this.activeCategory,keyword:this.searchKeyword,visited:this.activeVisited,outcome:this.activeOutcome,signal:this.areaAbort?.signal});
-      if (requestId !== this.areaLoadId) return;
-      this.mapQueryPage = result.page;
-      this.mapQueryTotal = result.total;
-      this.mapQueryHasMore = result.page < result.totalPages;
-      result.data.forEach(r => {
-        r.inKV = true;
-        if (r.placeId) this.kvPlaceIdsSet.add(r.placeId);
-        if (r.name) this.kvNormalizedNamesSet.add(r.name.trim().toLowerCase());
-      });
-      this.allRestaurants.push(...result.data);
-      this.mergeAreaPlaces();
-    } catch (error) {
-      if (error.name !== "AbortError") {
-        console.warn(error);
-        if (window.showToast) window.showToast("餐馆加载失败，请重试");
-      }
-    } finally {
-      if (requestId === this.areaLoadId) this.mapQueryLoading = false;
-    }
-  },
-
-  async loadNeighbourhoodsGeoJson() {
-    try {
-      const municipalities = await fetch("assets/data/official_municipalities.json");
-      if (municipalities.ok) {
-        const cityData = await municipalities.json();
-        if (cityData && Array.isArray(cityData.features)) {
-          cityData.features.forEach(feature => {
-            const city = GTA_COMMUNITIES.find(c => c.id === feature.id);
-            if (city) Object.assign(city, { geometry: feature.geometry, bbox: feature.bbox });
-          });
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to load official_municipalities.json:", e);
-    }
-
-    try {
-      const resp = await fetch("assets/data/gta_neighbourhoods.json");
-      if (resp.ok) {
-        this.neighbourhoodsGeoJson = await resp.json();
-      }
-    } catch (e) {
-      console.warn("Failed to load gta_neighbourhoods.json dataset:", e);
-    }
-
-    if (!this.neighbourhoodsGeoJson) {
-      this.neighbourhoodsGeoJson = { type: "FeatureCollection", features: [] };
-    }
-
-    try {
-      const subareasResponse = await fetch("assets/data/official_subareas.json");
-      if (subareasResponse.ok) {
-        const subareas = await subareasResponse.json();
-        if (subareas && Array.isArray(subareas.features)) {
-          this.neighbourhoodsGeoJson.features.push(...subareas.features);
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to load official_subareas.json:", e);
-    }
-
-    if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
-      this.neighbourhoodsGeoJson.totalCount = this.neighbourhoodsGeoJson.features.length;
-      this.neighbourhoodsMap.clear();
-      this.neighbourhoodsGeoJson.features.forEach(ft => {
-        if (ft.id) this.neighbourhoodsMap.set(ft.id, ft);
-        if (ft.code) this.neighbourhoodsMap.set(ft.code, ft);
-      });
-    }
-  },
-
-  // -------------------------------------------------------------
-  // Popover Panel UI Management (Apartments.com inspired)
-  // -------------------------------------------------------------
-  togglePopover(forceState) {
-    const panel = document.getElementById("areaPopoverPanel");
-    if (!panel) return;
-    const isOpen = panel.style.display === "block";
-    const newState = forceState !== undefined ? forceState : !isOpen;
-    panel.style.display = newState ? "block" : "none";
-    if (newState) {
-      this.renderPopover();
-      const searchInput = document.getElementById("popoverSearchInput");
-      if (searchInput) searchInput.focus();
-    }
-  },
-
-  getCurrentLanguage() {
-    if (i18n && typeof i18n.getLanguage === "function") return i18n.getLanguage();
-    if (typeof window !== "undefined" && window.i18n && typeof window.i18n.getLanguage === "function") return window.i18n.getLanguage();
-    return "zh";
-  },
-
-  getLocalizedName(item) {
-    if (!item) return "";
-    const lang = this.getCurrentLanguage();
-    if (lang === "en") {
-      return item.nameEn || item.name.split(" (")[0];
-    }
-    if (lang === "ko") {
-      return item.nameKo || item.nameEn || item.name.split(" (")[0];
-    }
-    return item.nameZh || item.name.split(" (")[0];
-  },
-
-  getLocalizedAllGta() {
-    const lang = this.getCurrentLanguage();
-    if (lang === "en") return "All GTA";
-    if (lang === "ko") return "광역 토론토 전체";
-    return "全部大区 (All GTA)";
-  },
-
-  getAllNeighborhoods() {
-    if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
-      return this.neighbourhoodsGeoJson.features.map(ft => ({
-        id: ft.id,
-        code: ft.code,
-        name: ft.name,
-        nameZh: ft.nameZh || ft.name,
-        nameEn: ft.nameEn || ft.name,
-        nameKo: ft.nameKo || ft.name,
-        boundaryType: ft.boundaryType || "neighbourhood",
-        cityId: ft.cityId,
-        cityName: ft.cityName,
-        cityNameZh: ft.cityNameZh,
-        cityNameKo: ft.cityNameKo,
-        center: ft.center,
-        bbox: ft.bbox,
-        geometry: ft.geometry,
-        neighbors: ft.neighbors || [],
-        parentCityId: ft.cityId,
-        parentCityName: ft.cityName
-      }));
-    }
-    const list = [];
-    GTA_COMMUNITIES.forEach(c => {
-      if (Array.isArray(c.neighborhoods)) {
-        c.neighborhoods.forEach(nb => {
-          list.push({ ...nb, parentCityId: c.id, parentCityName: c.name });
-        });
+    let west = 180, south = 90, east = -180, north = -90;
+    selectedAreas.forEach(a => {
+      if (a.bbox && a.bbox.length === 4) {
+        west = Math.min(west, a.bbox[0]);
+        south = Math.min(south, a.bbox[1]);
+        east = Math.max(east, a.bbox[2]);
+        north = Math.max(north, a.bbox[3]);
       }
     });
-    return list;
+    return [west, south, east, north];
   },
 
-  getNeighborhoodById(nbId) {
-    if (this.neighbourhoodsMap && this.neighbourhoodsMap.has(nbId)) {
-      const ft = this.neighbourhoodsMap.get(nbId);
-      return {
-        id: ft.id,
-        code: ft.code,
-        name: ft.name,
-        nameZh: ft.nameZh || ft.name,
-        nameEn: ft.nameEn || ft.name,
-        nameKo: ft.nameKo || ft.name,
-        boundaryType: ft.boundaryType || "neighbourhood",
-        cityId: ft.cityId,
-        cityName: ft.cityName,
-        cityNameZh: ft.cityNameZh,
-        cityNameKo: ft.cityNameKo,
-        center: ft.center,
-        bbox: ft.bbox,
-        geometry: ft.geometry,
-        neighbors: ft.neighbors || [],
-        parentCityId: ft.cityId,
-        parentCityName: ft.cityName
-      };
-    }
-    for (const c of GTA_COMMUNITIES) {
-      if (Array.isArray(c.neighborhoods)) {
-        const found = c.neighborhoods.find(n => n.id === nbId);
-        if (found) return { ...found, parentCityId: c.id, parentCityName: c.name };
+  // -------------------------------------------------------------
+  // Route State Management
+  // -------------------------------------------------------------
+  initRouteState() {
+    try {
+      const saved = localStorage.getItem("greenoil_route_waypoints_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          this.routeWaypoints = parsed;
+        }
       }
+    } catch (e) {
+      console.warn("Failed to load route waypoints:", e);
     }
-    return null;
+
+    const originInput = document.getElementById("mapRouteOriginInput");
+    if (originInput && originInput.value) {
+      this.originAddress = originInput.value.trim();
+    }
+    this.renderWaypoints();
   },
 
-  /**
-   * Return the official ward that contains a coordinate. Neighbouring wards
-   * referenced by the currently selected subareas are checked first so a
-   * right-click near the current selection remains fast and predictable.
-   */
-  findWardAtCoordinate(lat, lng) {
-    const latitude = Number(lat);
-    const longitude = Number(lng);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-
-    const wards = this.getAllNeighborhoods().filter(area => area.boundaryType === "ward");
-    if (wards.length === 0) return null;
-
-    const byId = new Map(wards.map(ward => [ward.id, ward]));
-    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
-    const nearbyIds = [];
-    selectedNbs.forEach(area => (area.neighbors || []).forEach(id => {
-      if (!nearbyIds.includes(id)) nearbyIds.push(id);
-    }));
-    // When only a city is selected, its own wards are the natural nearby set.
-    const selectedCityIds = this.activeCityIds.has("all")
-      ? []
-      : Array.from(this.activeCityIds);
-    selectedCityIds.forEach(cityId => wards.filter(ward => ward.parentCityId === cityId).forEach(ward => {
-      if (!nearbyIds.includes(ward.id)) nearbyIds.push(ward.id);
-    }));
-
-    const inBbox = ward => {
-      const box = ward.bbox;
-      return !Array.isArray(box) || box.length !== 4 ||
-        (longitude >= Number(box[0]) && longitude <= Number(box[2]) &&
-         latitude >= Number(box[1]) && latitude <= Number(box[3]));
-    };
-    const contains = ward => inBbox(ward) && this.isPlaceInGeometry({ lat: latitude, lng: longitude }, ward.geometry);
-
-    for (const id of nearbyIds) {
-      const ward = byId.get(id);
-      if (ward && contains(ward)) return { ward, source: "nearby" };
+  saveRouteWaypoints() {
+    try {
+      localStorage.setItem("greenoil_route_waypoints_v2", JSON.stringify(this.routeWaypoints));
+    } catch (e) {
+      console.warn("Failed to save route waypoints:", e);
     }
-    for (const ward of wards) {
-      if (nearbyIds.includes(ward.id)) continue;
-      if (contains(ward)) return { ward, source: "global" };
-    }
-    return null;
   },
 
-  findNeighborhoodAtCoordinate(lat, lng) {
-    const latitude = Number(lat);
-    const longitude = Number(lng);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-
-    const neighborhoods = this.getAllNeighborhoods().filter(area => area.boundaryType !== "ward");
-    if (neighborhoods.length === 0) return null;
-    const byId = new Map(neighborhoods.map(area => [area.id, area]));
-    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
-    const nearbyIds = [];
-    selectedNbs.forEach(area => (area.neighbors || []).forEach(id => {
-      if (byId.has(id) && !nearbyIds.includes(id)) nearbyIds.push(id);
-    }));
-    const selectedCityIds = this.activeCityIds.has("all") ? [] : Array.from(this.activeCityIds);
-    selectedCityIds.forEach(cityId => neighborhoods.filter(area => area.parentCityId === cityId).forEach(area => {
-      if (!nearbyIds.includes(area.id)) nearbyIds.push(area.id);
-    }));
-
-    const contains = area => this.isPointInBbox({ lat: latitude, lng: longitude }, area.bbox) &&
-      this.isPlaceInGeometry({ lat: latitude, lng: longitude }, area.geometry);
-    for (const id of nearbyIds) {
-      const area = byId.get(id);
-      if (area && contains(area)) return { area, source: "nearby", kind: "neighborhood" };
-    }
-    for (const area of neighborhoods) {
-      if (nearbyIds.includes(area.id)) continue;
-      if (contains(area)) return { area, source: "global", kind: "neighborhood" };
-    }
-    return null;
-  },
-
-  findAdministrativeAreaAtCoordinate(lat, lng) {
-    const wardMatch = this.findWardAtCoordinate(lat, lng);
-    if (wardMatch?.ward) return { area: wardMatch.ward, source: wardMatch.source, kind: "ward" };
-    // Toronto's current official dataset contains neighbourhood polygons but
-    // no ward polygons. Fall back to those boundaries so a valid click still
-    // produces a useful filter instead of reporting "no area".
-    return this.findNeighborhoodAtCoordinate(lat, lng);
-  },
-
-  isCoordinateInsideSelectedArea(lat, lng) {
-    const point = { lat: Number(lat), lng: Number(lng) };
-    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return false;
-    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
-    if (selectedNbs.length > 0) return selectedNbs.some(area =>
-      this.isPlaceInGeometry(point, area.geometry) || this.isPointInBbox(point, area.bbox));
-
-    const selectedCities = GTA_COMMUNITIES.filter(city => city.id !== "all" && this.activeCityIds.has(city.id));
-    if (selectedCities.length > 0) return selectedCities.some(city =>
-      this.isPlaceInGeometry(point, city.geometry) || this.isPointInBbox(point, city.bbox));
-
-    // "All GTA" is represented by its broad GTA bounding box. This keeps
-    // context menus from appearing over other GTA municipalities that are not
-    // part of the smaller official boundary dataset.
-    const allGta = GTA_COMMUNITIES.find(city => city.id === "all");
-    return this.isPointInBbox(point, allGta?.bbox) ||
-      GTA_COMMUNITIES.filter(city => city.id !== "all").some(city => this.isPlaceInGeometry(point, city.geometry));
-  },
-
-  isPointInBbox(point, bbox) {
-    if (!point || !Array.isArray(bbox) || bbox.length !== 4) return false;
-    const [west, south, east, north] = bbox.map(Number);
-    return Number.isFinite(west) && Number.isFinite(south) && Number.isFinite(east) && Number.isFinite(north) &&
-      point.lng >= west && point.lng <= east && point.lat >= south && point.lat <= north;
-  },
-
-  getMapEventCoordinate(latLng) {
-    if (!latLng) return null;
-    const lat = typeof latLng.lat === "function" ? latLng.lat() : latLng.lat;
-    const lng = typeof latLng.lng === "function" ? latLng.lng() : latLng.lng;
-    const coordinate = { lat: Number(lat), lng: Number(lng) };
-    return Number.isFinite(coordinate.lat) && Number.isFinite(coordinate.lng) ? coordinate : null;
-  },
-
-  getMapContextMenuCopy() {
-    const lang = this.getCurrentLanguage();
-    if (lang === "en") {
-      return {
-        title: "Add area",
-        add: (area, kind) => kind === "ward" ? `Add ${area.nameEn || area.name}` : `Add ${area.nameEn || area.name} neighborhood`,
-        matchedNearby: "Matched in nearby recommended wards",
-        matchedGlobal: "Matched in all official wards",
-        matchedNeighborhood: "No ward polygon here; matched the local neighbourhood boundary",
-        noWard: "No official ward or neighbourhood covers this point",
-        close: "Close"
-      };
-    }
-    if (lang === "ko") {
-      return {
-        title: "행정 구역 추가",
-        add: (area, kind) => kind === "ward" ? `${area.nameKo || area.name} 추가` : `${area.nameKo || area.name} 지역 추가`,
-        matchedNearby: "주변 추천 선거구에서 찾음",
-        matchedGlobal: "전체 공식 선거구에서 찾음",
-        matchedNeighborhood: "선거구 경계가 없어 인근 지역 경계로 찾음",
-        noWard: "해당 지점의 공식 선거구 또는 지역을 찾지 못했습니다",
-        close: "닫기"
-      };
-    }
+  getEffectiveOrigin() {
+    const originInput = document.getElementById("mapRouteOriginInput");
+    const address = originInput ? originInput.value.trim() : this.originAddress;
     return {
-      title: "添加区划",
-      add: (area, kind) => kind === "ward" ? `添加 ${area.nameZh || area.name}` : `添加 ${area.nameZh || area.name}（社区）`,
-      matchedNearby: "已在周边推荐选区中匹配",
-      matchedGlobal: "已在全部官方选区中匹配",
-      matchedNeighborhood: "此处没有 WARD 边界，已匹配到社区边界",
-      noWard: "此位置没有覆盖的官方选区或社区",
-      close: "关闭"
+      name: "Green Oil HQ",
+      address: address || DEFAULT_ORIGIN_ADDRESS,
+      lat: this.originCoords.lat,
+      lng: this.originCoords.lng
     };
   },
 
-  hideMapContextMenu() {
-    if (this.mapContextMenuEl) {
-      this.mapContextMenuEl.remove();
-      this.mapContextMenuEl = null;
-    }
-    this.mapContextMenuPoint = null;
-  },
-
-  addNeighborhoodFromMapContext(nbId) {
-    const nb = this.getNeighborhoodById(nbId);
-    if (!nb) return;
-    this.popoverSearchQuery = "";
-    const searchInput = document.getElementById("popoverSearchInput");
-    if (searchInput) searchInput.value = "";
-    if (this.activeCityIds.has("all")) this.activeCityIds.clear();
-    if (nb.parentCityId && nb.parentCityId !== "all") this.activeCityIds.add(nb.parentCityId);
-    this.activeNeighborhoodIds.add(nb.id);
-    this.hideMapContextMenu();
-    this.renderPopover();
-    this.updateAreaSummaryBtn();
-    this.panToSelectedArea();
-    this.loadPlacesForCurrentArea();
-  },
-
-  showMapContextMenu(lat, lng, clientX, clientY) {
-    this.hideMapContextMenu();
-    if (this.isCoordinateInsideSelectedArea(lat, lng)) return;
-
-    const match = this.findAdministrativeAreaAtCoordinate(lat, lng);
-    const copy = this.getMapContextMenuCopy();
-    const menu = document.createElement("div");
-    menu.className = "map-context-menu";
-    menu.setAttribute("role", "menu");
-    menu.style.left = `${Math.max(8, Number(clientX) || 8)}px`;
-    menu.style.top = `${Math.max(8, Number(clientY) || 8)}px`;
-
-    const title = document.createElement("div");
-    title.className = "map-context-menu-title";
-    title.textContent = copy.title;
-    menu.appendChild(title);
-
-    if (match?.area) {
-      const area = match.area;
-      const note = document.createElement("div");
-      note.className = "map-context-menu-note";
-      note.textContent = match.kind === "neighborhood"
-        ? copy.matchedNeighborhood
-        : (match.source === "nearby" ? copy.matchedNearby : copy.matchedGlobal);
-      menu.appendChild(note);
-
-      const addButton = document.createElement("button");
-      addButton.type = "button";
-      addButton.className = "map-context-menu-action";
-      addButton.setAttribute("role", "menuitem");
-      addButton.textContent = copy.add(area, match.kind);
-      addButton.addEventListener("click", event => {
-        event.stopPropagation();
-        this.addNeighborhoodFromMapContext(area.id);
-      });
-      menu.appendChild(addButton);
-    } else {
-      const empty = document.createElement("div");
-      empty.className = "map-context-menu-note";
-      empty.textContent = copy.noWard;
-      menu.appendChild(empty);
-    }
-
-    const closeButton = document.createElement("button");
-    closeButton.type = "button";
-    closeButton.className = "map-context-menu-close";
-    closeButton.setAttribute("role", "menuitem");
-    closeButton.textContent = copy.close;
-    closeButton.addEventListener("click", () => this.hideMapContextMenu());
-    menu.appendChild(closeButton);
-
-    document.body.appendChild(menu);
-    this.mapContextMenuEl = menu;
-    this.mapContextMenuPoint = { lat: Number(lat), lng: Number(lng) };
-    const rect = menu.getBoundingClientRect?.();
-    if (rect) {
-      if (rect.right > window.innerWidth - 8) menu.style.left = `${Math.max(8, window.innerWidth - rect.width - 8)}px`;
-      if (rect.bottom > window.innerHeight - 8) menu.style.top = `${Math.max(8, window.innerHeight - rect.height - 8)}px`;
-    }
-  },
-
-  updateAreaSummaryBtn() {
-    const summaryEl = document.getElementById("areaActiveTagsSummary");
-    if (!summaryEl) return;
-
-    const lang = this.getCurrentLanguage();
-
-    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
-    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
-    const allNbs = this.getAllNeighborhoods();
-    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
-
-    const selected = selectedNbs.length ? selectedNbs : selectedCities;
-    const labels = selected.length ? selected.map(item => this.getLocalizedName(item)) : [this.getLocalizedAllGta()];
-    summaryEl.innerHTML = labels.map(label => `<span class="area-tag-pill active">${this.escapeHtml(label)}</span>`).join("");
-  },
-
-  renderPopover() {
-    const lang = this.getCurrentLanguage();
-    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
-    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
-    const allNbs = this.getAllNeighborhoods();
-    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
-
-    // 1. Render Active Tags Row
-    const tagsRow = document.getElementById("popoverActiveTagsRow");
-    if (tagsRow) {
-      let html = "";
-      if (isAll || (selectedCities.length === 0 && selectedNbs.length === 0)) {
-        html = `<span class="area-tag-pill active">${this.escapeHtml(this.getLocalizedAllGta())}</span>`;
-      } else {
-        const removeAreaTitle = lang === "en" ? "Remove area" : (lang === "ko" ? "구역 삭제" : "移除此区划");
-        const removeNbTitle = lang === "en" ? "Remove neighborhood" : (lang === "ko" ? "지역 삭제" : "移除此社区");
-
-        // Render city tags
-        const cityTags = selectedCities.map(c => `
-          <span class="area-tag-pill active" data-city-id="${c.id}">
-            ${this.escapeHtml(this.getLocalizedName(c))}
-            <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveCity('${c.id}');" title="${removeAreaTitle}">✕</span>
-          </span>
-        `).join("");
-
-        // Render neighborhood tags
-        const nbTags = selectedNbs.map(nb => {
-          const localizedName = this.getLocalizedName(nb);
-          const tagLabel = `${localizedName}, ON`;
-          return `
-            <span class="area-tag-pill active" data-nb-id="${nb.id}">
-              ${this.escapeHtml(tagLabel)}
-              <span class="tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}');" title="${removeNbTitle}">✕</span>
-            </span>
-          `;
-        }).join("");
-
-        html = cityTags + nbTags;
-      }
-      tagsRow.innerHTML = html;
-    }
-
-    // 2. Render Nearby Neighborhoods Section (Apartments.com style)
-    const nearbySection = document.getElementById("popoverNearbySection");
-    const nearbyTitle = document.getElementById("popoverNearbyTitle");
-    const nearbyPills = document.getElementById("popoverNearbyPills");
-    if (nearbySection && nearbyTitle && nearbyPills) {
-      if (selectedNbs.length > 0) {
-        const currentNb = selectedNbs[selectedNbs.length - 1];
-        const neighbors = currentNb.neighbors || [];
-        const unselectedNeighbors = neighbors.filter(nid => !this.activeNeighborhoodIds.has(nid));
-        if (unselectedNeighbors.length > 0) {
-          nearbySection.style.display = "block";
-          const baseName = this.getLocalizedName(currentNb);
-          const cityName = lang === "en" ? (currentNb.cityName || "Toronto") :
-                           lang === "ko" ? (currentNb.cityNameKo || currentNb.cityName || "토론토") :
-                           (currentNb.cityNameZh || currentNb.cityName || "多伦多");
-          if (lang === "en") {
-            nearbyTitle.textContent = `NEARBY ${baseName.toUpperCase()} - ${cityName.toUpperCase()}, ON`;
-          } else if (lang === "ko") {
-            nearbyTitle.textContent = `인근 추천 지역: ${baseName} - ${cityName}, ON`;
-          } else {
-            nearbyTitle.textContent = `周边推荐社区: ${baseName} - ${cityName}, ON`;
-          }
-
-          let nearbyHtml = "";
-          unselectedNeighbors.slice(0, 8).forEach(nid => {
-            const nFt = this.getNeighborhoodById(nid);
-            if (!nFt) return;
-            const label = `${this.getLocalizedName(nFt)}, ON`;
-            nearbyHtml += `
-              <button type="button" class="popover-pill-btn nearby-pill" data-neighborhood="${nFt.id}">
-                + ${this.escapeHtml(label)}
-              </button>
-            `;
-          });
-          nearbyPills.innerHTML = nearbyHtml;
-        } else {
-          nearbySection.style.display = "none";
-        }
-      } else {
-        nearbySection.style.display = "none";
-      }
-    }
-
-    const q = (this.popoverSearchQuery || "").toLowerCase();
-
-    // 3. Render Cities Pills (Administrative Locality)
-    const cityPillsRow = document.getElementById("popoverCityPills");
-    if (cityPillsRow) {
-      let html = "";
-      GTA_COMMUNITIES.forEach(c => {
-        const titleZh = c.nameZh || c.name || "";
-        const titleEn = c.nameEn || "";
-        const titleKo = c.nameKo || "";
-        if (q && !titleZh.toLowerCase().includes(q) && !titleEn.toLowerCase().includes(q) && !titleKo.toLowerCase().includes(q)) return;
-        const isActive = this.activeCityIds.has(c.id);
-        const localizedLabel = this.getLocalizedName(c);
-        html += `
-          <button type="button" class="popover-pill-btn ${isActive ? 'active' : ''}" data-city="${c.id}">
-            ${isActive ? '✓ ' : '+ '}${this.escapeHtml(localizedLabel)}
-          </button>
-        `;
-      });
-      cityPillsRow.innerHTML = html;
-    }
-
-    // 4. Render Neighborhoods Pills (Sub-districts / Official Municipal Boundaries)
-    const nbPillsRow = document.getElementById("popoverNeighborhoodPills");
-    const nbSection = document.getElementById("popoverNeighborhoodSection");
-    if (nbPillsRow) {
-      const isAllCity = this.activeCityIds.has("all");
-      const candidateNbs = isAllCity ? allNbs : allNbs.filter(nb =>
-        this.activeCityIds.has(nb.parentCityId) || (this.activeCityIds.has("toronto") && nb.parentCityId === "scarborough")
-      );
-      const title = nbSection?.querySelector(".popover-section-title");
-      if (title) {
-        const wardsOnly = candidateNbs.length && candidateNbs.every(nb => nb.boundaryType === "ward");
-        title.textContent = wardsOnly ? ({zh:"官方行政选区 (Wards)",en:"Official wards",ko:"공식 선거구"}[lang]) : i18n.t("map_filter_neighborhood");
-      }
-
-      let html = "";
-      candidateNbs.forEach(nb => {
-        const titleZh = nb.nameZh || nb.name || "";
-        const titleEn = nb.nameEn || "";
-        const titleKo = nb.nameKo || "";
-        const kwMatch = Array.isArray(nb.keywords) && nb.keywords.some(k => k.toLowerCase().includes(q));
-        if (q && !titleZh.toLowerCase().includes(q) && !titleEn.toLowerCase().includes(q) && !titleKo.toLowerCase().includes(q) && !kwMatch) return;
-
-        const isActive = this.activeNeighborhoodIds.has(nb.id);
-        const localizedLabel = `${this.getLocalizedName(nb)}, ON`;
-        html += `
-          <button type="button" class="popover-pill-btn ${isActive ? 'active' : ''}" data-neighborhood="${nb.id}">
-            ${isActive ? '✓ ' : '+ '}${this.escapeHtml(localizedLabel)}
-          </button>
-        `;
-      });
-
-      if (candidateNbs.length === 0) {
-        if (nbSection) nbSection.style.display = "none";
-      } else {
-        if (nbSection) nbSection.style.display = "block";
-        const noMatchText = lang === "en" ? "No matching neighborhoods found" : (lang === "ko" ? "일치하는 지역이 없습니다" : "未找到匹配社区");
-        nbPillsRow.innerHTML = html || `<span style="font-size: 0.8rem; color: var(--text-muted); padding: 0.25rem 0.5rem;">${noMatchText}</span>`;
-      }
-    }
-  },
-
-  updateFilterDropdownsLanguage() {
-    const lang = this.getCurrentLanguage();
-
-    // 1. Visited status select
-    const visitedSelect = document.getElementById("mapVisitedSelect");
-    if (visitedSelect) {
-      const cur = visitedSelect.value;
-      if (lang === "en") {
-        visitedSelect.options[0].text = "Visited Status (All)";
-        visitedSelect.options[1].text = "Visited";
-        visitedSelect.options[2].text = "Unvisited";
-      } else if (lang === "ko") {
-        visitedSelect.options[0].text = "방문 여부 (전체)";
-        visitedSelect.options[1].text = "방문 완료";
-        visitedSelect.options[2].text = "미방문";
-      } else {
-        visitedSelect.options[0].text = "是否拜访 (全部)";
-        visitedSelect.options[1].text = "已拜访";
-        visitedSelect.options[2].text = "未拜访";
-      }
-      visitedSelect.value = cur;
-    }
-
-    // 2. Outcome select
-    const outcomeSelect = document.getElementById("mapOutcomeSelect");
-    if (outcomeSelect) {
-      const cur = outcomeSelect.value;
-      if (lang === "en") {
-        outcomeSelect.options[0].text = "Visit Outcome (All)";
-        outcomeSelect.options[1].text = "Contract Signed";
-        outcomeSelect.options[2].text = "Interested";
-        outcomeSelect.options[3].text = "Considering";
-        outcomeSelect.options[4].text = "Not Interested";
-        outcomeSelect.options[5].text = "Declined";
-        outcomeSelect.options[6].text = "Closed / Shut down";
-      } else if (lang === "ko") {
-        outcomeSelect.options[0].text = "방문 결과 (전체)";
-        outcomeSelect.options[1].text = "계약 완료";
-        outcomeSelect.options[2].text = "관심 있음";
-        outcomeSelect.options[3].text = "고려 중";
-        outcomeSelect.options[4].text = "관심 없음";
-        outcomeSelect.options[5].text = "거절";
-        outcomeSelect.options[6].text = "폐업/영업종료";
-      } else {
-        outcomeSelect.options[0].text = "拜访结果 (全部)";
-        outcomeSelect.options[1].text = "签订合同";
-        outcomeSelect.options[2].text = "有意向";
-        outcomeSelect.options[3].text = "考虑中";
-        outcomeSelect.options[4].text = "暂无意向";
-        outcomeSelect.options[5].text = "拒绝合作";
-        outcomeSelect.options[6].text = "已打烊/关店";
-      }
-      outcomeSelect.value = cur;
-    }
-
-    // 3. Category select
-    const catSelect = document.getElementById("mapCategorySelect");
-    if (catSelect) {
-      const cur = catSelect.value;
-      if (lang === "en") {
-        catSelect.options[0].text = "All Categories";
-        catSelect.options[1].text = "Chinese / Taiwanese Fried";
-        catSelect.options[2].text = "Western Fried Chicken / Fast Food";
-        catSelect.options[3].text = "Korean Fried Chicken";
-        catSelect.options[4].text = "Fish & Chips";
-        catSelect.options[5].text = "Japanese Tempura / Tonkatsu";
-        catSelect.options[6].text = "Corn Dogs / Churros / Donuts";
-      } else if (lang === "ko") {
-        catSelect.options[0].text = "전체 음식 카테고리";
-        catSelect.options[1].text = "중식 / 대만식 튀김";
-        catSelect.options[2].text = "양식 치킨 / 패스트푸드";
-        catSelect.options[3].text = "한국식 치킨";
-        catSelect.options[4].text = "피시 앤 칩스";
-        catSelect.options[5].text = "일식 튀김 / 돈까스";
-        catSelect.options[6].text = "핫도그 / 츄러스 / 도넛";
-      } else {
-        catSelect.options[0].text = "全部品类 (All Food)";
-        catSelect.options[1].text = "中式/台式炸物";
-        catSelect.options[2].text = "西式炸鸡快餐";
-        catSelect.options[3].text = "韩式炸鸡";
-        catSelect.options[4].text = "炸鱼薯条";
-        catSelect.options[5].text = "日式炸物";
-        catSelect.options[6].text = "热狗/甜甜圈";
-      }
-      catSelect.value = cur;
-    }
-  },
-
-  toggleCity(cityId) {
-    this.popoverSearchQuery = "";
-    const search = document.getElementById("popoverSearchInput");
-    if (search) search.value = "";
-    if (cityId === "all") {
-      this.activeCityIds = new Set(["all"]);
-      this.activeNeighborhoodIds.clear();
-    } else {
-      if (this.activeCityIds.has("all")) {
-        this.activeCityIds.clear();
-        this.activeCityIds.add(cityId);
-      } else {
-        if (this.activeCityIds.has(cityId)) {
-          this.activeCityIds.delete(cityId);
-          // Remove child neighborhoods of this unselected city
-          const nbsOfCity = this.getAllNeighborhoods().filter(n => n.parentCityId === cityId);
-          nbsOfCity.forEach(n => this.activeNeighborhoodIds.delete(n.id));
-
-          if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
-            this.activeCityIds.add("all");
-          }
-        } else {
-          this.activeCityIds.add(cityId);
-        }
-      }
-    }
-    this.renderPopover();
-    this.updateAreaSummaryBtn();
-    this.panToSelectedArea();
-    this.saveFilterState();
-    this.loadPlacesForCurrentArea();
-  },
-
-  removeCity(cityId) {
-    if (this.activeCityIds.has(cityId)) {
-      this.activeCityIds.delete(cityId);
-      const nbsOfCity = this.getAllNeighborhoods().filter(n => n.parentCityId === cityId);
-      nbsOfCity.forEach(n => this.activeNeighborhoodIds.delete(n.id));
-
-      if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
-        this.activeCityIds.add("all");
-      }
-      this.renderPopover();
-      this.updateAreaSummaryBtn();
-      this.panToSelectedArea();
-      this.saveFilterState();
-      this.loadPlacesForCurrentArea();
-    }
-  },
-
-  toggleNeighborhood(nbId) {
-    const nb = this.getNeighborhoodById(nbId);
-    if (!nb) return;
-
-    if (this.activeCityIds.has("all")) {
-      this.activeCityIds.clear();
-      if (nb.parentCityId && nb.parentCityId !== "all") {
-        this.activeCityIds.add(nb.parentCityId);
-      }
-    }
-
-    if (this.activeNeighborhoodIds.has(nbId)) {
-      this.activeNeighborhoodIds.delete(nbId);
-      if (this.activeNeighborhoodIds.size === 0 && this.activeCityIds.size === 0) {
-        this.activeCityIds.add("all");
-      }
-    } else {
-      this.activeNeighborhoodIds.add(nbId);
-      if (nb.parentCityId && nb.parentCityId !== "all") {
-        this.activeCityIds.add(nb.parentCityId);
-      }
-    }
-
-    this.renderPopover();
-    this.updateAreaSummaryBtn();
-    this.panToSelectedArea();
-    this.saveFilterState();
-    this.loadPlacesForCurrentArea();
-  },
-
-  removeNeighborhood(nbId) {
-    if (this.activeNeighborhoodIds.has(nbId)) {
-      this.activeNeighborhoodIds.delete(nbId);
-      if (this.activeNeighborhoodIds.size === 0 && this.activeCityIds.size === 0) {
-        this.activeCityIds.add("all");
-      }
-      this.renderPopover();
-      this.updateAreaSummaryBtn();
-      this.panToSelectedArea();
-      this.saveFilterState();
-      this.loadPlacesForCurrentArea();
-    }
-  },
-
-  // -------------------------------------------------------------
-  // Pan and Focus on Selected Locality / City (Administrative Level)
-  // -------------------------------------------------------------
-  panToSelectedArea() {
-    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
-    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
-    const allNbs = this.getAllNeighborhoods();
-    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
-
-    // If specific neighborhood(s) are selected, prioritize them
-    if (selectedNbs.length > 0) {
-      this.fitItemsToBounds(selectedNbs);
+  addWaypointToRoute(place) {
+    if (!place) return;
+    const key = place.placeId || place.name;
+    const exists = this.routeWaypoints.some(w => (w.placeId && w.placeId === place.placeId) || ((w.name || "").trim().toLowerCase() === (place.name || "").trim().toLowerCase()));
+    if (exists) {
+      this.scrollWaypointCardIntoView(key);
       return;
     }
 
-    if (isAll || selectedCities.length === 0) {
-      this.fitItemsToBounds(GTA_COMMUNITIES.filter(c => c.id !== "all"));
+    const waypoint = {
+      _uid: "wp_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      placeId: place.placeId || "",
+      name: place.name || "Unknown Place",
+      nameEn: place.nameEn || "",
+      address: place.address || "",
+      latitude: parseFloat(place.latitude || place.lat) || 0,
+      longitude: parseFloat(place.longitude || place.lng) || 0,
+      phone: place.phone || "",
+      rating: place.rating || "",
+      reviews: place.reviews || "",
+      openingHours: place.openingHours || "",
+      photoUrl: place.photoUrl || ""
+    };
+
+    this.routeWaypoints.push(waypoint);
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+
+    // Scroll to new waypoint in right column
+    setTimeout(() => {
+      this.scrollWaypointCardIntoView(key);
+    }, 50);
+  },
+
+  removeWaypointFromRoute(indexOrKey) {
+    let index = -1;
+    if (typeof indexOrKey === "number") {
+      index = indexOrKey;
+    } else {
+      index = this.routeWaypoints.findIndex(w => (w.placeId || w.name) === indexOrKey || w._uid === indexOrKey);
+    }
+
+    if (index >= 0 && index < this.routeWaypoints.length) {
+      this.routeWaypoints.splice(index, 1);
+      this.saveRouteWaypoints();
+      this.renderWaypoints();
+      this.updateRoute();
+      this.renderMarkers();
+      this.renderPlacesCards();
+    }
+  },
+
+  moveWaypoint(index, delta) {
+    const newIdx = index + delta;
+    if (newIdx < 0 || newIdx >= this.routeWaypoints.length) return;
+    const item = this.routeWaypoints.splice(index, 1)[0];
+    this.routeWaypoints.splice(newIdx, 0, item);
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+  },
+
+  clearRoute() {
+    if (this.routeWaypoints.length === 0) return;
+    if (!confirm(this.getCurrentLanguage() === "en" ? "Clear all waypoints from route?" : "确定清空当前所有经停途经点？")) {
+      return;
+    }
+    this.routeWaypoints = [];
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+  },
+
+  // -------------------------------------------------------------
+  // Real-Time Route Drawing & Metrics
+  // -------------------------------------------------------------
+  updateRouteMetrics(distanceKm, durationMins) {
+    const distEl = document.getElementById("mapRouteDistance");
+    const timeEl = document.getElementById("mapRouteTime");
+    const stopsEl = document.getElementById("mapRouteStopsCount");
+    const badgeEl = document.getElementById("mapWaypointsBadge");
+
+    if (distEl) distEl.textContent = distanceKm;
+    if (timeEl) timeEl.textContent = durationMins;
+    if (stopsEl) stopsEl.textContent = this.routeWaypoints.length;
+    if (badgeEl) badgeEl.textContent = `${this.routeWaypoints.length} 站`;
+  },
+
+  updateRoute() {
+    const stopsCount = this.routeWaypoints.length;
+    const stopsEl = document.getElementById("mapRouteStopsCount");
+    const badgeEl = document.getElementById("mapWaypointsBadge");
+    if (stopsEl) stopsEl.textContent = stopsCount;
+    if (badgeEl) badgeEl.textContent = `${stopsCount} 站`;
+
+    // Clear previous directions or polyline
+    if (this.directionsRenderer) {
+      this.directionsRenderer.set("directions", null);
+    }
+    if (this.routePolyline) {
+      if (this.routePolyline.setMap) this.routePolyline.setMap(null);
+      else if (this.fallbackMap && this.fallbackMap.removeLayer) this.fallbackMap.removeLayer(this.routePolyline);
+      this.routePolyline = null;
+    }
+
+    if (stopsCount === 0) {
+      this.updateRouteMetrics("0", "0");
+      this.updateOriginMarker();
       return;
     }
 
-    // Multiple cities selected: fit bounds to encompass all selected cities
-    this.fitItemsToBounds(selectedCities);
-  },
+    this.updateOriginMarker();
 
-  fitItemsToBounds(items) {
+    // Render road directions if Google Maps is active and stops <= 25
     if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-      const bounds = new google.maps.LatLngBounds();
-      items.forEach(it => {
-        const ft = this.neighbourhoodsMap?.get(it.id) || it;
-        if (ft.bbox && Array.isArray(ft.bbox) && ft.bbox.length === 4) {
-          bounds.extend({ lat: ft.bbox[1], lng: ft.bbox[0] });
-          bounds.extend({ lat: ft.bbox[3], lng: ft.bbox[2] });
-        } else if (ft.center) {
-          bounds.extend(ft.center);
-        }
-        if (Array.isArray(ft.polygonPaths)) {
-          ft.polygonPaths.forEach(pt => bounds.extend(pt));
-        }
+      const origin = this.getEffectiveOrigin();
+      const originLocation = { lat: origin.lat, lng: origin.lng };
+      const destWp = this.routeWaypoints[stopsCount - 1];
+      const destinationLocation = {
+        lat: parseFloat(destWp.latitude),
+        lng: parseFloat(destWp.longitude)
+      };
+
+      if (this.directionsService && this.directionsRenderer && stopsCount <= 25) {
+        const intermediateWaypoints = this.routeWaypoints.slice(0, -1).map(w => ({
+          location: { lat: parseFloat(w.latitude), lng: parseFloat(w.longitude) },
+          stopover: true
+        }));
+
+        this.directionsService.route({
+          origin: originLocation,
+          destination: destinationLocation,
+          waypoints: intermediateWaypoints,
+          travelMode: google.maps.TravelMode.DRIVING
+        }, (response, status) => {
+          if (status === google.maps.DirectionsStatus.OK) {
+            if (this.routePolyline) {
+              this.routePolyline.setMap(null);
+              this.routePolyline = null;
+            }
+            this.directionsRenderer.setDirections(response);
+            let totalMeters = 0;
+            let totalSecs = 0;
+            response.routes[0].legs.forEach(leg => {
+              totalMeters += leg.distance.value;
+              totalSecs += leg.duration.value;
+            });
+            const km = (totalMeters / 1000).toFixed(1);
+            const mins = Math.round(totalSecs / 60);
+            this.updateRouteMetrics(km, mins);
+          } else {
+            this.renderFallbackPolyline();
+          }
+        });
+      } else {
+        this.renderFallbackPolyline();
+      }
+    } else {
+      this.renderFallbackPolyline();
+    }
+  },
+
+  renderFallbackPolyline() {
+    const origin = this.getEffectiveOrigin();
+    const coords = [
+      { lat: origin.lat, lng: origin.lng },
+      ...this.routeWaypoints.map(w => ({ lat: parseFloat(w.latitude), lng: parseFloat(w.longitude) }))
+    ].filter(c => !isNaN(c.lat) && !isNaN(c.lng));
+
+    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+      if (this.directionsRenderer) {
+        this.directionsRenderer.set("directions", null);
+      }
+      if (this.routePolyline) {
+        this.routePolyline.setMap(null);
+      }
+      this.routePolyline = new google.maps.Polyline({
+        path: coords,
+        geodesic: true,
+        strokeColor: "#2563eb",
+        strokeOpacity: 0.85,
+        strokeWeight: 6,
+        map: this.googleMap,
+        zIndex: 20
       });
-      if (!bounds.isEmpty()) {
-        this.googleMap.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+    } else if (this.fallbackMap && window.L) {
+      if (this.routePolyline) {
+        this.fallbackMap.removeLayer(this.routePolyline);
+      }
+      const latLngs = coords.map(c => [c.lat, c.lng]);
+      this.routePolyline = L.polyline(latLngs, {
+        color: "#2563eb",
+        weight: 6,
+        opacity: 0.85
+      }).addTo(this.fallbackMap);
+    }
+
+    let totalKm = 0;
+    for (let i = 0; i < coords.length - 1; i++) {
+      totalKm += this.getHaversineDistance(coords[i].lat, coords[i].lng, coords[i + 1].lat, coords[i + 1].lng);
+    }
+    const mins = Math.max(5, Math.round((totalKm / 35) * 60));
+    this.updateRouteMetrics(totalKm.toFixed(1), mins);
+  },
+
+  updateOriginMarker() {
+    const origin = this.getEffectiveOrigin();
+    const pos = { lat: origin.lat, lng: origin.lng };
+
+    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+      if (!this.originMarker) {
+        this.originMarker = new google.maps.Marker({
+          position: pos,
+          map: this.googleMap,
+          title: "Green Oil HQ (起点)",
+          icon: this.getOriginIcon(),
+          zIndex: 1000
+        });
+        this.originMarker.addListener("click", () => {
+          if (this.infoWindow) {
+            this.infoWindow.setContent(`
+              <div style="padding: 4px 6px; font-family: -apple-system, sans-serif;">
+                <div style="font-weight: 700; color: #dc2626; font-size: 13px;">🚩 起点：Green Oil HQ</div>
+                <div style="font-size: 11px; color: #475569; margin-top: 4px;">${this.escapeHtml(origin.address)}</div>
+              </div>
+            `);
+            this.infoWindow.open(this.googleMap, this.originMarker);
+          }
+        });
+      } else {
+        this.originMarker.setPosition(pos);
       }
     } else if (this.fallbackMap && window.L) {
-      const boundsArr = [];
-      items.forEach(it => {
-        const ft = this.neighbourhoodsMap?.get(it.id) || it;
-        if (ft.bbox && Array.isArray(ft.bbox) && ft.bbox.length === 4) {
-          boundsArr.push([ft.bbox[1], ft.bbox[0]]);
-          boundsArr.push([ft.bbox[3], ft.bbox[2]]);
-        } else if (ft.center) {
-          boundsArr.push([ft.center.lat, ft.center.lng]);
-        }
-        if (Array.isArray(ft.polygonPaths)) {
-          ft.polygonPaths.forEach(pt => boundsArr.push([pt.lat, pt.lng]));
+      if (this.originMarker) {
+        this.fallbackMap.removeLayer(this.originMarker);
+      }
+      this.originMarker = L.marker([pos.lat, pos.lng], {
+        icon: L.divIcon({
+          className: "origin-leaflet-marker",
+          html: `<div style="width:30px;height:30px;background:#dc2626;color:#fff;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🚩</div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15]
+        })
+      }).addTo(this.fallbackMap);
+      this.originMarker.bindPopup(`<b>🚩 起点：Green Oil HQ</b><br/><span style="font-size:11px;">${this.escapeHtml(origin.address)}</span>`);
+    }
+  },
+
+  fitRouteToBounds() {
+    const origin = this.getEffectiveOrigin();
+    const points = [
+      { lat: origin.lat, lng: origin.lng },
+      ...this.routeWaypoints.map(w => ({ lat: parseFloat(w.latitude), lng: parseFloat(w.longitude) }))
+    ].filter(p => !isNaN(p.lat) && !isNaN(p.lng));
+
+    if (points.length === 0) return;
+
+    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+      const bounds = new google.maps.LatLngBounds();
+      points.forEach(p => bounds.extend(p));
+      this.googleMap.fitBounds(bounds, 50);
+    } else if (this.fallbackMap && window.L) {
+      const latLngs = points.map(p => [p.lat, p.lng]);
+      this.fallbackMap.fitBounds(latLngs, { padding: [40, 40] });
+    }
+  },
+
+  // -------------------------------------------------------------
+  // Right Column Waypoints UI & HTML5 Drag-and-Drop
+  // -------------------------------------------------------------
+  renderWaypoints() {
+    const container = document.getElementById("mapWaypointsCardsContainer");
+    if (!container) return;
+
+    const list = this.routeWaypoints;
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📍</div>
+          <div style="font-weight: 600; font-size: 0.95rem; color: #475569;">暂无途经点</div>
+          <div style="font-size: 0.8rem; margin-top: 0.35rem; color: #94a3b8; line-height: 1.5;">
+            在左侧餐馆列表点击 <b>「+ 途经点」</b><br/>或在地图上点击标记即可添加至经停路线
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = list.map((w, index) => {
+      const key = w.placeId || w.name;
+      const statusObj = w.openingHours ? BusinessHours.getBusinessStatus(w.openingHours) : null;
+      const hoursBadge = statusObj
+        ? `<span class="status-badge ${statusObj.cls}" style="font-size:0.68rem; padding:1px 5px; border-radius:3px;">${statusObj.label}</span>`
+        : "";
+
+      return `
+        <div class="map-waypoint-card" draggable="true" data-index="${index}" data-key="${this.escapeHtml(key)}" onclick="window.mapExplorerWaypointClick('${this.escapeQuotes(key)}', ${index});">
+          <div class="waypoint-drag-handle" title="按住上下拖拽调整途经顺序">⋮⋮</div>
+          <div class="waypoint-seq-badge">${index + 1}</div>
+          <div class="waypoint-card-body">
+            <div class="waypoint-card-header">
+              <div class="waypoint-title" title="${this.escapeHtml(w.name)}">${this.escapeHtml(w.name)}</div>
+              ${hoursBadge}
+            </div>
+            <div class="waypoint-meta">
+              <span class="waypoint-rating">★ ${w.rating ? parseFloat(w.rating).toFixed(1) : "4.2"}</span>
+              <span class="waypoint-address" title="${this.escapeHtml(w.address || '')}">${this.escapeHtml(w.address || "安大略省 GTA")}</span>
+            </div>
+            ${w._estArrivalStr ? `<div style="font-size: 0.72rem; color: #4338ca; margin-top: 2px;">预计 ${w._estArrivalStr} 抵达</div>` : ""}
+          </div>
+          <div class="waypoint-card-actions">
+            <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, -1);" ${index === 0 ? "disabled" : ""} title="上移">↑</button>
+            <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, 1);" ${index === list.length - 1 ? "disabled" : ""} title="下移">↓</button>
+            <button type="button" class="btn-wp-action btn-wp-nav" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(w.name)}', '${this.escapeQuotes(w.address)}');" title="在 Google 地图中导航此站">🧭</button>
+            <button type="button" class="btn-wp-action btn-wp-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveWaypoint(${index});" title="从路线中删除此站">✕</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    this.setupWaypointsDragAndDrop();
+  },
+
+  setupWaypointsDragAndDrop() {
+    const container = document.getElementById("mapWaypointsCardsContainer");
+    if (!container) return;
+
+    let draggedIndex = null;
+
+    container.querySelectorAll(".map-waypoint-card").forEach(card => {
+      card.addEventListener("dragstart", (e) => {
+        draggedIndex = parseInt(card.dataset.index, 10);
+        card.classList.add("dragging");
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", String(draggedIndex));
+      });
+
+      card.addEventListener("dragend", () => {
+        card.classList.remove("dragging");
+        container.querySelectorAll(".map-waypoint-card").forEach(c => c.classList.remove("drag-over"));
+        draggedIndex = null;
+      });
+
+      card.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        const targetCard = e.currentTarget;
+        if (targetCard && targetCard !== card) {
+          targetCard.classList.add("drag-over");
         }
       });
-      if (boundsArr.length > 0) {
-        this.fallbackMap.fitBounds(boundsArr, { padding: [50, 50] });
-      }
-    }
-  },
 
-  setupResizeObserver() {
-    const canvas = document.getElementById("mapExplorerCanvas");
-    if (canvas && window.ResizeObserver) {
-      this.resizeObserver = new ResizeObserver(() => {
-        this.handleResize();
+      card.addEventListener("dragleave", (e) => {
+        const targetCard = e.currentTarget;
+        if (targetCard) {
+          targetCard.classList.remove("drag-over");
+        }
       });
-      this.resizeObserver.observe(canvas);
-    }
 
-    window.addEventListener("greenoil:workbench-resize", () => {
-      this.handleResize();
-    });
-
-    window.addEventListener("resize", () => {
-      this.handleResize();
+      card.addEventListener("drop", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetCard = e.currentTarget;
+        if (!targetCard) return;
+        targetCard.classList.remove("drag-over");
+        const toIndex = parseInt(targetCard.dataset.index, 10);
+        const fromIndex = draggedIndex !== null ? draggedIndex : parseInt(e.dataTransfer.getData("text/plain"), 10);
+        if (!isNaN(fromIndex) && !isNaN(toIndex) && fromIndex !== toIndex) {
+          const item = this.routeWaypoints.splice(fromIndex, 1)[0];
+          this.routeWaypoints.splice(toIndex, 0, item);
+          this.saveRouteWaypoints();
+          this.renderWaypoints();
+          this.updateRoute();
+          this.renderMarkers();
+          this.renderPlacesCards();
+        }
+      });
     });
   },
 
-  handleResize() {
-    if (this.googleMap && window.google && window.google.maps) {
-      google.maps.event.trigger(this.googleMap, "resize");
-    }
-    if (this.fallbackMap) {
-      this.fallbackMap.invalidateSize();
+  scrollWaypointCardIntoView(key) {
+    const container = document.getElementById("mapWaypointsCardsContainer");
+    if (!container) return;
+    const card = container.querySelector(`.map-waypoint-card[data-key="${CSS.escape(key)}"]`);
+    if (card) {
+      container.querySelectorAll(".map-waypoint-card").forEach(el => el.classList.remove("active-highlight"));
+      card.classList.add("active-highlight");
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   },
 
-  clearBoundaries() {
-    this.polygonsMap.forEach(poly => {
-      if (poly.setMap) {
-        poly.setMap(null);
-      } else if (poly.remove) {
-        poly.remove();
+  // -------------------------------------------------------------
+  // Schedule Optimization: Corridor Slicing & 2-Opt TSP
+  // -------------------------------------------------------------
+  optimizeRoute() {
+    if (this.routeWaypoints.length < 2) {
+      const msg = this.getCurrentLanguage() === "en" ? "Please add at least 2 waypoints to optimize route!" : "路线中至少需要 2 个经停点才能进行智能最优排序！";
+      alert(msg);
+      return;
+    }
+
+    const origin = this.getEffectiveOrigin();
+    const originCoords = { lat: origin.lat, lng: origin.lng };
+    const optimized = this.sortWaypointsBySchedule(this.routeWaypoints, new Date(), originCoords);
+    this.routeWaypoints = optimized;
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+
+    const toastMsg = this.getCurrentLanguage() === "en" ? "✨ Route successfully optimized via Anti-shuttle corridor & 2-opt TSP!" : "✨ 路线已按 Anti-shuttle 走廊分片与 2-opt 智能最优排序！";
+    if (window.showToast) window.showToast(toastMsg);
+    else alert(toastMsg);
+  },
+
+  sortWaypointsBySchedule(waypoints, departureTime = null, originCoords = null) {
+    if (!Array.isArray(waypoints) || waypoints.length <= 1) {
+      return Array.isArray(waypoints) ? [...waypoints] : [];
+    }
+
+    const startCoords = originCoords || this.getEffectiveOrigin();
+    const oLat = parseFloat(startCoords.lat) || DEFAULT_ORIGIN_COORDS.lat;
+    const oLng = parseFloat(startCoords.lng) || DEFAULT_ORIGIN_COORDS.lng;
+    const depDate = departureTime instanceof Date ? new Date(departureTime.getTime()) : new Date();
+
+    const axisInfo = this.calculatePrincipalTravelAxis({ lat: oLat, lng: oLng }, waypoints);
+    const SLICE_LENGTH_KM = 2.0;
+
+    const decorated = waypoints.map(w => {
+      const rLat = parseFloat(w.latitude);
+      const rLng = parseFloat(w.longitude);
+      if (isNaN(rLat) || isNaN(rLng) || (rLat === 0 && rLng === 0)) {
+        return { ...w, _along_track_km: 0, _cross_track_km: 0, _slice_idx: 0 };
       }
+      const { s, w: lateral } = this.projectToCorridor(rLat, rLng, oLat, oLng, axisInfo.uX, axisInfo.uY);
+      const sliceIdx = axisInfo.isCorridor ? Math.max(0, Math.floor(Math.max(0, s) / SLICE_LENGTH_KM)) : 0;
+      return { ...w, _along_track_km: s, _cross_track_km: lateral, _slice_idx: sliceIdx };
     });
-    this.polygonsMap.clear();
 
+    let curLat = oLat;
+    let curLng = oLng;
+    let curTime = new Date(depDate.getTime());
+    const remaining = [...decorated];
+    const initialRoute = [];
+    const VISIT_DURATION_MINS = 20;
 
-  },
-
-  extractGooglePolygonPaths(geometry) {
-    geometry = displayGeometry(geometry);
-    if (!geometry || !geometry.coordinates) return [];
-    if (geometry.type === "Polygon") {
-      return [geometry.coordinates.map(ring => ring.map(([lng, lat]) => ({ lat, lng })))];
-    } else if (geometry.type === "MultiPolygon") {
-      return geometry.coordinates.map(poly =>
-        poly.map(ring => ring.map(([lng, lat]) => ({ lat, lng })))
-      );
+    let currentSliceIdx = 0;
+    if (axisInfo.isCorridor) {
+      const sliceIds = Array.from(new Set(remaining.map(r => r._slice_idx))).sort((a, b) => a - b);
+      if (sliceIds.length > 0) currentSliceIdx = sliceIds[0];
     }
-    return [];
+
+    while (remaining.length > 0) {
+      let bestIdx = 0;
+      let minCost = Infinity;
+
+      let candidateIndices = [];
+      if (axisInfo.isCorridor) {
+        candidateIndices = remaining
+          .map((item, idx) => ({ item, idx }))
+          .filter(({ item }) => item._slice_idx === currentSliceIdx)
+          .map(x => x.idx);
+
+        if (candidateIndices.length === 0) {
+          const remainingSlices = Array.from(new Set(remaining.map(r => r._slice_idx))).sort((a, b) => a - b);
+          if (remainingSlices.length > 0) {
+            currentSliceIdx = remainingSlices[0];
+            candidateIndices = remaining
+              .map((item, idx) => ({ item, idx }))
+              .filter(({ item }) => item._slice_idx === currentSliceIdx)
+              .map(x => x.idx);
+          }
+        }
+      }
+
+      if (candidateIndices.length === 0) {
+        candidateIndices = remaining.map((_, idx) => idx);
+      }
+
+      for (const i of candidateIndices) {
+        const item = remaining[i];
+        const rLat = parseFloat(item.latitude) || curLat;
+        const rLng = parseFloat(item.longitude) || curLng;
+        const dist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
+        const driveMins = Math.max(5, Math.round((dist / 35) * 60));
+        const estArrival = new Date(curTime.getTime() + driveMins * 60000);
+
+        let cost = dist;
+        if (item.openingHours && typeof item.openingHours === "string" && item.openingHours.trim()) {
+          const statusObj = BusinessHours.getBusinessStatus(item.openingHours, estArrival);
+          if (statusObj.statusKey === "status_open" || statusObj.status === "营业中") {
+            const remMins = statusObj.remainingMinutes;
+            if (remMins !== null && remMins < 90) {
+              cost = dist - Math.max(0, (90 - remMins) * 0.15);
+            }
+          } else if (statusObj.statusKey === "status_opening" || statusObj.status === "未开门") {
+            cost = dist + 500 + (statusObj.remainingMinutes || 60) * 2;
+          } else if (statusObj.statusKey === "status_closed" || statusObj.status === "已打烊") {
+            cost = dist + 5000;
+          }
+        }
+
+        if (axisInfo.isCorridor) {
+          const sliceDiff = item._slice_idx - currentSliceIdx;
+          if (sliceDiff > 0) cost += sliceDiff * 20;
+          else if (sliceDiff < 0) cost += Math.abs(sliceDiff) * 100;
+        }
+
+        if (cost < minCost) {
+          minCost = cost;
+          bestIdx = i;
+        }
+      }
+
+      const bestItem = remaining.splice(bestIdx, 1)[0];
+      currentSliceIdx = bestItem._slice_idx;
+
+      const rLat = parseFloat(bestItem.latitude) || curLat;
+      const rLng = parseFloat(bestItem.longitude) || curLng;
+      const legDist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
+      const legDriveMins = Math.max(5, Math.round((legDist / 35) * 60));
+      const arrival = new Date(curTime.getTime() + legDriveMins * 60000);
+
+      initialRoute.push(bestItem);
+      curTime = new Date(arrival.getTime() + VISIT_DURATION_MINS * 60000);
+      curLat = rLat;
+      curLng = rLng;
+    }
+
+    const refined = this.twoOptOptimization(initialRoute, { lat: oLat, lng: oLng }, depDate);
+
+    let finalTime = new Date(depDate.getTime());
+    let fLat = oLat;
+    let fLng = oLng;
+
+    for (const item of refined) {
+      const rLat = parseFloat(item.latitude) || fLat;
+      const rLng = parseFloat(item.longitude) || fLng;
+      const legDist = this.getHaversineDistance(fLat, fLng, rLat, rLng);
+      const legDriveMins = Math.max(5, Math.round((legDist / 35) * 60));
+      const arrival = new Date(finalTime.getTime() + legDriveMins * 60000);
+
+      const arrHours = String(arrival.getHours()).padStart(2, "0");
+      const arrMins = String(arrival.getMinutes()).padStart(2, "0");
+      item._estArrivalStr = `${arrHours}:${arrMins}`;
+
+      finalTime = new Date(arrival.getTime() + VISIT_DURATION_MINS * 60000);
+      fLat = rLat;
+      fLng = rLng;
+    }
+
+    return refined;
   },
 
-  drawSelectedBoundaries() {
-    this.clearBoundaries();
+  projectToCorridor(lat, lon, originLat, originLon, uX, uY) {
+    const meanLatRad = (originLat * Math.PI) / 180;
+    const dxKm = (lon - originLon) * (Math.PI / 180) * 6371 * Math.cos(meanLatRad);
+    const dyKm = (lat - originLat) * (Math.PI / 180) * 6371;
+    const s = dxKm * uX + dyKm * uY;
+    const w = Math.abs(dxKm * (-uY) + dyKm * uX);
+    return { s, w, dxKm, dyKm };
+  },
+
+  calculatePrincipalTravelAxis(originCoords, waypoints) {
+    const oLat = parseFloat(originCoords.lat) || DEFAULT_ORIGIN_COORDS.lat;
+    const oLng = parseFloat(originCoords.lng) || DEFAULT_ORIGIN_COORDS.lng;
+    const validPts = (waypoints || []).filter(w => {
+      const lat = parseFloat(w.latitude);
+      const lng = parseFloat(w.longitude);
+      return !isNaN(lat) && !isNaN(lng) && (lat !== 0 || lng !== 0);
+    });
+
+    if (validPts.length === 0) {
+      return { uX: 1, uY: 0, isCorridor: false, spanKm: 0 };
+    }
+
+    let sumLat = 0, sumLng = 0;
+    validPts.forEach(p => {
+      sumLat += parseFloat(p.latitude);
+      sumLng += parseFloat(p.longitude);
+    });
+    const centLat = sumLat / validPts.length;
+    const centLng = sumLng / validPts.length;
+
+    const meanLatRad = (oLat * Math.PI) / 180;
+    const dx = (centLng - oLng) * (Math.PI / 180) * 6371 * Math.cos(meanLatRad);
+    const dy = (centLat - oLat) * (Math.PI / 180) * 6371;
+    const norm = Math.hypot(dx, dy);
+
+    if (norm < 0.5) {
+      return { uX: 1, uY: 0, isCorridor: false, spanKm: norm };
+    }
+
+    const uX = dx / norm;
+    const uY = dy / norm;
+
+    let minS = Infinity, maxS = -Infinity;
+    validPts.forEach(p => {
+      const { s } = this.projectToCorridor(parseFloat(p.latitude), parseFloat(p.longitude), oLat, oLng, uX, uY);
+      if (s < minS) minS = s;
+      if (s > maxS) maxS = s;
+    });
+
+    const spanKm = Math.max(0, maxS - minS);
+    return { uX, uY, isCorridor: spanKm >= 2.5, spanKm, minS, maxS };
+  },
+
+  isTourScheduleFeasible(tour, originCoords, depDate) {
+    let curTime = new Date(depDate.getTime());
+    let curLat = parseFloat(originCoords.lat) || DEFAULT_ORIGIN_COORDS.lat;
+    let curLng = parseFloat(originCoords.lng) || DEFAULT_ORIGIN_COORDS.lng;
+
+    for (const item of tour) {
+      const rLat = parseFloat(item.latitude) || curLat;
+      const rLng = parseFloat(item.longitude) || curLng;
+      const dist = this.getHaversineDistance(curLat, curLng, rLat, rLng);
+      const driveMins = Math.max(5, Math.round((dist / 35) * 60));
+      const estArrival = new Date(curTime.getTime() + driveMins * 60000);
+
+      if (item.openingHours && typeof item.openingHours === "string" && item.openingHours.trim()) {
+        const statusObj = BusinessHours.getBusinessStatus(item.openingHours, estArrival);
+        if (statusObj && (statusObj.statusKey === "status_closed" || statusObj.status === "已打烊")) {
+          return false;
+        }
+      }
+      curTime = new Date(estArrival.getTime() + 20 * 60000);
+      curLat = rLat;
+      curLng = rLng;
+    }
+    return true;
+  },
+
+  twoOptOptimization(route, originCoords, depDate) {
+    if (!Array.isArray(route) || route.length < 4) return route;
+
+    const oLat = parseFloat(originCoords.lat) || DEFAULT_ORIGIN_COORDS.lat;
+    const oLng = parseFloat(originCoords.lng) || DEFAULT_ORIGIN_COORDS.lng;
+
+    const calcTotalDist = tour => {
+      let total = 0;
+      let curL = oLat, curG = oLng;
+      for (const item of tour) {
+        const rLat = parseFloat(item.latitude) || curL;
+        const rLng = parseFloat(item.longitude) || curG;
+        total += this.getHaversineDistance(curL, curG, rLat, rLng);
+        curL = rLat;
+        curG = rLng;
+      }
+      return total;
+    };
+
+    let bestTour = [...route];
+    let bestDist = calcTotalDist(bestTour);
+    let improved = true;
+    let iterations = 0;
+    const MAX_ITERATIONS = 40;
+
+    while (improved && iterations < MAX_ITERATIONS) {
+      improved = false;
+      iterations++;
+
+      for (let i = 0; i < bestTour.length - 1; i++) {
+        for (let k = i + 1; k < bestTour.length; k++) {
+          const candidate = [
+            ...bestTour.slice(0, i),
+            ...bestTour.slice(i, k + 1).reverse(),
+            ...bestTour.slice(k + 1)
+          ];
+          const candDist = calcTotalDist(candidate);
+          if (candDist < bestDist - 0.005) {
+            if (this.isTourScheduleFeasible(candidate, originCoords, depDate)) {
+              bestTour = candidate;
+              bestDist = candDist;
+              improved = true;
+              break;
+            }
+          }
+        }
+        if (improved) break;
+      }
+    }
+
+    return bestTour;
+  },
+
+  getHaversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // km
+    const toRad = x => (x * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  },
+
+  // -------------------------------------------------------------
+  // Export Waypoints (Preserves User Dragged / Adjusted Order)
+  // -------------------------------------------------------------
+  exportWaypoints() {
+    const targets = this.routeWaypoints;
+    if (targets.length === 0) {
+      const msg = this.getCurrentLanguage() === "en" ? "No waypoints in route to export!" : "当前路线清单中暂无经停点可导出！";
+      alert(msg);
+      return;
+    }
+
+    const exportRows = targets.map((w, idx) => {
+      const rawHours = w.openingHours || "未提供";
+      const openHours = this.formatWeekdayOpeningHours(rawHours);
+      const phone = w.phone && w.phone !== "无" ? w.phone : "";
+      const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` (${w.nameEn})` : "");
+
+      return {
+        "序号": idx + 1,
+        "餐厅名称": displayName,
+        "地址": w.address || "",
+        "电话": phone,
+        "营业时间": openHours,
+        "预计抵达": w._estArrivalStr || "-"
+      };
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const xlsxLib = typeof window !== "undefined" && window.XLSX ? window.XLSX : null;
+
+    if (xlsxLib) {
+      const ws = xlsxLib.utils.json_to_sheet(exportRows);
+      ws["!cols"] = [
+        { wch: 8 },
+        { wch: 32 },
+        { wch: 42 },
+        { wch: 18 },
+        { wch: 30 },
+        { wch: 14 }
+      ];
+      const wb = xlsxLib.utils.book_new();
+      xlsxLib.utils.book_append_sheet(wb, ws, "Route Stops");
+      xlsxLib.writeFile(wb, `GreenOil_Route_Stops_${dateStr}.xlsx`);
+    } else {
+      const headers = Object.keys(exportRows[0]);
+      const csvLines = [headers.join(",")];
+      exportRows.forEach(row => {
+        csvLines.push(headers.map(h => `"${(row[h] || "").toString().replace(/"/g, '""')}"`).join(","));
+      });
+      const csv = csvLines.join("\n");
+
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `GreenOil_Route_Stops_${dateStr}.csv`;
+      link.click();
+    }
+  },
+
+  formatWeekdayOpeningHours(rawHours) {
+    if (!rawHours) return "未提供";
+    let rawStr = typeof rawHours === "string" ? rawHours : (Array.isArray(rawHours) ? rawHours.join("\n") : String(rawHours));
+    let cleanStr = rawStr.replace(/[\u202F\u00A0\u2009\u200A\u3000]/g, " ").replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+    if (!cleanStr || cleanStr === "未提供" || cleanStr === "无") return "未提供";
+    return cleanStr.replace(/\n+/g, " · ");
+  },
+
+  // -------------------------------------------------------------
+  // External Google Maps Navigation
+  // -------------------------------------------------------------
+  openGoogleMapsNavigation() {
+    if (this.routeWaypoints.length === 0) {
+      alert(this.getCurrentLanguage() === "en" ? "Please add waypoints first!" : "请先在左侧或地图中添加餐馆至途经点清单！");
+      return;
+    }
+
+    const origin = this.getEffectiveOrigin();
+    const originAddress = origin.address || DEFAULT_ORIGIN_ADDRESS;
+    const fullSlashUrl = this.buildGoogleMapsSlashUrl(originAddress, this.routeWaypoints);
+
+    if (this.routeWaypoints.length <= 9) {
+      window.open(fullSlashUrl, "_blank");
+      return;
+    }
+
+    this.openRouteNavModal(originAddress, this.routeWaypoints, fullSlashUrl);
+  },
+
+  buildGoogleMapsSlashUrl(originAddress, stops) {
+    const originStr = encodeURIComponent(originAddress);
+    const stopStrs = stops.map(s => {
+      const target = (s.name ? s.name + ", " : "") + (s.address || "");
+      return encodeURIComponent(target);
+    });
+    return `https://www.google.com/maps/dir/${originStr}/${stopStrs.join("/")}/`;
+  },
+
+  buildRouteLegs(originAddress, stops) {
+    const legs = [];
+    const step = 9;
+    const totalLegs = Math.ceil(stops.length / step);
+
+    for (let i = 0; i < totalLegs; i++) {
+      const startIdx = i * step;
+      const endIdx = Math.min(startIdx + step, stops.length);
+      const legStops = stops.slice(startIdx, endIdx);
+
+      const legOrigin = i === 0 ? originAddress : ((stops[startIdx - 1].name ? stops[startIdx - 1].name + ", " : "") + (stops[startIdx - 1].address || ""));
+      const legUrl = this.buildGoogleMapsSlashUrl(legOrigin, legStops);
+
+      const fromLabel = i === 0 ? "Green Oil HQ" : (stops[startIdx - 1].name || `第 ${startIdx} 站`);
+      const toLabel = legStops[legStops.length - 1].name || `第 ${endIdx} 站`;
+
+      legs.push({
+        legIndex: i + 1,
+        from: fromLabel,
+        to: toLabel,
+        stopsCount: legStops.length,
+        stopNames: legStops.map(s => s.name).join(" → "),
+        url: legUrl
+      });
+    }
+
+    return legs;
+  },
+
+  openRouteNavModal(originAddress, targetWaypoints, fullSlashUrl) {
+    const modalOverlay = document.getElementById("fsRouteNavModalOverlay");
+    const tipEl = document.getElementById("fsRouteNavModalTip");
+    const btnFull = document.getElementById("fsRouteNavBtnFull");
+    const btnOpenAll = document.getElementById("fsRouteNavBtnOpenAll");
+    const legsListEl = document.getElementById("fsRouteNavLegsList");
+
+    if (!modalOverlay) return;
+
+    if (tipEl) {
+      tipEl.textContent = `当前共有 ${targetWaypoints.length} 个地点。建议手机端按路段分段导航，网页端可直接打开完整拼接路线。`;
+    }
+
+    const legs = this.buildRouteLegs(originAddress, targetWaypoints);
+
+    if (btnFull) {
+      btnFull.onclick = () => window.open(fullSlashUrl, "_blank");
+    }
+
+    if (btnOpenAll) {
+      btnOpenAll.onclick = () => {
+        legs.forEach(leg => window.open(leg.url, "_blank"));
+      };
+    }
+
+    if (legsListEl) {
+      legsListEl.innerHTML = legs.map(leg => `
+        <div class="fs-route-nav-leg-card">
+          <div class="fs-route-nav-leg-info">
+            <div class="fs-route-nav-leg-title">
+              第 ${leg.legIndex} 段：${leg.from} → ${leg.to} (共 ${leg.stopsCount} 站)
+            </div>
+            <div class="fs-route-nav-leg-stops" title="${this.escapeHtml(leg.stopNames)}">
+              ${this.escapeHtml(leg.stopNames)}
+            </div>
+          </div>
+          <button class="btn btn-sm btn-primary fs-btn-leg-nav" data-url="${encodeURI(leg.url)}" style="white-space: nowrap; font-size: 0.8rem; padding: 0.4rem 0.75rem; background: #2563eb; border-color: #2563eb; color: white;">
+            开启此段导航
+          </button>
+        </div>
+      `).join("");
+
+      legsListEl.querySelectorAll(".fs-btn-leg-nav").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const url = decodeURI(btn.dataset.url);
+          window.open(url, "_blank");
+        });
+      });
+    }
+
+    modalOverlay.classList.add("active");
+  },
+
+  closeRouteNavModal() {
+    const modalOverlay = document.getElementById("fsRouteNavModalOverlay");
+    if (modalOverlay) modalOverlay.classList.remove("active");
+  },
+
+  // -------------------------------------------------------------
+  // Left Column Restaurant Cards & Google Discovery
+  // -------------------------------------------------------------
+  async loadPlacesForCurrentArea(searchGoogle = true) {
+    const requestId = ++this.areaLoadId;
+    this.areaAbort?.abort();
+    this.areaAbort = new AbortController();
+    this.currentPage = 1;
+    const searchId = searchGoogle ? ++this.googleSearchId : this.googleSearchId;
+    if (searchGoogle) this.googleAreaPlaces = [];
+    this.cancelMarkerBatches();
+    this.filteredPlaces = this.filteredPlaces || [];
+    const container = document.getElementById("mapPlacesCardsContainer");
+    const lang = this.getCurrentLanguage();
+    const loadingMsg = lang === "en" ? "Fetching Google Maps places..." : "正在获取区域 Google Maps 餐馆列表...";
+
+    if (container) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⏳</div>
+          <div style="font-weight: 600;">${loadingMsg}</div>
+        </div>
+      `;
+    }
+
+    if (searchGoogle) this.drawSelectedBoundaries();
 
     const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
     const allNbs = this.getAllNeighborhoods();
     const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
-    // Draw only selected official GeoJSON boundaries.
-    // 2. High-precision vector Polygons for selected neighborhoods
-    if (selectedNbs.length > 0) {
-      if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-        selectedNbs.forEach(nb => {
-          const ft = this.neighbourhoodsMap?.get(nb.id) || nb;
-          if (ft && ft.geometry) {
-            const polygonRingsList = this.extractGooglePolygonPaths(ft.geometry);
-            polygonRingsList.forEach((polyRings, idx) => {
-              const poly = new google.maps.Polygon({ clickable: false,
-                paths: polyRings,
-                strokeColor: "#16a34a",
-                strokeOpacity: 1.0,
-                strokeWeight: 2.5,
-                fillColor: "#22c55e",
-                fillOpacity: 0.16,
-                zIndex: 10
-              });
-              poly.setMap(this.googleMap);
-              this.polygonsMap.set(`${nb.id}_${idx}`, poly);
-            });
-          } else if (Array.isArray(nb.polygonPaths)) {
-            const poly = new google.maps.Polygon({ clickable: false,
-              paths: nb.polygonPaths,
-              strokeColor: "#16a34a",
-              strokeOpacity: 1.0,
-              strokeWeight: 2.5,
-              fillColor: "#22c55e",
-              fillOpacity: 0.16,
-              zIndex: 10
-            });
-            poly.setMap(this.googleMap);
-            this.polygonsMap.set(nb.id, poly);
-          }
-        });
-      } else if (this.fallbackMap && window.L) {
-        selectedNbs.forEach(nb => {
-          const ft = this.neighbourhoodsMap?.get(nb.id) || nb;
-          if (ft && ft.geometry) {
-            const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: displayGeometry(ft.geometry) }, { interactive: false,
-              style: {
-                color: "#16a34a",
-                weight: 2.5,
-                opacity: 1.0,
-                fillColor: "#22c55e",
-                fillOpacity: 0.16
-              }
-            }).addTo(this.fallbackMap);
-            this.polygonsMap.set(nb.id, layer);
-          } else if (Array.isArray(nb.polygonPaths)) {
-            const latLngs = nb.polygonPaths.map(pt => [pt.lat, pt.lng]);
-            const poly = L.polygon(latLngs, { interactive: false,
-              color: "#16a34a",
-              weight: 2.5,
-              opacity: 1.0,
-              fillColor: "#22c55e",
-              fillOpacity: 0.16
-            }).addTo(this.fallbackMap);
-            this.polygonsMap.set(nb.id, poly);
-          }
-        });
+    let areaQuery = "";
+    if (this.searchKeyword) {
+      areaQuery = this.searchKeyword;
+    } else if (selectedNbs.length > 0) {
+      const nbNames = selectedNbs.map(nb => nb.nameEn || nb.name.split(" (")[0]).join(" ");
+      const cityName = selectedNbs[0].cityName || "Toronto";
+      areaQuery = `restaurants in ${nbNames} ${cityName} Ontario`;
+    } else if (!isAll && selectedCities.length > 0) {
+      const cityNames = selectedCities.map(c => c.nameEn || c.name.split(" (")[0]).join(" ");
+      areaQuery = `restaurants in ${cityNames} Ontario`;
+    } else {
+      areaQuery = "restaurants in Scarborough Toronto Ontario";
+    }
+
+    if (searchGoogle) {
+      try {
+        const result = await Api.searchGooglePlaces(areaQuery);
+        if (requestId !== this.areaLoadId) return;
+        if (searchId === this.googleSearchId) {
+          this.googleAreaPlaces = result?.success ? (result.places || []) : [];
+          this.displayedPlaces = this.googleAreaPlaces;
+          this.filterAndRenderPlaces();
+        }
+      } catch (error) {
+        if (requestId !== this.areaLoadId) return;
+        console.warn("Google discovery failed:", error);
+        this.displayedPlaces = [];
+        this.filterAndRenderPlaces();
       }
+    } else {
+      this.displayedPlaces = this.googleAreaPlaces;
+      this.filterAndRenderPlaces();
+    }
+  },
+
+  filterAndRenderPlaces(preservePage = false) {
+    const selectedSubareas = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    const selectedAreas = selectedSubareas.length > 0 ? selectedSubareas :
+      this.activeCityIds.has("all") ? [] : GTA_COMMUNITIES.filter(city => this.activeCityIds.has(city.id));
+
+    let result = (this.displayedPlaces || []).filter(place => selectedAreas.length === 0 ||
+      selectedAreas.some(area => this.isPlaceInGeometry(place, area.geometry)));
+
+    // Category filter
+    if (this.activeCategory !== "全部") {
+      result = result.filter(r => {
+        const catText = [r.categoriesRaw, r.categories ? r.categories.join(" ") : ""].join(" ");
+        return catText.includes(this.activeCategory);
+      });
+    }
+
+    // Keyword search
+    if (this.searchKeyword) {
+      const kw = this.searchKeyword.toLowerCase();
+      result = result.filter(r => {
+        const str = [r.name, r.address, r.phone, r.categoriesRaw].join(" ").toLowerCase();
+        return str.includes(kw);
+      });
+    }
+
+    this.filteredPlaces = result;
+    this.currentPage = preservePage ? Math.min(this.currentPage, Math.ceil(result.length / this.pageSize) || 1) : 1;
+
+    this.updateResultsSummary();
+    this.renderMarkers();
+    this.renderPlacesCards();
+  },
+
+  updateResultsSummary() {
+    const regionTitleEl = document.getElementById("mapResultsRegionTitle");
+    const summaryEl = document.getElementById("mapResultsSummary");
+    const countEl = document.getElementById("mapResultsCount");
+
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
+    const total = list.length;
+    const lang = this.getCurrentLanguage();
+    const sep = lang === "zh" ? "、" : ", ";
+
+    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const allNbs = this.getAllNeighborhoods();
+    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
+
+    let titleText = this.getLocalizedAllGta();
+    if (selectedNbs.length > 0) {
+      if (selectedNbs.length === 1) {
+        titleText = this.getLocalizedName(selectedNbs[0]);
+      } else if (selectedNbs.length === 2) {
+        titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])}`;
+      } else {
+        titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
+      }
+    } else if (!isAll && selectedCities.length > 0) {
+      if (selectedCities.length === 1) {
+        titleText = this.getLocalizedName(selectedCities[0]);
+      } else if (selectedCities.length === 2) {
+        titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])}`;
+      } else {
+        titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
+      }
+    }
+
+    if (regionTitleEl) {
+      regionTitleEl.textContent = `${titleText} (${total})`;
+    }
+
+    if (summaryEl) {
+      summaryEl.innerHTML = `共检索到 <span style="font-weight:700; color:#2563eb;">${total}</span> 家 Google 商家`;
+    } else if (countEl) {
+      countEl.textContent = total;
+    }
+  },
+
+  renderPlacesCards() {
+    const container = document.getElementById("mapPlacesCardsContainer");
+    if (!container) return;
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
+
+    if (list.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+          <div style="font-weight: 600; font-size: 0.95rem;">当前区域暂未检索到餐馆</div>
+          <div style="font-size: 0.8rem; margin-top: 0.35rem;">尝试切换品类或在上方搜索其它商圈/城市</div>
+        </div>
+      `;
+      this.renderPagination(0);
       return;
     }
 
-    // 3. Otherwise, draw selected city / all GTA boundaries
-    const cities = isAll ? GTA_COMMUNITIES.filter(c => c.id !== "all") : selectedCities;
-    cities.filter(c => c.geometry).forEach(city => {
-      if (this.googleMap && !this.isFallbackMode && window.google?.maps) {
-        this.extractGooglePolygonPaths(city.geometry).forEach((paths, index) => {
-          const poly = new google.maps.Polygon({ clickable: false, paths, strokeColor: "#16a34a",
-            strokeOpacity: 0.85, strokeWeight: 2, fillColor: "#22c55e", fillOpacity: 0.10, zIndex: 5 });
-          poly.setMap(this.googleMap);
-          this.polygonsMap.set(`${city.id}_${index}`, poly);
+    const total = list.length;
+    const startIdx = (this.currentPage - 1) * this.pageSize;
+    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
+
+    container.innerHTML = pageItems.map(r => {
+      const key = r.placeId || r.name;
+      const photoInfo = this.getRestaurantPhoto(r);
+      const inRouteIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
+      const isInRoute = inRouteIdx !== -1;
+
+      const statusObj = r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null;
+      const hoursBadge = statusObj
+        ? `<span class="status-badge ${statusObj.cls}" style="font-size:0.7rem; padding:2px 6px; border-radius:4px; line-height:1.2;">${statusObj.label}</span>`
+        : "";
+
+      const ratingStr = r.rating ? `★ ${parseFloat(r.rating).toFixed(1)}` : "★ 4.2";
+      const reviewsStr = r.reviews ? `(${r.reviews})` : "(15+)";
+      const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : "餐饮美食");
+
+      const routeBtn = !isInRoute ? `
+        <button class="btn btn-primary btn-sm btn-card-add-route" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="background:#2563eb; border-color:#2563eb; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="添加至经停路线">
+          <span>+ 途经点</span>
+        </button>
+      ` : `
+        <button class="btn btn-secondary btn-sm btn-card-in-route" onclick="event.stopPropagation(); window.mapExplorerRemoveSingleFromRoute('${this.escapeQuotes(key)}');" style="background:#eff6ff; color:#2563eb; border-color:#bfdbfe; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="点击从路线中移除">
+          <span>✓ 第 ${inRouteIdx + 1} 站</span>
+        </button>
+      `;
+
+      return `
+        <div tabindex="-1" class="map-place-card ${isInRoute ? 'in-route' : ''}" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
+          <div class="card-thumb" style="${photoInfo.url ? '' : 'display:none'}">
+            <img ${photoInfo.url ? `src="${this.escapeHtml(photoInfo.url)}"` : ''} alt="${this.escapeHtml(r.name)}" loading="lazy" class="card-img" onload="this.parentElement.style.display=''" onerror="this.parentElement.style.display='none'" />
+          </div>
+          <div class="card-main">
+            <div class="card-title-row" style="display: flex; align-items: center; gap: 0.5rem;">
+              <h4 class="card-title" title="${this.escapeHtml(r.name)}" style="flex: 1; margin: 0;">${this.escapeHtml(r.name)}</h4>
+              <span style="font-size: 0.78rem; font-weight: 700; color: #475569; flex-shrink: 0;">${this.escapeHtml(r.price || "$$")}</span>
+            </div>
+
+            <div class="card-meta-row">
+              <span class="card-rating">${ratingStr}</span>
+              <span>${reviewsStr}</span>
+              <span>·</span>
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escapeHtml(categoryStr)}</span>
+            </div>
+
+            <div class="card-badges-row">
+              ${hoursBadge}
+            </div>
+
+            <div class="card-address" title="${this.escapeHtml(r.address || '')}">
+              ${this.escapeHtml(r.address || "安大略省 GTA")}
+            </div>
+
+            <div class="card-actions-row">
+              ${routeBtn}
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="Google Maps 导航">
+                导航
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    this.renderPagination(total);
+    this.resolveVisibleGooglePhotos(pageItems);
+  },
+
+  renderPagination(total) {
+    const infoEl = document.getElementById("mapPaginationInfo");
+    const controlsEl = document.getElementById("mapPaginationControls");
+    if (!infoEl || !controlsEl) return;
+
+    if (total === 0) {
+      infoEl.textContent = "显示 0 - 0 / 共 0 家";
+      controlsEl.innerHTML = "";
+      return;
+    }
+
+    const totalPages = Math.ceil(total / this.pageSize) || 1;
+    const startIdx = (this.currentPage - 1) * this.pageSize + 1;
+    const endIdx = Math.min(this.currentPage * this.pageSize, total);
+
+    infoEl.textContent = `显示 ${startIdx} - ${endIdx} / 共 ${total} 家餐馆`;
+
+    let html = `<button class="btn btn-secondary btn-sm" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.mapExplorerGoToPage(${this.currentPage - 1})">&lt;</button>`;
+
+    let lastRendered = 0;
+    for (let p = 1; p <= totalPages; p++) {
+      if (p === 1 || p === totalPages || (p >= this.currentPage - 1 && p <= this.currentPage + 1)) {
+        if (lastRendered > 0 && p - lastRendered > 1) {
+          html += `<span style="display:inline-flex; align-items:center; padding:0 4px; color:var(--text-muted); font-size:0.8rem; user-select:none;">...</span>`;
+        }
+        html += `<button class="btn ${p === this.currentPage ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.mapExplorerGoToPage(${p})">${p}</button>`;
+        lastRendered = p;
+      }
+    }
+
+    html += `<button class="btn btn-secondary btn-sm" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="window.mapExplorerGoToPage(${this.currentPage + 1})">&gt;</button>`;
+    controlsEl.innerHTML = html;
+  },
+
+  goToPage(page) {
+    const totalPages = Math.ceil(this.filteredPlaces.length / this.pageSize) || 1;
+    this.currentPage = Math.max(1, Math.min(Number(page) || 1, totalPages));
+    this.renderPlacesCards();
+  },
+
+  addAllToRoute() {
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
+    if (list.length === 0) {
+      alert("当前列表暂无餐馆可加入路线！");
+      return;
+    }
+
+    let addedCount = 0;
+    list.forEach(place => {
+      const exists = this.routeWaypoints.some(w => (w.placeId && w.placeId === place.placeId) || ((w.name || "").trim().toLowerCase() === (place.name || "").trim().toLowerCase()));
+      if (!exists) {
+        this.routeWaypoints.push({
+          _uid: "wp_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+          placeId: place.placeId || "",
+          name: place.name || "Unknown Place",
+          nameEn: place.nameEn || "",
+          address: place.address || "",
+          latitude: parseFloat(place.latitude || place.lat) || 0,
+          longitude: parseFloat(place.longitude || place.lng) || 0,
+          phone: place.phone || "",
+          rating: place.rating || "",
+          reviews: place.reviews || "",
+          openingHours: place.openingHours || "",
+          photoUrl: place.photoUrl || ""
         });
-      } else if (this.fallbackMap && window.L) {
-        const layer = L.geoJSON({ type: "Feature", properties: {}, geometry: displayGeometry(city.geometry) }, { interactive: false,
-          style: { color: "#16a34a", weight: 2, opacity: 0.85, fillColor: "#22c55e", fillOpacity: 0.10 }
-        }).addTo(this.fallbackMap);
-        this.polygonsMap.set(city.id, layer);
+        addedCount++;
       }
     });
+
+    if (addedCount > 0) {
+      this.saveRouteWaypoints();
+      this.renderWaypoints();
+      this.updateRoute();
+      this.renderMarkers();
+      this.renderPlacesCards();
+      const msg = `已成功将 ${addedCount} 家餐馆加入经停点清单！`;
+      if (window.showToast) window.showToast(msg);
+      else alert(msg);
+    } else {
+      alert("当前列表中的餐馆均已在路线中！");
+    }
   },
 
   // -------------------------------------------------------------
-  // Google Map / Leaflet Initialization
+  // Map Markers & SVG Icons
+  // -------------------------------------------------------------
+  clearMarkers() {
+    this.cancelMarkerBatches();
+    this.markersMap.forEach(marker => {
+      if (marker.setMap) marker.setMap(null);
+      else if (this.fallbackLayerGroup) this.fallbackLayerGroup.removeLayer(marker);
+    });
+    this.markersMap.clear();
+  },
+
+  cancelMarkerBatches() {
+    this.markerRenderGeneration++;
+    if (this.markerBatchTimer) {
+      clearTimeout(this.markerBatchTimer);
+      this.markerBatchTimer = null;
+    }
+    this.growingMarkers.clear();
+  },
+
+  renderMarkers() {
+    this.clearMarkers();
+
+    const markerPlaces = [];
+    const seenKeys = new Set();
+    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
+
+    // 1. Waypoint places are always rendered first
+    this.routeWaypoints.forEach(w => {
+      const key = w.placeId || w.name;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        markerPlaces.push(w);
+      }
+    });
+
+    // 2. Current page places
+    const startIdx = (this.currentPage - 1) * this.pageSize;
+    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
+    pageItems.forEach(r => {
+      const key = r.placeId || r.name;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        markerPlaces.push(r);
+      }
+    });
+
+    // 3. Remaining places up to 400
+    for (let i = 0; i < list.length && markerPlaces.length < 400; i++) {
+      const r = list[i];
+      const key = r.placeId || r.name;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        markerPlaces.push(r);
+      }
+    }
+
+    const createMarker = (r) => {
+      const lat = parseFloat(r.latitude);
+      const lng = parseFloat(r.longitude);
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      const key = r.placeId || r.name;
+      const wpIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
+      const isWaypoint = wpIdx !== -1;
+
+      if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+        const icon = isWaypoint ? this.getNumberedWaypointIcon(wpIdx + 1, false) : this.getPinIcon(r, false);
+        const marker = new google.maps.Marker({
+          position: { lat, lng },
+          map: this.googleMap,
+          title: r.name,
+          icon: icon,
+          zIndex: isWaypoint ? 100 + (wpIdx + 1) : 20
+        });
+
+        marker.addListener("click", () => {
+          this.showInfoWindow(r, marker);
+          this.scrollCardIntoView(key);
+          this.scrollWaypointCardIntoView(key);
+        });
+
+        marker.restaurant = r;
+        this.markersMap.set(key, marker);
+      } else if (this.fallbackMap && this.fallbackLayerGroup && window.L) {
+        const marker = isWaypoint
+          ? L.marker([lat, lng], {
+              icon: L.divIcon({
+                className: "custom-leaflet-marker",
+                html: `<div style="width:28px;height:28px;background:#2563eb;color:#fff;border:2px solid #fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;box-shadow:0 2px 5px rgba(0,0,0,0.3);">${wpIdx + 1}</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+              })
+            })
+          : L.circleMarker([lat, lng], {
+              radius: 8,
+              fillColor: "#f59e0b",
+              color: "#ffffff",
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.9
+            });
+
+        marker.bindPopup(this.getPopupHtml(r), { maxWidth: 300 });
+        marker.on("click", () => {
+          this.scrollCardIntoView(key);
+          this.scrollWaypointCardIntoView(key);
+        });
+
+        this.fallbackLayerGroup.addLayer(marker);
+        marker.restaurant = r;
+        this.markersMap.set(key, marker);
+      }
+    };
+
+    const generation = this.markerRenderGeneration;
+    let next = 0;
+    const renderBatch = () => {
+      if (generation !== this.markerRenderGeneration) return;
+      this.markerBatchTimer = null;
+      let count = 0;
+      while (next < markerPlaces.length && count < 25) {
+        const place = markerPlaces[next++];
+        const key = place.placeId || place.name;
+        if (!this.markersMap.has(key)) createMarker(place);
+        count++;
+      }
+      if (next < markerPlaces.length) this.markerBatchTimer = setTimeout(renderBatch, 16);
+    };
+    renderBatch();
+  },
+
+  getNumberedWaypointIcon(stopNumber, isHighlight = false) {
+    const size = isHighlight ? 36 : 28;
+    const bgColor = isHighlight ? "#1d4ed8" : "#2563eb";
+    const strokeColor = "#ffffff";
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${bgColor}" stroke="${strokeColor}" stroke-width="2.5"/>
+      <text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-family="-apple-system, sans-serif" font-size="${size * 0.44}px" font-weight="700">${stopNumber}</text>
+    </svg>`;
+    return {
+      url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(size, size),
+      anchor: new google.maps.Point(size / 2, size / 2)
+    };
+  },
+
+  getOriginIcon(isHighlight = false) {
+    const size = isHighlight ? 38 : 32;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="#dc2626" stroke="#ffffff" stroke-width="2.5"/>
+      <text x="50%" y="53%" dominant-baseline="middle" text-anchor="middle" font-size="${size * 0.46}px">🚩</text>
+    </svg>`;
+    return {
+      url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+      scaledSize: new google.maps.Size(size, size),
+      anchor: new google.maps.Point(size / 2, size / 2)
+    };
+  },
+
+  getPinIcon(r, isHighlight) {
+    const color = "#f59e0b";
+    const scale = isHighlight ? 1.6 : 1.3;
+    const strokeColor = isHighlight ? "#2563eb" : "#ffffff";
+    const strokeWeight = isHighlight ? 2.8 : 1.8;
+    const fillColor = isHighlight ? "#2563eb" : color;
+
+    return {
+      path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
+      fillColor: fillColor,
+      fillOpacity: 1,
+      strokeWeight: strokeWeight,
+      strokeColor: strokeColor,
+      scale: scale,
+      anchor: new google.maps.Point(12, 22)
+    };
+  },
+
+  highlightMarker(key, highlight) {
+    if (highlight) this.highlightedPinKey = key;
+    else if (this.highlightedPinKey === key) this.highlightedPinKey = null;
+
+    let marker = this.markersMap.get(key);
+    const r = this.findPlace(key);
+    if (!r || !marker) return;
+
+    const wpIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
+    const isWaypoint = wpIdx !== -1;
+
+    if (this.googleMap && !this.isFallbackMode && marker.setIcon) {
+      const icon = isWaypoint ? this.getNumberedWaypointIcon(wpIdx + 1, highlight) : this.getPinIcon(r, highlight);
+      marker.setIcon(icon);
+      marker.setZIndex(highlight ? 999 : (isWaypoint ? 100 + (wpIdx + 1) : 20));
+    }
+  },
+
+  scrollCardIntoView(key) {
+    const container = document.getElementById("mapPlacesCardsContainer");
+    if (!container) return;
+
+    const index = this.filteredPlaces.findIndex(place => (place.placeId || place.name) === key);
+    if (index >= 0) {
+      const page = Math.floor(index / this.pageSize) + 1;
+      if (this.currentPage !== page) {
+        this.currentPage = page;
+        this.renderPlacesCards();
+      }
+      const card = container.querySelector(`.map-place-card[data-key="${CSS.escape(key)}"]`);
+      if (card) {
+        container.querySelectorAll(".map-place-card").forEach(el => {
+          el.classList.remove("is-active");
+          el.classList.remove("active-highlight");
+        });
+        card.classList.add("is-active");
+        card.classList.add("active-highlight");
+        card.focus({ preventScroll: true });
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  },
+
+  // -------------------------------------------------------------
+  // Info Window / Popup Content
+  // -------------------------------------------------------------
+  getPopupHtml(r) {
+    const key = r.placeId || r.name;
+    const photoInfo = this.getRestaurantPhoto(r);
+    const inRouteIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
+    const isInRoute = inRouteIdx !== -1;
+
+    const statusObj = r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null;
+    const hoursBadge = statusObj
+      ? `<span class="status-badge ${statusObj.cls}" style="font-size:10px; padding:1px 5px; border-radius:4px;">${statusObj.label}</span>`
+      : "";
+
+    const routeBtn = !isInRoute ? `
+      <button onclick="window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}')" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:4px 9px; font-size:11px; font-weight:600; cursor:pointer;">
+        + 途经点
+      </button>
+    ` : `
+      <button onclick="window.mapExplorerRemoveSingleFromRoute('${this.escapeQuotes(key)}')" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:4px 9px; font-size:11px; font-weight:600; cursor:pointer;">
+        ✕ 移出路线
+      </button>
+    `;
+
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2px; max-width: 260px;">
+        <div style="display:flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+          ${photoInfo.url ? `<div style="width:48px;height:48px;flex-shrink:0;overflow:hidden;border-radius:6px"><img src="${this.escapeHtml(photoInfo.url)}" alt="${this.escapeHtml(r.name)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()" /></div>` : ''}
+          <div style="min-width: 0; flex: 1;">
+            <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(r.name)}">${this.escapeHtml(r.name)}</h4>
+            <div style="margin-top: 3px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+              ${hoursBadge}
+            </div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #64748b; margin-bottom: 3px;">
+          ★ ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"} (${r.reviews || 10}) · <b>${this.escapeHtml(r.price || "$$")}</b>
+        </div>
+        <div style="font-size: 11px; color: #334155; margin-bottom: 6px; line-height: 1.3;">
+          ${this.escapeHtml(r.address || "安大略省 GTA")}
+        </div>
+        <div style="display:flex; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
+          ${routeBtn}
+          <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer;">
+            导航
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
+  findPlace(key) {
+    return this.poiPlaces.get(key) ||
+           this.routeWaypoints.find(w => (w.placeId || w.name) === key) ||
+           this.displayedPlaces.find(r => (r.placeId || r.name) === key) ||
+           this.filteredPlaces?.find(r => (r.placeId || r.name) === key);
+  },
+
+  showInfoWindow(r, marker) {
+    if (this.isFallbackMode && marker && marker.openPopup) {
+      marker.openPopup();
+      return;
+    }
+    if (!this.infoWindow || !this.googleMap) return;
+
+    this.poiRequestId++;
+    this.activePopupKey = r.placeId || r.name;
+    this.infoWindow.setContent(this.getPopupHtml(r));
+    this.infoWindow.open(this.googleMap, marker);
+
+    if (r.placeId && r.placeId.startsWith("ChIJ") && !r.photoUrl && !this.googlePhotosCache.has(r.placeId)) {
+      this.fetchGooglePhotoForPlace(r.placeId).then(photoUrl => {
+        if (photoUrl && this.infoWindow && this.activePopupKey === (r.placeId || r.name)) {
+          r.photoUrl = photoUrl;
+          this.infoWindow.setContent(this.getPopupHtml(r));
+        }
+      });
+    }
+  },
+
+  async openGooglePoi(placeId, position) {
+    const requestId = ++this.poiRequestId;
+    this.activePopupKey = placeId;
+    this.infoWindow.setContent(`<div style="padding:8px">正在获取店铺详情...</div>`);
+    if (position) this.infoWindow.setPosition(position);
+    this.infoWindow.open({ map: this.googleMap });
+
+    let restaurant = this.findPlace(placeId);
+    if (!restaurant) {
+      const result = await Api.getGooglePlaceDetails(placeId, "zh-CN");
+      if (requestId !== this.poiRequestId) return;
+      if (!result.success || !result.place) {
+        this.infoWindow.setContent(`<div style="padding:8px">店铺详情加载失败，请重试</div>`);
+        return;
+      }
+      restaurant = result.place;
+    }
+    if (requestId !== this.poiRequestId) return;
+
+    this.poiPlaces.set(placeId, restaurant);
+    this.infoWindow.setContent(this.getPopupHtml(restaurant));
+  },
+
+  // -------------------------------------------------------------
+  // Authentic Photos
+  // -------------------------------------------------------------
+  getRestaurantPhoto(r) {
+    if (!r) return { url: null, isGoogle: false };
+    const raw = r.photoUrl;
+    if (typeof raw === "string" && raw.startsWith("http")) {
+      return { url: raw, isGoogle: true };
+    }
+    let cached = this.googlePhotosCache.get(r.placeId);
+    if (!cached && r.placeId) {
+      try { cached = sessionStorage.getItem("gphoto_" + r.placeId); } catch {}
+      if (cached) this.googlePhotosCache.set(r.placeId, cached);
+    }
+    return { url: cached || null, isGoogle: !!cached };
+  },
+
+  async fetchGooglePhotoForPlace(placeId) {
+    if (!placeId || !placeId.startsWith("ChIJ")) return null;
+    if (this.googlePhotosCache && this.googlePhotosCache.has(placeId)) {
+      return this.googlePhotosCache.get(placeId);
+    }
+    try {
+      const cached = sessionStorage.getItem("gphoto_" + placeId);
+      if (cached) {
+        if (this.googlePhotosCache) this.googlePhotosCache.set(placeId, cached);
+        return cached;
+      }
+    } catch (e) {}
+
+    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
+    if (!apiKey) return null;
+
+    try {
+      const resp = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
+        headers: {
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": "photos"
+        }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.photos && data.photos.length > 0 && data.photos[0].name) {
+          const photoUrl = `https://places.googleapis.com/v1/${data.photos[0].name}/media?maxHeightPx=300&maxWidthPx=300&key=${apiKey}`;
+          if (this.googlePhotosCache) this.googlePhotosCache.set(placeId, photoUrl);
+          try { sessionStorage.setItem("gphoto_" + placeId, photoUrl); } catch (e) {}
+          return photoUrl;
+        }
+      }
+    } catch (err) {
+      console.warn("fetchGooglePhotoForPlace error:", err);
+    }
+    return null;
+  },
+
+  async resolveVisibleGooglePhotos(pageItems) {
+    if (!Array.isArray(pageItems) || pageItems.length === 0) return;
+    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
+    if (!apiKey) return;
+
+    const itemsToFetch = pageItems.filter(r => {
+      if (!r || !r.placeId || !r.placeId.startsWith("ChIJ")) return false;
+      if (this.getRestaurantPhoto(r).isGoogle) return false;
+      if (this.googlePhotosCache && this.googlePhotosCache.has(r.placeId)) return false;
+      try {
+        if (sessionStorage.getItem("gphoto_" + r.placeId)) return false;
+      } catch (e) {}
+      return true;
+    });
+
+    if (itemsToFetch.length === 0) return;
+
+    const batchSize = 4;
+    for (let i = 0; i < itemsToFetch.length; i += batchSize) {
+      const batch = itemsToFetch.slice(i, i + batchSize);
+      await Promise.all(batch.map(async r => {
+        const photoUrl = await this.fetchGooglePhotoForPlace(r.placeId);
+        if (photoUrl) {
+          r.photoUrl = photoUrl;
+          const key = r.placeId || r.name;
+          const safeKey = this.escapeQuotes(key);
+          const cardEl = document.querySelector(`.map-place-card[data-key="${safeKey}"]`);
+          if (cardEl) {
+            const imgEl = cardEl.querySelector(".card-thumb img");
+            if (imgEl) imgEl.src = photoUrl;
+          }
+        }
+      }));
+    }
+  },
+
+  // -------------------------------------------------------------
+  // Map Creation & Fallback
   // -------------------------------------------------------------
   async initGoogleMap() {
     const canvas = document.getElementById("mapExplorerCanvas");
@@ -1306,7 +1964,6 @@ export const MapExplorer = {
     }
 
     const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
-    this.googleApiKey = apiKey;
     if (!apiKey) {
       this.triggerFallbackMode();
       return;
@@ -1314,29 +1971,20 @@ export const MapExplorer = {
 
     try {
       await new Promise((resolve, reject) => {
-        const existingScript = document.getElementById("googleMapsJsScript");
-        if (existingScript) {
-          existingScript.addEventListener("load", resolve);
-          existingScript.addEventListener("error", reject);
-          return;
-        }
-
         const script = document.createElement("script");
-        script.id = "googleMapsJsScript";
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&v=weekly`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=__greenOilInitMapCallback`;
         script.async = true;
         script.defer = true;
-        script.onload = resolve;
-        script.onerror = (err) => {
-          console.error("Google Maps API script load error:", err);
-          reject(err);
+        window.__greenOilInitMapCallback = () => {
+          delete window.__greenOilInitMapCallback;
+          resolve();
         };
+        script.onerror = reject;
         document.head.appendChild(script);
       });
-
       this.createMapInstance();
-    } catch (e) {
-      console.warn("Failed to load Google Maps script, enabling fallback map:", e);
+    } catch (err) {
+      console.warn("Failed to load Google Maps JS API:", err);
       this.triggerFallbackMode();
     }
   },
@@ -1350,46 +1998,57 @@ export const MapExplorer = {
 
     try {
       const defaultCommunity = GTA_COMMUNITIES.find(city => city.id === "scarborough") || GTA_COMMUNITIES[0];
-      const defaultCenter = { ...defaultCommunity.center }; // Scarborough default
       this.googleMap = new google.maps.Map(canvas, {
-        center: defaultCenter,
+        center: { ...defaultCommunity.center },
         zoom: defaultCommunity.zoom || 13,
-        mapId: "DEMO_MAP_ID",
         mapTypeControl: false,
         streetViewControl: true,
         fullscreenControl: true,
         zoomControl: true
       });
 
-
       if (google.maps.places) {
         this.placesService = new google.maps.places.PlacesService(this.googleMap);
       }
 
-      this.pinZoomScale = this.getPinZoomScale(this.googleMap.getZoom());
-      this.googleMap.addListener("zoom_changed", () => this.animatePinZoom());
+      if (google.maps.DirectionsService) {
+        this.directionsService = new google.maps.DirectionsService();
+      }
+      if (google.maps.DirectionsRenderer) {
+        this.directionsRenderer = new google.maps.DirectionsRenderer({
+          map: this.googleMap,
+          suppressMarkers: true,
+          polylineOptions: {
+            strokeColor: "#2563eb",
+            strokeWeight: 6,
+            strokeOpacity: 0.85
+          }
+        });
+      }
+
       this.infoWindow = new google.maps.InfoWindow();
-      this.infoWindow.addListener("closeclick", () => { this.activePopupKey = null; this.poiRequestId++; });
+      this.infoWindow.addListener("closeclick", () => {
+        this.activePopupKey = null;
+        this.poiRequestId++;
+      });
+
       this.googleMap.addListener("click", event => {
         this.hideMapContextMenu();
         if (!event.placeId) return;
         event.stop();
         this.openGooglePoi(event.placeId, event.latLng);
       });
+
       this.googleMap.addListener("rightclick", event => {
         event.domEvent?.preventDefault?.();
         event.stop?.();
         const coordinate = this.getMapEventCoordinate(event.latLng);
         if (!coordinate) return;
         const domEvent = event.domEvent;
-        this.showMapContextMenu(
-          coordinate.lat,
-          coordinate.lng,
-          domEvent?.clientX ?? 0,
-          domEvent?.clientY ?? 0
-        );
+        this.showMapContextMenu(coordinate.lat, coordinate.lng, domEvent?.clientX ?? 0, domEvent?.clientY ?? 0);
       });
 
+      this.updateOriginMarker();
     } catch (err) {
       console.warn("Google Maps instantiation failed:", err);
       this.triggerFallbackMode();
@@ -1438,7 +2097,7 @@ export const MapExplorer = {
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: '© OpenStreetMap contributors | Green Oil'
+      attribution: "© OpenStreetMap contributors | Green Oil"
     }).addTo(this.fallbackMap);
 
     this.fallbackLayerGroup = L.layerGroup().addTo(this.fallbackMap);
@@ -1450,153 +2109,133 @@ export const MapExplorer = {
       const original = event.originalEvent;
       this.showMapContextMenu(point.lat, point.lng, original?.clientX ?? 0, original?.clientY ?? 0);
     });
+
     this.drawSelectedBoundaries();
     this.renderMarkers();
+    this.updateOriginMarker();
+    this.updateRoute();
   },
 
   // -------------------------------------------------------------
-  // Area Google Places Fetching & KV Joining
+  // GeoJSON & Boundary Polygons
   // -------------------------------------------------------------
-  async loadPlacesForCurrentArea(searchGoogle = true) {
-    const requestId = ++this.areaLoadId;
-    this.areaAbort?.abort();
-    this.areaAbort = new AbortController();
-    this.mapQueryLoading = false;
-    this.mapQueryPage = 0;
-    this.currentPage = 1;
-    this.mapQueryTotal = 0;
-    this.mapQueryBbox = this.getQueryBounds();
-    this.mapQueryHasMore = this.mapQueryBbox[0] <= this.mapQueryBbox[2] && this.mapQueryBbox[1] <= this.mapQueryBbox[3];
-    this.allRestaurants = [];
-    this.kvPlaceIdsSet.clear();
-    this.kvNormalizedNamesSet.clear();
-    const searchId = searchGoogle ? ++this.googleSearchId : this.googleSearchId;
-    if (searchGoogle) this.googleAreaPlaces = [];
-    this.cancelMarkerBatches();
-    this.selectedMap.clear();
-    this.filteredPlaces = this.filteredPlaces || [];
-    this.updateSelectionUI();
-    const container = document.getElementById("mapPlacesCardsContainer");
-    const lang = this.getCurrentLanguage();
-    const loadingMsg = lang === "en" ? "Fetching Google Maps restaurants..." :
-                       lang === "ko" ? "Google Maps 음식점 목록을 가져오는 중..." :
-                       "正在获取区域 Google Maps 餐馆列表...";
-
-    if (container) {
-      container.innerHTML = `
-        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-          <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⏳</div>
-          <div style="font-weight: 600;">${loadingMsg}</div>
-        </div>
-      `;
-    }
-
-    if (searchGoogle) this.drawSelectedBoundaries();
-
-    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
-    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
-    const allNbs = this.getAllNeighborhoods();
-    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
-
-    let areaQuery = "";
-    if (this.searchKeyword) {
-      areaQuery = this.searchKeyword;
-    } else if (selectedNbs.length > 0) {
-      const nbNames = selectedNbs.map(nb => nb.nameEn || nb.name.split(" (")[0]).join(" ");
-      const cityName = selectedNbs[0].cityName || "Toronto";
-      areaQuery = `restaurants in ${nbNames} ${cityName} Ontario`;
-    } else if (!isAll && selectedCities.length > 0) {
-      const cityNames = selectedCities.map(c => c.nameEn || c.name.split(" (")[0]).join(" ");
-      areaQuery = `restaurants in ${cityNames} Ontario`;
-    } else {
-      areaQuery = "restaurants in Toronto Ontario";
-    }
-
-    // Query the complete restaurant set for this viewport independently of Google discovery.
-    this.displayedPlaces = [];
-    this.filterAndRenderPlaces();
-    const databaseLoad = this.loadMoreMapRestaurants();
-    if (searchGoogle) {
-      try {
-        const result = await Api.searchGooglePlaces(areaQuery);
-        if (searchId === this.googleSearchId) {
-          this.googleAreaPlaces = result?.success ? (result.places || []) : [];
-          this.mergeAreaPlaces();
+  async loadNeighbourhoodsGeoJson() {
+    try {
+      const municipalities = await fetch("assets/data/official_municipalities.json");
+      if (municipalities.ok) {
+        const cityData = await municipalities.json();
+        if (cityData && Array.isArray(cityData.features)) {
+          cityData.features.forEach(feature => {
+            const city = GTA_COMMUNITIES.find(c => c.id === feature.id);
+            if (city) Object.assign(city, { geometry: feature.geometry, bbox: feature.bbox });
+          });
         }
-      } catch (error) { console.warn("Google discovery failed:", error); }
+      }
+    } catch (e) {}
+
+    try {
+      const resp = await fetch("assets/data/gta_neighbourhoods.json");
+      if (resp.ok) {
+        this.neighbourhoodsGeoJson = await resp.json();
+      }
+    } catch (e) {}
+
+    if (!this.neighbourhoodsGeoJson) {
+      this.neighbourhoodsGeoJson = { type: "FeatureCollection", features: [] };
     }
-    await databaseLoad;
-    if (requestId !== this.areaLoadId) return;
+
+    try {
+      const subareasResponse = await fetch("assets/data/official_subareas.json");
+      if (subareasResponse.ok) {
+        const subareas = await subareasResponse.json();
+        if (subareas && Array.isArray(subareas.features)) {
+          this.neighbourhoodsGeoJson.features.push(...subareas.features);
+        }
+      }
+    } catch (e) {}
+
+    if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
+      this.neighbourhoodsMap.clear();
+      this.neighbourhoodsGeoJson.features.forEach(ft => {
+        if (ft.id) this.neighbourhoodsMap.set(ft.id, ft);
+        if (ft.code) this.neighbourhoodsMap.set(ft.code, ft);
+      });
+    }
   },
 
-  mergeAreaPlaces() {
-    const rawPlaces = this.googleAreaPlaces;
-    // Geographic filtering is applied after merging both sources.
-    const localMatches = this.allRestaurants;
-
-    // Merge Google places with locally loaded database items, prioritizing Google discovery.
-    const combinedMap = new Map();
-    rawPlaces.forEach(p => {
-      const key = p.placeId || p.name;
-      combinedMap.set(key, p);
+  clearBoundaries() {
+    this.polygonsMap.forEach(poly => {
+      if (poly.setMap) poly.setMap(null);
+      else if (this.fallbackMap && this.fallbackMap.removeLayer) this.fallbackMap.removeLayer(poly);
     });
+    this.polygonsMap.clear();
+  },
 
-    // Merge all locally loaded database restaurants for this viewport.
-    localMatches.forEach(r => {
-      const key = r.placeId || r.name;
-      if (!combinedMap.has(key)) {
-        combinedMap.set(key, r);
+  extractGooglePolygonPaths(geometry) {
+    if (!geometry) return [];
+    if (geometry.type === "Polygon") {
+      return geometry.coordinates.map(ring => ring.map(([lng, lat]) => ({ lat, lng })));
+    }
+    if (geometry.type === "MultiPolygon") {
+      const paths = [];
+      geometry.coordinates.forEach(polygon => {
+        polygon.forEach(ring => paths.push(ring.map(([lng, lat]) => ({ lat, lng }))));
+      });
+      return paths;
+    }
+    return [];
+  },
+
+  drawSelectedBoundaries() {
+    this.clearBoundaries();
+
+    const selectedAreas = this.activeNeighborhoodIds.size > 0
+      ? this.getAllNeighborhoods().filter(nb => this.activeNeighborhoodIds.has(nb.id))
+      : this.activeCityIds.has("all")
+        ? []
+        : GTA_COMMUNITIES.filter(c => this.activeCityIds.has(c.id));
+
+    if (selectedAreas.length === 0) return;
+
+    selectedAreas.forEach(area => {
+      if (!area.geometry) return;
+      if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+        const paths = this.extractGooglePolygonPaths(area.geometry);
+        if (paths.length === 0) return;
+        const polygon = new google.maps.Polygon({
+          paths,
+          strokeColor: "#2563eb",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#3b82f6",
+          fillOpacity: 0.08,
+          map: this.googleMap,
+          zIndex: 5
+        });
+        this.polygonsMap.set(area.id, polygon);
+      } else if (this.fallbackMap && window.L) {
+        const layer = L.geoJSON(area.geometry, {
+          style: {
+            color: "#2563eb",
+            weight: 2,
+            opacity: 0.8,
+            fillColor: "#3b82f6",
+            fillOpacity: 0.08
+          }
+        }).addTo(this.fallbackMap);
+        this.polygonsMap.set(area.id, layer);
       }
     });
-
-    // Check saved status and visit records for each place with fast O(1) hash maps
-    const kvByPlaceId = new Map();
-    const kvByName = new Map();
-    this.allRestaurants.forEach(r => {
-      if (r.placeId) kvByPlaceId.set(r.placeId, r);
-      if (r.name) kvByName.set(r.name.trim().toLowerCase(), r);
-    });
-
-    this.displayedPlaces = Array.from(combinedMap.values()).map(place => {
-      const inKV = this.checkIsInKv(place);
-      place.inKV = inKV;
-
-      const normName = (place.name || "").trim().toLowerCase();
-      const matchedKv = (place.placeId && kvByPlaceId.get(place.placeId)) || 
-                        (normName && kvByName.get(normName));
-
-      if (matchedKv) {
-        if (matchedKv.name && matchedKv.name !== place.name) {
-          if (!place.nameEn) place.nameEn = place.name;
-          place.name = matchedKv.name;
-          if (place._raw) place._raw["餐馆名称 (Name)"] = matchedKv.name;
-        }
-        place.isVisited = matchedKv.isVisited || false;
-        place.lastOutcome = matchedKv.lastOutcome || "";
-        place.lastVisitTime = matchedKv.lastVisitTime || "";
-      } else {
-        place.isVisited = place.isVisited || false;
-        place.lastOutcome = place.lastOutcome || "";
-        place.lastVisitTime = place.lastVisitTime || "";
-      }
-
-      return place;
-    });
-
-    this.filterAndRenderPlaces(true);
   },
 
   isPlaceInGeometry(place, geometry) {
-    const latitude = place.latitude ?? place.lat;
-    const longitude = place.longitude ?? place.lng;
-    if (latitude == null || longitude == null || String(latitude).trim() === "" || String(longitude).trim() === "") return false;
-    const lat = Number(latitude);
-    const lng = Number(longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return false;
+    const lat = Number(place.latitude ?? place.lat);
+    const lng = Number(place.longitude ?? place.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
     const polygons = geometry?.type === "Polygon" ? [geometry.coordinates] :
       geometry?.type === "MultiPolygon" ? geometry.coordinates : [];
 
-    // Return 0 outside, 1 inside, 2 on an edge. Include boundary points.
     const inRing = ring => {
       let inside = false;
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
@@ -1609,6 +2248,7 @@ export const MapExplorer = {
       }
       return inside ? 1 : 0;
     };
+
     return polygons.some(rings => {
       if (!rings?.length) return false;
       const outer = inRing(rings[0]);
@@ -1618,1084 +2258,333 @@ export const MapExplorer = {
     });
   },
 
-  filterAndRenderPlaces(preservePage = false) {
-    // Apply the same exact boundary to both Google discovery and saved places.
-    // Selected subareas take precedence over their parent city tags.
-    const selectedSubareas = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
-    const selectedAreas = selectedSubareas.length > 0 ? selectedSubareas :
-      this.activeCityIds.has("all") ? [] : GTA_COMMUNITIES.filter(city => this.activeCityIds.has(city.id));
-    let result = this.displayedPlaces.filter(place => selectedAreas.length === 0 ||
-      selectedAreas.some(area => this.isPlaceInGeometry(place, area.geometry)));
-
-    if (this.mapQueryBbox) {
-      const [west,south,east,north] = this.mapQueryBbox;
-      result = result.filter(r => Number(r.longitude) >= west && Number(r.longitude) <= east && Number(r.latitude) >= south && Number(r.latitude) <= north);
-    }
-
-    // 1. Category Filter
-    if (this.activeCategory !== "全部") {
-      result = result.filter(r => {
-        const catText = [r.categoriesRaw, r.categories ? r.categories.join(" ") : ""].join(" ");
-        return catText.includes(this.activeCategory);
+  // -------------------------------------------------------------
+  // Neighborhoods & Area Popover
+  // -------------------------------------------------------------
+  getAllNeighborhoods() {
+    const nbs = [];
+    if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
+      this.neighbourhoodsGeoJson.features.forEach(ft => {
+        const props = ft.properties || {};
+        nbs.push({
+          id: ft.id || props.AREA_ID || props.AREA_SHORT_CODE || ft.code,
+          name: props.AREA_NAME || props.NAME || ft.id,
+          nameZh: props.AREA_NAME_ZH || props.NAME_ZH || props.AREA_NAME || props.NAME || ft.id,
+          nameEn: props.AREA_NAME_EN || props.NAME_EN || props.AREA_NAME || props.NAME || ft.id,
+          cityName: props.CITY || "Toronto",
+          geometry: ft.geometry,
+          bbox: ft.bbox
+        });
       });
     }
-
-    // 2. Visited Filter
-    if (this.activeVisited === "visited") {
-      result = result.filter(r => r.isVisited === true);
-    } else if (this.activeVisited === "unvisited") {
-      result = result.filter(r => !r.isVisited);
-    }
-
-    // 3. Outcome Filter
-    if (this.activeOutcome !== "all") {
-      result = result.filter(r => r.lastOutcome === this.activeOutcome);
-    }
-
-    // 4. Keyword text search
-    if (this.searchKeyword) {
-      const kw = this.searchKeyword.toLowerCase();
-      result = result.filter(r => {
-        const str = [r.name, r.address, r.phone, r.categoriesRaw].join(" ").toLowerCase();
-        return str.includes(kw);
-      });
-    }
-
-    this.filteredPlaces = result;
-    this.currentPage = preservePage ? Math.min(this.currentPage, Math.ceil(result.length / this.pageSize) || 1) : 1;
-
-    // Prune selections that no longer match current filtered results
-    const validKeys = new Set(result.map(r => r.placeId || r.name));
-    for (const key of this.selectedMap.keys()) {
-      if (!validKeys.has(key)) {
-        this.selectedMap.delete(key);
-      }
-    }
-
-    this.updateResultsSummary();
-    this.renderMarkers();
-    this.renderPlacesCards();
-    this.updateSelectionUI();
+    return nbs;
   },
 
-  updateResultsSummary() {
-    const countEl = document.getElementById("mapResultsCount");
-    const unsavedCountEl = document.getElementById("mapUnsavedCount");
-    const regionTitleEl = document.getElementById("mapResultsRegionTitle");
-    const summaryEl = document.getElementById("mapResultsSummary");
+  togglePopover(forceState) {
+    const panel = document.getElementById("areaPopoverPanel");
+    if (!panel) return;
+    const isVisible = panel.style.display !== "none";
+    const nextState = typeof forceState === "boolean" ? forceState : !isVisible;
+    panel.style.display = nextState ? "block" : "none";
+    if (nextState) {
+      const searchInput = document.getElementById("popoverSearchInput");
+      if (searchInput) searchInput.focus();
+      this.renderPopover();
+    }
+  },
 
-    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
-    const total = list.length;
-    const unsaved = list.filter(r => !r.inKV).length;
+  getCurrentLanguage() {
+    return i18n?.currentLang || "zh";
+  },
 
+  getLocalizedName(item) {
     const lang = this.getCurrentLanguage();
-    const sep = lang === "zh" ? "、" : ", ";
+    if (lang === "en") return item.nameEn || item.name;
+    if (lang === "ko") return item.nameKo || item.name;
+    return item.nameZh || item.name;
+  },
 
-    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
-    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+  getLocalizedAllGta() {
+    const lang = this.getCurrentLanguage();
+    if (lang === "en") return "All GTA";
+    if (lang === "ko") return "광역 토론토 전체";
+    return "全部大区";
+  },
+
+  updateAreaSummaryBtn() {
+    const summary = document.getElementById("areaActiveTagsSummary");
+    if (!summary) return;
+
+    if (this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0) {
+      summary.innerHTML = `<span class="area-tag-pill active">${this.getLocalizedAllGta()}</span>`;
+      return;
+    }
+
+    const tags = [];
     const allNbs = this.getAllNeighborhoods();
-    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
-    let titleText = this.getLocalizedAllGta();
-    if (selectedNbs.length > 0) {
-      if (selectedNbs.length === 1) {
-        titleText = this.getLocalizedName(selectedNbs[0]);
-      } else if (selectedNbs.length === 2) {
-        titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])}`;
+    this.activeCityIds.forEach(id => {
+      const city = GTA_COMMUNITIES.find(c => c.id === id);
+      if (city) {
+        tags.push(`<span class="area-tag-pill">${this.getLocalizedName(city)}</span>`);
+      }
+    });
+
+    this.activeNeighborhoodIds.forEach(id => {
+      const nb = allNbs.find(n => n.id === id);
+      if (nb) {
+        tags.push(`<span class="area-tag-pill">${this.getLocalizedName(nb)}</span>`);
+      }
+    });
+
+    summary.innerHTML = tags.join("") || `<span class="area-tag-pill active">${this.getLocalizedAllGta()}</span>`;
+  },
+
+  renderPopover() {
+    const cityContainer = document.getElementById("popoverCityPills");
+    const nbContainer = document.getElementById("popoverNeighborhoodPills");
+    const activeTagsRow = document.getElementById("popoverActiveTagsRow");
+    const search = (this.popoverSearchQuery || "").toLowerCase();
+
+    if (activeTagsRow) {
+      const activeTags = [];
+      const allNbs = this.getAllNeighborhoods();
+
+      if (this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0) {
+        activeTags.push(`<span class="popover-tag-item active">${this.getLocalizedAllGta()}</span>`);
       } else {
-        titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
-      }
-    } else if (!isAll && selectedCities.length > 0) {
-      if (selectedCities.length === 1) {
-        titleText = this.getLocalizedName(selectedCities[0]);
-      } else if (selectedCities.length === 2) {
-        titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])}`;
-      } else {
-        titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
-      }
-    }
-
-    let formattedRegionTitle = "";
-    if (lang === "en") {
-      formattedRegionTitle = `${titleText} Restaurants (${total})`;
-    } else if (lang === "ko") {
-      formattedRegionTitle = `${titleText} 음식점 목록 (${total}개)`;
-    } else {
-      formattedRegionTitle = `${titleText} 餐馆列表 (${total} 家)`;
-    }
-
-    if (regionTitleEl) {
-      regionTitleEl.textContent = formattedRegionTitle;
-    }
-
-    if (summaryEl) {
-      if (lang === "en") {
-        summaryEl.innerHTML = `Matched <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">${total.toLocaleString()}</span> restaurants <span style="color: #64748b;">(New: <span id="mapUnsavedCount" style="font-weight: 700; color: #d97706;">${unsaved.toLocaleString()}</span>)</span>`;
-      } else if (lang === "ko") {
-        summaryEl.innerHTML = `총 <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">${total.toLocaleString()}</span>개 매장 매칭 <span style="color: #64748b;">(신규 미등록: <span id="mapUnsavedCount" style="font-weight: 700; color: #d97706;">${unsaved.toLocaleString()}</span>개)</span>`;
-      } else {
-        summaryEl.innerHTML = `共匹配 <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">${total.toLocaleString()}</span> 家餐馆 <span style="color: #64748b;">(未入库: <span id="mapUnsavedCount" style="font-weight: 700; color: #d97706;">${unsaved.toLocaleString()}</span> 家)</span>`;
-      }
-    } else {
-      if (countEl) countEl.textContent = total.toLocaleString();
-      if (unsavedCountEl) unsavedCountEl.textContent = unsaved.toLocaleString();
-    }
-  },
-
-  // -------------------------------------------------------------
-  // Map Markers Rendering (Google Maps & Leaflet)
-  // -------------------------------------------------------------
-  markerRenderGeneration: 0,
-  markerBatchTimer: null,
-  growingMarkers: new Map(),
-  markerGrowthFrame: null,
-  growthIconCache: new WeakMap(),
-
-  stopMarkerGrowth() {
-    if (this.markerGrowthFrame !== null) cancelAnimationFrame(this.markerGrowthFrame);
-    this.markerGrowthFrame = null;
-    this.growingMarkers.forEach((entry, marker) => marker.setIcon(entry.icon));
-    this.growingMarkers.clear();
-  },
-
-  growMarker(marker, icon) {
-    if (!icon.url || typeof requestAnimationFrame !== "function" ||
-        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || this.growingMarkers.size >= 80) return;
-    let frames = this.growthIconCache.get(icon);
-    if (!frames) {
-      frames = Array.from({ length: 13 }, (_, i) => {
-        const progress = i / 12;
-        const height = 0.08 + 0.92 * (1 - (1 - progress) ** 3);
-        return { ...icon,
-          scaledSize: new google.maps.Size(icon.scaledSize.width, icon.scaledSize.height * height),
-          anchor: new google.maps.Point(icon.anchor.x, icon.anchor.y * height)
-        };
-      });
-      this.growthIconCache.set(icon, frames);
-    }
-    marker.setIcon(frames[0]);
-    this.growingMarkers.set(marker, { icon, frames, started: performance.now(), frame: 0 });
-    if (this.markerGrowthFrame !== null) return;
-    const tick = now => {
-      this.markerGrowthFrame = null;
-      this.growingMarkers.forEach((entry, item) => {
-        const frame = Math.min(12, Math.floor((now - entry.started) / 280 * 12));
-        if (frame !== entry.frame) {
-          item.setIcon(frame === 12 ? entry.icon : entry.frames[frame]);
-          entry.frame = frame;
-        }
-        if (frame === 12) this.growingMarkers.delete(item);
-      });
-      if (this.growingMarkers.size) this.markerGrowthFrame = requestAnimationFrame(tick);
-    };
-    this.markerGrowthFrame = requestAnimationFrame(tick);
-  },
-
-  cancelMarkerBatches() {
-    this.stopMarkerGrowth();
-    this.markerRenderGeneration++;
-    if (this.markerBatchTimer !== null) clearTimeout(this.markerBatchTimer);
-    this.markerBatchTimer = null;
-  },
-
-  clearMarkers() {
-    this.cancelMarkerBatches();
-    if (this.isFallbackMode && this.fallbackLayerGroup) {
-      this.fallbackLayerGroup.clearLayers();
-    } else {
-      this.markersMap.forEach(marker => {
-        if (marker.setMap) marker.setMap(null);
-      });
-    }
-    this.markersMap.clear();
-  },
-
-  renderMarkers() {
-    this.clearMarkers();
-
-    // Determine markers to render:
-    // 1. Current page items (guarantees card-marker sync)
-    // 2. Google Places (unsaved) items
-    // 3. Remaining places up to max limit (default 600) to keep 60fps
-    const markerPlaces = [];
-    const seenKeys = new Set();
-    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
-
-    // A. Current page items
-    const startIdx = (this.currentPage - 1) * this.pageSize;
-    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
-    pageItems.forEach(r => {
-      const key = r.placeId || r.name;
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        markerPlaces.push(r);
-      }
-    });
-
-    // A2. Selected items (guarantees cross-page selected items are always on map)
-    this.selectedMap.forEach(r => {
-      const key = r.placeId || r.name;
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        markerPlaces.push(r);
-      }
-    });
-
-    // B. Google Places (unsaved)
-    list.forEach(r => {
-      if (!r.inKV) {
-        const key = r.placeId || r.name;
-        if (!seenKeys.has(key)) {
-          seenKeys.add(key);
-          markerPlaces.push(r);
-        }
-      }
-    });
-
-    // C. Remaining places up to max 600
-    const maxMarkers = 600;
-    for (let i = 0; i < list.length && markerPlaces.length < maxMarkers; i++) {
-      const r = list[i];
-      const key = r.placeId || r.name;
-      if (!seenKeys.has(key)) {
-        seenKeys.add(key);
-        markerPlaces.push(r);
-      }
-    }
-
-    const createMarker = r => {
-      const lat = parseFloat(r.latitude);
-      const lng = parseFloat(r.longitude);
-      if (isNaN(lat) || isNaN(lng)) return;
-
-      const key = r.placeId || r.name;
-      const isSelected = this.selectedMap.has(key);
-
-      if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map: this.googleMap,
-          title: r.name,
-          icon: this.getPinIcon(r, false),
-          zIndex: isSelected ? 50 : (!r.inKV ? 30 : 10)
-        });
-
-        marker.addListener("click", () => {
-          this.showInfoWindow(r, marker);
-          this.scrollCardIntoView(key);
-        });
-
-        marker.restaurant = r;
-        this.markersMap.set(key, marker);
-        this.growMarker(marker, this.getPinIcon(r, false));
-      } else if (this.fallbackMap && this.fallbackLayerGroup && window.L) {
-        const color = isSelected ? "#2563eb" : (!r.inKV ? "#f59e0b" : "#10b981");
-        const marker = L.circleMarker([lat, lng], {
-          radius: isSelected ? 9 : (!r.inKV ? 8 : 7),
-          fillColor: color,
-          color: isSelected ? "#1d4ed8" : "#ffffff",
-          weight: isSelected ? 3 : 2,
-          opacity: 1,
-          fillOpacity: 0.95
-        });
-
-        marker.bindPopup(this.getPopupHtml(r), { maxWidth: 300 });
-        marker.on("click", () => {
-          this.scrollCardIntoView(key);
-        });
-
-        this.fallbackLayerGroup.addLayer(marker);
-        marker.restaurant = r;
-        this.markersMap.set(key, marker);
-      }
-    };
-
-    const generation = this.markerRenderGeneration;
-    let next = 0;
-    const renderBatch = () => {
-      if (generation !== this.markerRenderGeneration) return;
-      this.markerBatchTimer = null;
-      const started = performance.now();
-      let count = 0;
-      // Bound both work count and elapsed JS time, then yield for interaction/paint.
-      while (next < markerPlaces.length && count < 20 && (count === 0 || performance.now() - started < 6)) {
-        const place = markerPlaces[next++];
-        const key = place.placeId || place.name;
-        // Hovering a card can already have created this marker between batches.
-        if (!this.markersMap.has(key)) createMarker(place);
-        count++;
-      }
-      if (next < markerPlaces.length) this.markerBatchTimer = setTimeout(renderBatch, 16);
-    };
-    renderBatch();
-  },
-
-  pinIconCache: new Map(),
-  pinZoomScale: 1,
-  pinZoomFrame: null,
-  pinZoomTransition: null,
-  highlightedPinKey: null,
-
-  getPinZoomScale(zoom) {
-    return Math.max(0.6, Math.min(1.4, 1 + ((zoom ?? 13) - 13) * 0.1));
-  },
-
-  animatePinZoom() {
-    this.stopMarkerGrowth();
-    this.pinZoomTransition = {
-      from: this.pinZoomScale,
-      target: this.getPinZoomScale(this.googleMap.getZoom()),
-      started: performance.now(),
-      duration: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 240
-    };
-    // Retarget the existing loop during continuous scrolling; do not cancel it
-    // on every zoom event, which can starve animation frames.
-    if (this.pinZoomFrame !== null) return;
-    const tick = now => {
-      const { from, target, started, duration } = this.pinZoomTransition;
-      const progress = duration ? Math.min(1, Math.max(0, (now - started) / duration)) : 1;
-      this.pinZoomScale = from + (target - from) * progress;
-      // Share each exact-size icon within this frame, without rounding its size.
-      const icons = new Map();
-      this.markersMap.forEach((marker, key) => {
-        const place = marker.restaurant;
-        if (!place || !marker.setIcon) return;
-        const highlighted = this.highlightedPinKey === key;
-        const style = `${!!place.inKV}:${this.selectedMap.has(key)}:${highlighted}`;
-        if (!icons.has(style)) icons.set(style, this.getPinIcon(place, highlighted));
-        marker.setIcon(icons.get(style));
-      });
-      this.pinZoomFrame = progress < 1 ? requestAnimationFrame(tick) : null;
-    };
-    this.pinZoomFrame = requestAnimationFrame(tick);
-  },
-
-  getPinIcon(r, isHighlight) {
-    const key = r.placeId || r.name;
-    const isSelected = this.selectedMap.has(key);
-    const color = !r.inKV ? "#f59e0b" : "#10b981";
-    const scale = isHighlight ? 1.7 : (isSelected ? 1.55 : 1.35);
-    const strokeColor = isHighlight ? "#2563eb" : (isSelected ? "#1d4ed8" : "#ffffff");
-    const strokeWeight = isHighlight ? 2.8 : (isSelected ? 2.5 : 1.8);
-    const fillColor = isHighlight ? "#2563eb" : (isSelected ? "#2563eb" : color);
-
-    const symbol = {
-      path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
-      fillColor: fillColor,
-      fillOpacity: 1,
-      strokeWeight: strokeWeight,
-      strokeColor: strokeColor,
-      scale: scale,
-      anchor: new google.maps.Point(12, 22)
-    };
-    // Reuse a small set of raster icons instead of per-marker vector paths.
-    if (typeof Path2D === "undefined") return symbol;
-    const cacheKey = `${fillColor}:${strokeColor}:${scale}:${strokeWeight}`;
-    if (!this.pinIconCache.has(cacheKey)) {
-      const size = 48;
-      const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = size * 2;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return symbol;
-      ctx.scale(2, 2);
-      ctx.translate(size / 2 - 12 * scale, size - 4 - 22 * scale);
-      ctx.scale(scale, scale);
-      const path = new Path2D(symbol.path);
-      ctx.fillStyle = fillColor;
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = strokeWeight / scale;
-      ctx.fill(path);
-      ctx.stroke(path);
-      this.pinIconCache.set(cacheKey, {
-        url: canvas.toDataURL(),
-        scaledSize: new google.maps.Size(size, size),
-        anchor: new google.maps.Point(size / 2, size - 4)
-      });
-    }
-    const icon = this.pinIconCache.get(cacheKey);
-    const factor = this.pinZoomScale;
-    return { ...icon,
-      scaledSize: new google.maps.Size(icon.scaledSize.width * factor, icon.scaledSize.height * factor),
-      anchor: new google.maps.Point(icon.anchor.x * factor, icon.anchor.y * factor)
-    };
-  },
-
-  highlightMarker(key, highlight) {
-    if (highlight) this.highlightedPinKey = key;
-    else if (this.highlightedPinKey === key) this.highlightedPinKey = null;
-    let marker = this.markersMap.get(key);
-    const r = this.filteredPlaces.find(item => (item.placeId || item.name) === key);
-    if (!r) return;
-
-    if (!marker && highlight) {
-      const lat = parseFloat(r.latitude);
-      const lng = parseFloat(r.longitude);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-          marker = new google.maps.Marker({
-            position: { lat, lng },
-            map: this.googleMap,
-            title: r.name,
-            icon: this.getPinIcon(r, true),
-            zIndex: 999
-          });
-          marker.addListener("click", () => {
-            this.showInfoWindow(r, marker);
-            this.scrollCardIntoView(key);
-          });
-          marker.restaurant = r;
-        this.markersMap.set(key, marker);
-        }
-      }
-    }
-
-    if (!marker) return;
-    this.growingMarkers.delete(marker);
-
-    if (this.googleMap && !this.isFallbackMode && marker.setIcon) {
-      marker.setIcon(this.getPinIcon(r, highlight));
-      marker.setZIndex(highlight ? 999 : (!r.inKV ? 30 : 10));
-    } else if (this.fallbackMap && marker.setStyle) {
-      marker.setStyle({
-        radius: highlight ? 11 : (!r.inKV ? 8 : 7),
-        fillColor: highlight ? "#2563eb" : (!r.inKV ? "#f59e0b" : "#10b981")
-      });
-    }
-  },
-
-  scrollCardIntoView(key) {
-    const container = document.getElementById("mapPlacesCardsContainer");
-    if (!container) return;
-
-    const index = this.filteredPlaces.findIndex(place => (place.placeId || place.name) === key);
-    if (index < 0) return;
-    const page = Math.floor(index / this.pageSize) + 1;
-    if (this.currentPage !== page) {
-      this.currentPage = page;
-      this.renderPlacesCards();
-      this.updateSelectionUI();
-    }
-    const card = container.querySelector(`.map-place-card[data-key="${CSS.escape(key)}"]`);
-    if (card) {
-      container.querySelectorAll(".map-place-card").forEach(el => el.classList.remove("is-active"));
-      card.classList.add("is-active");
-      card.focus({ preventScroll: true });
-      card.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  },
-
-  // -------------------------------------------------------------
-  // Restaurant Photo Resolver (Google Places photos only)
-  // -------------------------------------------------------------
-  getRestaurantPhoto(r) {
-    if (!r) return { url: null, isGoogle: false };
-    const raw = r.photoUrl;
-    if (typeof raw === "string") {
-      const url = raw.startsWith("/api/") ? `${Api.getWorkerUrl()}${raw}` : raw;
-      try {
-        const parsed = new URL(url);
-        if (parsed.protocol === "https:" && (/^(places\.googleapis\.com|maps\.googleapis\.com|[^/]+\.googleusercontent\.com|[^/]+\.ggpht\.com)$/.test(parsed.hostname) || (parsed.origin === new URL(Api.getWorkerUrl()).origin && parsed.pathname.includes("photo")))) {
-          return { url, isGoogle: true };
-        }
-      } catch {}
-    }
-    let cached = this.googlePhotosCache.get(r.placeId);
-    if (!cached && r.placeId) {
-      try { cached = sessionStorage.getItem("gphoto_" + r.placeId); } catch {}
-      if (cached) this.googlePhotosCache.set(r.placeId, cached);
-    }
-    return { url: cached || null, isGoogle: !!cached };
-  },
-
-  /**
-   * Fetch authentic Google Places photo for a single Place ID
-   * Reads from cache first, then calls Google Places API (New) with public key
-   */
-  async fetchGooglePhotoForPlace(placeId) {
-    if (!placeId || !placeId.startsWith("ChIJ")) return null;
-    if (this.googlePhotosCache && this.googlePhotosCache.has(placeId)) {
-      return this.googlePhotosCache.get(placeId);
-    }
-    try {
-      const cached = sessionStorage.getItem("gphoto_" + placeId);
-      if (cached) {
-        if (this.googlePhotosCache) this.googlePhotosCache.set(placeId, cached);
-        return cached;
-      }
-    } catch (e) {}
-
-    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
-    if (!apiKey) return null;
-
-    try {
-      const resp = await fetch(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`, {
-        headers: {
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "photos"
-        }
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.photos && data.photos.length > 0 && data.photos[0].name) {
-          const photoUrl = `https://places.googleapis.com/v1/${data.photos[0].name}/media?maxHeightPx=300&maxWidthPx=300&key=${apiKey}`;
-          if (this.googlePhotosCache) this.googlePhotosCache.set(placeId, photoUrl);
-          try {
-            sessionStorage.setItem("gphoto_" + placeId, photoUrl);
-          } catch (e) {}
-          return photoUrl;
-        }
-      }
-    } catch (err) {
-      console.warn("fetchGooglePhotoForPlace error:", err);
-    }
-    return null;
-  },
-
-  /**
-   * Resolves authentic Google Places photos for all visible cards on the page
-   */
-  async resolveVisibleGooglePhotos(pageItems) {
-    if (!Array.isArray(pageItems) || pageItems.length === 0) return;
-    const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
-    if (!apiKey) return;
-
-    const itemsToFetch = pageItems.filter(r => {
-      if (!r || !r.placeId || !r.placeId.startsWith("ChIJ")) return false;
-      if (this.getRestaurantPhoto(r).isGoogle) return false;
-      if (this.googlePhotosCache && this.googlePhotosCache.has(r.placeId)) return false;
-      try {
-        if (sessionStorage.getItem("gphoto_" + r.placeId)) return false;
-      } catch (e) {}
-      return true;
-    });
-
-    if (itemsToFetch.length === 0) return;
-
-    const batchSize = 4;
-    for (let i = 0; i < itemsToFetch.length; i += batchSize) {
-      const batch = itemsToFetch.slice(i, i + batchSize);
-      await Promise.all(batch.map(async r => {
-        const photoUrl = await this.fetchGooglePhotoForPlace(r.placeId);
-        if (photoUrl) {
-          r.photoUrl = photoUrl;
-          const key = r.placeId || r.name;
-          const safeKey = this.escapeQuotes(key);
-          const cardEl = document.querySelector(`.map-place-card[data-key="${safeKey}"]`);
-          if (cardEl) {
-            const imgEl = cardEl.querySelector(".card-thumb img");
-            if (imgEl) {
-              imgEl.src = photoUrl;
-
-            }
+        this.activeCityIds.forEach(id => {
+          const city = GTA_COMMUNITIES.find(c => c.id === id);
+          if (city) {
+            activeTags.push(`
+              <span class="popover-tag-item">
+                ${this.getLocalizedName(city)}
+                <span class="popover-tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveCity('${city.id}')">✕</span>
+              </span>
+            `);
           }
-        }
-      }));
-    }
-  },
+        });
 
-  // -------------------------------------------------------------
-  // Right Side Restaurant Cards Rendering
-  // -------------------------------------------------------------
-  renderPlacesCards() {
-    const container = document.getElementById("mapPlacesCardsContainer");
-    if (!container) return;
-    const lang = this.getCurrentLanguage();
-    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
-
-    if (list.length === 0) {
-      const emptyTitle = lang === "en" ? "No matching restaurants found in this area" :
-                         lang === "ko" ? "선택한 지역에 일치하는 음식점이 없습니다" :
-                         "当前区域暂未检索到符合条件的餐馆";
-      const emptySub = lang === "en" ? "Try switching category or selecting another area" :
-                       lang === "ko" ? "다른 카테고리를 선택하거나 지역을 변경해 보세요" :
-                       "尝试切换分类或搜索其它商圈";
-      container.innerHTML = `
-        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-          <div style="font-weight: 600; font-size: 0.95rem;">${emptyTitle}</div>
-          <div style="font-size: 0.8rem; margin-top: 0.35rem;">${emptySub}</div>
-        </div>
-      `;
-      this.renderPagination(0);
-      return;
+        this.activeNeighborhoodIds.forEach(id => {
+          const nb = allNbs.find(n => n.id === id);
+          if (nb) {
+            activeTags.push(`
+              <span class="popover-tag-item">
+                ${this.getLocalizedName(nb)}
+                <span class="popover-tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}')">✕</span>
+              </span>
+            `);
+          }
+        });
+      }
+      activeTagsRow.innerHTML = activeTags.join("");
     }
 
-    const total = list.length;
-    const totalPages = Math.ceil(total / this.pageSize) || 1;
-    const startIdx = (this.currentPage - 1) * this.pageSize;
-    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
+    if (cityContainer) {
+      const cities = GTA_COMMUNITIES.filter(c => {
+        if (!search) return true;
+        const nameStr = `${c.name} ${c.nameEn || ''} ${c.nameZh || ''}`.toLowerCase();
+        return nameStr.includes(search);
+      });
 
-    const txtInKv = lang === "en" ? "✓ In database" : (lang === "ko" ? "✓ 데이터베이스 등록" : "✓ 已入库");
-    const txtNewPlace = lang === "en" ? "Not saved" : (lang === "ko" ? "미등록" : "未入库");
-    const txtVisited = lang === "en" ? "Visited" : (lang === "ko" ? "방문 완료" : "已拜访");
-    const txtUnvisited = lang === "en" ? "Unvisited" : (lang === "ko" ? "미방문" : "未拜访");
-    const txtLogged = lang === "en" ? "Logged" : (lang === "ko" ? "기록됨" : "已记录");
-    const txtRecentVisit = lang === "en" ? "Recent visit" : (lang === "ko" ? "최근 방문" : "最近拜访");
-    const txtSaveKv = lang === "en" ? "Save to DB" : (lang === "ko" ? "데이터베이스 저장" : "保存至数据库");
-    const txtSaveKvTitle = lang === "en" ? "Save to Database" : (lang === "ko" ? "데이터베이스에 저장" : "立即一键保存到数据库");
-    const txtLogVisit = lang === "en" ? "Log Visit" : (lang === "ko" ? "방문 기록" : "拜访记录");
-    const txtLogVisitTitle = lang === "en" ? "Log on-site visit" : (lang === "ko" ? "현장 방문 기록" : "登记现场拜访记录");
-    const txtNav = lang === "en" ? "Directions" : (lang === "ko" ? "길찾기" : "导航");
-    const txtNavTitle = lang === "en" ? "Navigate in Google Maps" : (lang === "ko" ? "Google 지도 길찾기" : "Google Maps 导航");
-    const txtDefaultAddr = lang === "en" ? "Ontario GTA" : (lang === "ko" ? "온타리오 GTA" : "安大略省 GTA");
-    const txtDefaultCat = lang === "en" ? "Food & Dining" : (lang === "ko" ? "음식 및 다이닝" : "餐饮美食");
-
-    container.innerHTML = pageItems.map(r => {
-      const key = r.placeId || r.name;
-      const isSelected = this.selectedMap.has(key);
-      const photoInfo = this.getRestaurantPhoto(r);
-
-      const kvBadge = r.inKV
-        ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:600;">${txtInKv}</span>`
-        : `<span class="badge" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-size:0.72rem; padding:2px 7px; border-radius:4px; font-weight:700;">${txtNewPlace}</span>`;
-
-      const visitBadge = r.isVisited
-        ? `<span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #6ee7b7; font-size:0.7rem; padding:2px 6px; border-radius:4px; font-weight:600;" title="${txtRecentVisit}: ${this.escapeHtml(r.lastVisitTime || '')}">${txtVisited} · ${this.escapeHtml(r.lastOutcome || txtLogged)}</span>`
-        : `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; font-size:0.7rem; padding:2px 6px; border-radius:4px;">${txtUnvisited}</span>`;
-
-      const statusObj = (typeof Restaurants !== "undefined" && Restaurants.formatStatus)
-        ? Restaurants.formatStatus(r.status, r.openingHours)
-        : (r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null);
-      const hoursBadge = statusObj
-        ? `<span class="status-badge ${statusObj.cls}" style="font-size:0.7rem; padding:2px 6px; border-radius:4px; line-height:1.2;">${statusObj.label}</span>`
-        : "";
-
-      const ratingStr = r.rating ? `★ ${parseFloat(r.rating).toFixed(1)}` : "★ 4.2";
-      const reviewsStr = r.reviews ? `(${r.reviews})` : "(15+)";
-      const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : txtDefaultCat);
-
-      const saveKvBtn = !r.inKV ? `
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); window.mapExplorerAddSingleToKv('${this.escapeQuotes(key)}');" style="background:#059669; border-color:#059669; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="${txtSaveKvTitle}">
-          <span>${txtSaveKv}</span>
-        </button>
-      ` : "";
-
-      const visitActionBtn = r.inKV ? `
-        <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerLogVisit('${this.escapeQuotes(key)}');" style="font-size:0.75rem; padding:0.25rem 0.5rem;" title="${txtLogVisitTitle}">
-          <span>${txtLogVisit}</span>
-        </button>
-      ` : "";
-
-      return `
-        <div tabindex="-1" class="map-place-card ${isSelected ? 'is-selected' : ''}" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
-          <div class="card-thumb" style="${photoInfo.url ? '' : 'display:none'}">
-            <img ${photoInfo.url ? `src="${this.escapeHtml(photoInfo.url)}"` : ''} alt="${this.escapeHtml(r.name)}" loading="lazy" class="card-img" onload="this.parentElement.style.display=''" onerror="this.parentElement.style.display='none'" />
-          </div>
-          <div class="card-main">
-            <div class="card-title-row" style="display: flex; align-items: center; gap: 0.5rem;">
-              <input 
-                type="checkbox" 
-                class="custom-checkbox map-card-select-cb" 
-                ${isSelected ? 'checked' : ''} 
-                onclick="event.stopPropagation(); window.mapExplorerToggleSelect('${this.escapeQuotes(key)}');" 
-                title="${isSelected ? (i18n.t("btn_clear_selection") || '取消勾选') : (i18n.t("btn_select_all") || '勾选餐馆')}" 
-              />
-              <h4 class="card-title" title="${this.escapeHtml(r.name)}" style="flex: 1; margin: 0;">${this.escapeHtml(r.name)}</h4>
-              <span style="font-size: 0.78rem; font-weight: 700; color: #475569; flex-shrink: 0;">${this.escapeHtml(r.price || "$$")}</span>
-            </div>
-
-            <div class="card-meta-row">
-              <span class="card-rating">${ratingStr}</span>
-              <span>${reviewsStr}</span>
-              <span>·</span>
-              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escapeHtml(categoryStr)}</span>
-            </div>
-
-            <div class="card-badges-row">
-              ${hoursBadge}
-              ${kvBadge}
-              ${visitBadge}
-            </div>
-
-            <div class="card-address" title="${this.escapeHtml(r.address || '')}">
-              ${this.escapeHtml(r.address || txtDefaultAddr)}
-            </div>
-
-            <div class="card-actions-row">
-              ${saveKvBtn}
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="color:#2563eb; border-color:rgba(37,99,235,0.3); font-size:0.75rem; padding:0.25rem 0.5rem;" title="${i18n.t("btn_add_waypoint")}">
-                ${i18n.t("btn_add_waypoint")}
-              </button>
-              ${visitActionBtn}
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="${txtNavTitle}">
-                ${txtNav}
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    this.renderPagination(total);
-    this.resolveVisibleGooglePhotos(pageItems);
-    this.updateSelectionUI();
-  },
-
-  renderPagination(total) {
-    const infoEl = document.getElementById("mapPaginationInfo");
-    const controlsEl = document.getElementById("mapPaginationControls");
-    if (!infoEl || !controlsEl) return;
-    const lang = this.getCurrentLanguage();
-
-    if (total === 0) {
-      infoEl.textContent = lang === "en" ? "Showing 0 - 0 of 0 restaurants" :
-                           lang === "ko" ? "0 - 0 / 총 0개 매장" :
-                           "显示 0 - 0 / 共 0 家餐馆";
-      controlsEl.innerHTML = "";
-      return;
-    }
-
-    const totalPages = Math.ceil(total / this.pageSize) || 1;
-    const startIdx = (this.currentPage - 1) * this.pageSize + 1;
-    const endIdx = Math.min(this.currentPage * this.pageSize, total);
-
-    infoEl.textContent = lang === "en" ? `Showing ${startIdx} - ${endIdx} of ${total} restaurants` :
-                         lang === "ko" ? `${startIdx} - ${endIdx} / 총 ${total}개 매장` :
-                         `显示 ${startIdx} - ${endIdx} / 共 ${total} 家餐馆`;
-
-    let html = `
-      <button class="btn btn-secondary btn-sm" ${this.currentPage === 1 ? 'disabled' : ''} onclick="window.mapExplorerGoToPage(${this.currentPage - 1})">&lt;</button>
-    `;
-
-    let lastRendered = 0;
-    for (let p = 1; p <= totalPages; p++) {
-      if (p === 1 || p === totalPages || (p >= this.currentPage - 1 && p <= this.currentPage + 1)) {
-        if (lastRendered > 0 && p - lastRendered > 1) {
-          html += `<span style="display:inline-flex; align-items:center; padding:0 4px; color:var(--text-muted); font-size:0.8rem; user-select:none;">...</span>`;
-        }
-        html += `
-          <button class="btn ${p === this.currentPage ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="window.mapExplorerGoToPage(${p})">${p}</button>
+      cityContainer.innerHTML = cities.map(c => {
+        const isSelected = this.activeCityIds.has(c.id);
+        return `
+          <button type="button" class="popover-pill-btn ${isSelected ? 'selected' : ''}" data-city="${c.id}">
+            ${this.getLocalizedName(c)}
+          </button>
         `;
-        lastRendered = p;
+      }).join("");
+    }
+
+    if (nbContainer) {
+      const allNbs = this.getAllNeighborhoods();
+      const nbs = allNbs.filter(nb => {
+        if (!search) return false;
+        const nameStr = `${nb.name} ${nb.nameEn || ''} ${nb.nameZh || ''}`.toLowerCase();
+        return nameStr.includes(search);
+      });
+
+      nbContainer.innerHTML = nbs.slice(0, 30).map(nb => {
+        const isSelected = this.activeNeighborhoodIds.has(nb.id);
+        return `
+          <button type="button" class="popover-pill-btn ${isSelected ? 'selected' : ''}" data-neighborhood="${nb.id}">
+            ${this.getLocalizedName(nb)}
+          </button>
+        `;
+      }).join("");
+    }
+  },
+
+  toggleCity(cityId) {
+    if (cityId === "all") {
+      this.activeCityIds = new Set(["all"]);
+      this.activeNeighborhoodIds.clear();
+    } else {
+      this.activeCityIds.delete("all");
+      if (this.activeCityIds.has(cityId)) {
+        this.activeCityIds.delete(cityId);
+      } else {
+        this.activeCityIds.add(cityId);
+      }
+      if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
+        this.activeCityIds.add("all");
       }
     }
-
-    html += `
-      <button class="btn btn-secondary btn-sm" ${this.currentPage === totalPages ? 'disabled' : ''} onclick="window.mapExplorerGoToPage(${this.currentPage + 1})">&gt;</button>
-    `;
-
-    controlsEl.innerHTML = html;
+    this.renderPopover();
+    this.updateAreaSummaryBtn();
+    this.panToSelectedArea();
+    this.saveFilterState();
+    this.loadPlacesForCurrentArea();
   },
 
-  goToPage(page) {
-    const totalPages = Math.ceil(this.filteredPlaces.length / this.pageSize) || 1;
-    this.currentPage = Math.max(1, Math.min(Number(page) || 1, totalPages));
-    this.renderPlacesCards();
-  },
-
-  // -------------------------------------------------------------
-  // Info Window / Popup Content
-  // -------------------------------------------------------------
-  getPopupHtml(r) {
-    const key = r.placeId || r.name;
-    const lang = this.getCurrentLanguage();
-    const photoInfo = this.getRestaurantPhoto(r);
-
-    const statusObj = (typeof Restaurants !== "undefined" && Restaurants.formatStatus)
-      ? Restaurants.formatStatus(r.status, r.openingHours)
-      : (r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null);
-    const hoursBadge = statusObj
-      ? `<span class="status-badge ${statusObj.cls}" style="font-size:10px; padding:1px 5px; border-radius:4px;">${statusObj.label}</span>`
-      : "";
-
-    const kvBadge = r.inKV 
-      ? `<span style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:600;">✓ ${lang === "en" ? "In DB" : (lang === "ko" ? "등록 매장" : "已入库")}</span>`
-      : `<span style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; padding:1px 5px; border-radius:4px; font-size:10px; font-weight:700;">${lang === "en" ? "Not in DB" : (lang === "ko" ? "미등록" : "未入库")}</span>`;
-
-    const saveText = lang === "en" ? "Save to DB" : (lang === "ko" ? "DB 저장" : "保存至数据库");
-    const navText = lang === "en" ? "Directions" : (lang === "ko" ? "길찾기" : "导航");
-    const noAddrText = lang === "en" ? "No address" : (lang === "ko" ? "주소 없음" : "暂无地址");
-
-    const saveBtn = !r.inKV ? `
-      <button onclick="window.mapExplorerAddSingleToKv('${this.escapeQuotes(key)}')" style="background:#059669; color:white; border:none; border-radius:4px; padding:4px 8px; font-size:11px; font-weight:600; cursor:pointer;">
-        ${saveText}
-      </button>
-    ` : "";
-
-    return `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2px; max-width: 260px;">
-        <div style="display:flex; gap: 8px; align-items: center; margin-bottom: 6px;">
-          ${photoInfo.url ? `<div style="width:48px;height:48px;flex-shrink:0;overflow:hidden;border-radius:6px"><img src="${this.escapeHtml(photoInfo.url)}" alt="${this.escapeHtml(r.name)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()" /></div>` : ''}
-          <div style="min-width: 0; flex: 1;">
-            <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(r.name)}">${this.escapeHtml(r.name)}</h4>
-            <div style="margin-top: 3px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
-              ${hoursBadge}
-              ${kvBadge}
-            </div>
-          </div>
-        </div>
-        <div style="font-size: 11px; color: #64748b; margin-bottom: 3px;">
-          ★ ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"} (${r.reviews || 10}) · <b>${this.escapeHtml(r.price || "$$")}</b>
-        </div>
-        <div style="font-size: 11px; color: #334155; margin-bottom: 6px; line-height: 1.3;">
-          ${this.escapeHtml(r.address || noAddrText)}
-        </div>
-        <div style="display:flex; gap: 5px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
-          ${saveBtn}
-          <button onclick="window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}')" style="background:#2563eb; color:white; border:none; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:600; cursor:pointer;">
-            ${i18n.t("btn_add_waypoint")}
-          </button>
-          <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer;">
-            ${navText}
-          </button>
-        </div>
-      </div>
-    `;
-  },
-
-  findPlace(key) {
-    return this.poiPlaces.get(key) || 
-           this.displayedPlaces.find(r => (r.placeId || r.name) === key) || 
-           this.filteredPlaces?.find(r => (r.placeId || r.name) === key) ||
-           this.allRestaurants?.find(r => (r.placeId || r.name) === key);
-  },
-
-  async openGooglePoi(placeId, position) {
-    const requestId = ++this.poiRequestId;
-    this.activePopupKey = placeId;
-    this.infoWindow.setContent(`<div style="padding:8px">${i18n.t("map_poi_loading")}</div>`);
-    if (position) this.infoWindow.setPosition(position);
-    this.infoWindow.open({ map: this.googleMap });
-    let restaurant = this.findPlace(placeId);
-    if (!restaurant) {
-      const lang = this.getCurrentLanguage() === "en" ? "en" : "zh-CN";
-      const result = await Api.getGooglePlaceDetails(placeId, lang);
-      if (requestId !== this.poiRequestId) return;
-      if (!result.success || !result.place) {
-        const message = { zh: "店铺详情加载失败，请重新点击重试", en: "Unable to load this place. Click it again to retry.", ko: "장소 정보를 불러올 수 없습니다. 다시 클릭해 주세요." };
-        this.infoWindow.setContent(`<div style="padding:8px">${message[this.getCurrentLanguage()] || message.en}</div>`);
-        return;
-      }
-      restaurant = result.place;
+  removeCity(cityId) {
+    this.activeCityIds.delete(cityId);
+    if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
+      this.activeCityIds.add("all");
     }
-    if (requestId !== this.poiRequestId) return;
-
-    const normName = (restaurant.name || "").trim().toLowerCase();
-    const matchedKnown = (this.allRestaurants || []).find(item => 
-      (restaurant.placeId && item.placeId === restaurant.placeId) || 
-      ((item.name || "").trim().toLowerCase() === normName)
-    );
-    if (matchedKnown && matchedKnown.name && matchedKnown.name !== restaurant.name) {
-      if (!restaurant.nameEn) restaurant.nameEn = restaurant.name;
-      restaurant.name = matchedKnown.name;
-      if (restaurant._raw) restaurant._raw["餐馆名称 (Name)"] = matchedKnown.name;
-    }
-
-    restaurant.inKV = this.checkIsInKv(restaurant);
-    this.poiPlaces.set(placeId, restaurant);
-    this.infoWindow.setContent(this.getPopupHtml(restaurant));
+    this.renderPopover();
+    this.updateAreaSummaryBtn();
+    this.panToSelectedArea();
+    this.saveFilterState();
+    this.loadPlacesForCurrentArea();
   },
 
-  showInfoWindow(r, marker) {
-    if (this.isFallbackMode && marker && marker.openPopup) {
-      marker.openPopup();
-      return;
+  toggleNeighborhood(nbId) {
+    this.activeCityIds.delete("all");
+    if (this.activeNeighborhoodIds.has(nbId)) {
+      this.activeNeighborhoodIds.delete(nbId);
+    } else {
+      this.activeNeighborhoodIds.add(nbId);
     }
+    if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
+      this.activeCityIds.add("all");
+    }
+    this.renderPopover();
+    this.updateAreaSummaryBtn();
+    this.panToSelectedArea();
+    this.saveFilterState();
+    this.loadPlacesForCurrentArea();
+  },
 
-    if (!this.infoWindow || !this.googleMap) return;
+  removeNeighborhood(nbId) {
+    this.activeNeighborhoodIds.delete(nbId);
+    if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
+      this.activeCityIds.add("all");
+    }
+    this.renderPopover();
+    this.updateAreaSummaryBtn();
+    this.panToSelectedArea();
+    this.saveFilterState();
+    this.loadPlacesForCurrentArea();
+  },
 
-    this.poiRequestId++;
-    this.activePopupKey = r.placeId || r.name;
-    this.infoWindow.setContent(this.getPopupHtml(r));
-    this.infoWindow.open(this.googleMap, marker);
+  panToSelectedArea() {
+    const selectedAreas = this.activeNeighborhoodIds.size > 0
+      ? this.getAllNeighborhoods().filter(nb => this.activeNeighborhoodIds.has(nb.id))
+      : this.activeCityIds.has("all")
+        ? [GTA_COMMUNITIES.find(c => c.id === "scarborough") || GTA_COMMUNITIES[0]]
+        : GTA_COMMUNITIES.filter(c => this.activeCityIds.has(c.id));
 
-    // Asynchronously resolve authentic Google photo for popup if not cached yet
-    if (r.placeId && r.placeId.startsWith("ChIJ") && !r.photoUrl && !this.googlePhotosCache.has(r.placeId)) {
-      this.fetchGooglePhotoForPlace(r.placeId).then(photoUrl => {
-        if (photoUrl && this.infoWindow && this.activePopupKey === (r.placeId || r.name)) {
-          r.photoUrl = photoUrl;
-          this.infoWindow.setContent(this.getPopupHtml(r));
+    if (selectedAreas.length === 0) return;
+
+    if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+      const bounds = new google.maps.LatLngBounds();
+      selectedAreas.forEach(area => {
+        if (area.bbox && area.bbox.length === 4) {
+          bounds.extend({ lat: area.bbox[1], lng: area.bbox[0] });
+          bounds.extend({ lat: area.bbox[3], lng: area.bbox[2] });
+        } else if (area.center) {
+          bounds.extend(area.center);
         }
+      });
+      this.googleMap.fitBounds(bounds, 30);
+    } else if (this.fallbackMap && window.L) {
+      const latLngs = [];
+      selectedAreas.forEach(area => {
+        if (area.bbox && area.bbox.length === 4) {
+          latLngs.push([area.bbox[1], area.bbox[0]], [area.bbox[3], area.bbox[2]]);
+        } else if (area.center) {
+          latLngs.push([area.center.lat, area.center.lng]);
+        }
+      });
+      if (latLngs.length > 0) this.fallbackMap.fitBounds(latLngs, { padding: [30, 30] });
+    }
+  },
+
+  updateFilterDropdownsLanguage() {},
+
+  // -------------------------------------------------------------
+  // Map Context Menu & Helpers
+  // -------------------------------------------------------------
+  getMapEventCoordinate(latLng) {
+    if (!latLng) return null;
+    if (typeof latLng.lat === "function") {
+      return { lat: latLng.lat(), lng: latLng.lng() };
+    }
+    return { lat: Number(latLng.lat), lng: Number(latLng.lng) };
+  },
+
+  showMapContextMenu(lat, lng, clientX, clientY) {
+    this.hideMapContextMenu();
+    const menu = document.createElement("div");
+    menu.className = "map-context-menu";
+    menu.style.position = "fixed";
+    menu.style.left = `${clientX}px`;
+    menu.style.top = `${clientY}px`;
+    menu.style.zIndex = "9999";
+    menu.style.background = "#ffffff";
+    menu.style.border = "1px solid #e2e8f0";
+    menu.style.borderRadius = "8px";
+    menu.style.boxShadow = "0 8px 24px rgba(0,0,0,0.14)";
+    menu.style.padding = "6px";
+    menu.style.minWidth = "180px";
+
+    menu.innerHTML = `
+      <div style="padding: 6px 10px; font-size: 11px; font-weight: 600; color: #64748b; border-bottom: 1px solid #f1f5f9;">
+        坐标: ${lat.toFixed(4)}, ${lng.toFixed(4)}
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" id="mapContextSetOrigin" style="width: 100%; text-align: left; margin-top: 4px; font-size: 12px; border: none; padding: 6px 10px;">
+        🚩 将此处设为路线起点
+      </button>
+    `;
+
+    document.body.appendChild(menu);
+    this.mapContextMenuEl = menu;
+
+    const setOriginBtn = menu.querySelector("#mapContextSetOrigin");
+    if (setOriginBtn) {
+      setOriginBtn.addEventListener("click", () => {
+        this.originCoords = { lat, lng };
+        this.originAddress = `坐标: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        const input = document.getElementById("mapRouteOriginInput");
+        if (input) input.value = this.originAddress;
+        this.updateOriginMarker();
+        this.updateRoute();
+        this.hideMapContextMenu();
       });
     }
   },
 
-  // -------------------------------------------------------------
-  // Actions: Add to KV, Batch Add to KV, Add to Route
-  // -------------------------------------------------------------
-  async addSingleToKv(key) {
-    const r = this.findPlace(key);
-    if (!r) return;
-    const lang = this.getCurrentLanguage();
-
-    if (r.inKV) {
-      alert(lang === "en" ? "This restaurant is already in the database!" :
-            lang === "ko" ? "이미 데이터베이스에 등록된 매장입니다!" :
-            "该餐馆已在数据库中！");
-      return;
-    }
-
-    const res = await Api.addRestaurant(r);
-    if (res && res.success) {
-      r.inKV = true;
-      if (r.placeId) this.kvPlaceIdsSet.add(r.placeId);
-      if (r.name) this.kvNormalizedNamesSet.add(r.name.trim().toLowerCase());
-      
-      this.highlightMarker(key, false);
-      this.renderMarkers();
-      this.renderPlacesCards();
-      this.updateResultsSummary();
-      const successMsg = lang === "en" ? `🎉 Successfully added [${r.name}] to database!` :
-                         lang === "ko" ? `🎉 [${r.name}] 매장이 데이터베이스에 저장되었습니다!` :
-                         `🎉 餐馆【${r.name}】已成功添加至数据库！`;
-      alert(successMsg);
-    } else {
-      const failMsg = lang === "en" ? "Failed to add: " : (lang === "ko" ? "추가 실패: " : "添加失败: ");
-      alert(failMsg + (res?.error || "Unknown error"));
+  hideMapContextMenu() {
+    if (this.mapContextMenuEl) {
+      this.mapContextMenuEl.remove();
+      this.mapContextMenuEl = null;
     }
   },
 
-  // -------------------------------------------------------------
-  // Multi-Selection Logic & Handlers (Cross-Page Support)
-  // -------------------------------------------------------------
-  toggleSelect(key) {
-    const r = this.findPlace(key);
-    if (!r) return;
-    if (this.selectedMap.has(key)) {
-      this.selectedMap.delete(key);
-    } else {
-      this.selectedMap.set(key, r);
-    }
-    this.updateSelectionUI();
-    this.updateCardSelectionStyles();
-    this.renderMarkers();
+  setupResizeObserver() {
+    const el = document.getElementById("tab-mapexplorer");
+    if (!el || typeof ResizeObserver === "undefined") return;
+    this.resizeObserver = new ResizeObserver(() => this.handleResize());
+    this.resizeObserver.observe(el);
   },
 
-  toggleSelectCurrentPage() {
-    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
-    const startIdx = (this.currentPage - 1) * this.pageSize;
-    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
-    if (pageItems.length === 0) return;
-
-    const allSelected = pageItems.every(r => this.selectedMap.has(r.placeId || r.name));
-    if (allSelected) {
-      pageItems.forEach(r => this.selectedMap.delete(r.placeId || r.name));
-    } else {
-      pageItems.forEach(r => this.selectedMap.set(r.placeId || r.name, r));
-    }
-    this.updateSelectionUI();
-    this.updateCardSelectionStyles();
-    this.renderMarkers();
-  },
-
-  clearSelection() {
-    this.selectedMap.clear();
-    this.updateSelectionUI();
-    this.updateCardSelectionStyles();
-    this.renderMarkers();
-  },
-
-  updateSelectionUI() {
-    const count = this.selectedMap.size;
-    const countTag = document.getElementById("mapSelectionCountTag");
-    const countNum = document.getElementById("mapSelectedCountNum");
-    const selectAllText = document.getElementById("mapBtnSelectAllText");
-
-    if (countNum) countNum.textContent = count;
-    if (countTag) {
-      countTag.style.display = count > 0 ? "inline-flex" : "none";
-    }
-
-    const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
-    const startIdx = (this.currentPage - 1) * this.pageSize;
-    const pageItems = list.slice(startIdx, startIdx + this.pageSize);
-    const allCurrentSelected = pageItems.length > 0 && pageItems.every(r => this.selectedMap.has(r.placeId || r.name));
-
-    if (selectAllText) {
-      selectAllText.textContent = allCurrentSelected ? i18n.t("btn_deselect_page") : i18n.t("btn_select_all");
-    }
-
-    const planRouteBtn = document.getElementById("mapBtnPlanRoute");
-    if (planRouteBtn) {
-      const span = planRouteBtn.querySelector("span");
-      if (span) {
-        span.textContent = i18n.t("btn_plan_route");
-      }
-    }
-
-    const exportBtn = document.getElementById("mapBtnExportExcel");
-    if (exportBtn) {
-      const span = exportBtn.querySelector("span");
-      if (span) {
-        span.textContent = i18n.t("btn_export_excel");
-      }
-    }
-
-    const batchAddBtn = document.getElementById("mapBtnBatchAddToKv");
-    if (batchAddBtn) {
-      const span = batchAddBtn.querySelector("span");
-      if (span) {
-        span.textContent = i18n.t("btn_batch_add_to_kv");
-      }
-    }
-  },
-
-  updateCardSelectionStyles() {
-    const container = document.getElementById("mapPlacesCardsContainer");
-    if (!container) return;
-    container.querySelectorAll(".map-place-card").forEach(card => {
-      const key = card.dataset.key;
-      const isSel = this.selectedMap.has(key);
-      card.classList.toggle("is-selected", isSel);
-      const cb = card.querySelector(".map-card-select-cb");
-      if (cb) cb.checked = isSel;
-    });
-  },
-
-  async batchAddToKv() {
-    const lang = this.getCurrentLanguage();
-    const hasSelection = this.selectedMap.size > 0;
-    const candidates = hasSelection ? Array.from(this.selectedMap.values()) : (Array.isArray(this.filteredPlaces) ? this.filteredPlaces : []);
-    const unsaved = candidates.filter(r => !r.inKV);
-
-    if (unsaved.length === 0) {
-      if (hasSelection) {
-        alert(lang === "en" ? "All selected restaurants are already in the database!" :
-              lang === "ko" ? "선택한 모든 매장이 이미 데이터베이스에 등록되어 있습니다!" :
-              "所选餐馆均已存在于数据库中，无需重复添加！");
-      } else {
-        alert(lang === "en" ? "All restaurants in current view are already in the database!" :
-              lang === "ko" ? "현재 목록의 모든 매장이 이미 데이터베이스에 등록되어 있습니다!" :
-              "当前列表中的所有餐馆都已存在于数据库中，无需重复添加！");
-      }
-      return;
-    }
-
-    const confirmMsg = hasSelection
-      ? (lang === "en" ? `Found ${unsaved.length} selected restaurants not in database.\nBatch save these ${unsaved.length} restaurants to database?` :
-         lang === "ko" ? `선택한 매장 중 미등록 매장 ${unsaved.length}개가 발견되었습니다.\n데이터베이스에 일괄 저장하시겠습니까?` :
-         `检测到所选项中有 ${unsaved.length} 家未入库餐馆。\n是否将这 ${unsaved.length} 家餐馆批量保存到数据库？`)
-      : (lang === "en" ? `Found ${unsaved.length} restaurants not in database.\nBatch save all ${unsaved.length} restaurants to database?` :
-         lang === "ko" ? `미등록 매장 ${unsaved.length}개가 발견되었습니다.\n${unsaved.length}개 매장을 데이터베이스에 일괄 저장하시겠습니까?` :
-         `检测到当前列表共有 ${unsaved.length} 家未入库餐馆。\n是否将这 ${unsaved.length} 家餐馆全部批量保存到数据库？`);
-
-    if (!confirm(confirmMsg)) {
-      return;
-    }
-
-    try {
-      const res = await Api.batchAddRestaurants(unsaved);
-      if (res && res.success) {
-        unsaved.forEach(r => {
-          r.inKV = true;
-          if (r.placeId) this.kvPlaceIdsSet.add(r.placeId);
-          if (r.name) this.kvNormalizedNamesSet.add(r.name.trim().toLowerCase());
-        });
-
-        this.renderMarkers();
-        this.renderPlacesCards();
-        this.updateResultsSummary();
-        this.updateSelectionUI();
-        const successMsg = lang === "en" ? `🎉 Successfully batch saved ${unsaved.length} restaurants to database!` :
-                           lang === "ko" ? `🎉 매장 ${unsaved.length}개가 데이터베이스에 일괄 저장되었습니다!` :
-                           `🎉 成功将 ${unsaved.length} 家餐馆批量保存至数据库！`;
-        alert(successMsg);
-      } else {
-        const failMsg = lang === "en" ? "Batch save failed: " : (lang === "ko" ? "일괄 저장 실패: " : "批量保存失败: ");
-        alert(failMsg + (res?.error || "Unknown error"));
-      }
-    } catch (e) {
-      const errMsg = lang === "en" ? "Batch save error: " : (lang === "ko" ? "일괄 저장 오류: " : "批量保存出错: ");
-      alert(errMsg + e.message);
+  handleResize() {
+    if (this.googleMap && window.google && window.google.maps) {
+      google.maps.event.trigger(this.googleMap, "resize");
+    } else if (this.fallbackMap) {
+      this.fallbackMap.invalidateSize();
     }
   },
 
@@ -2703,17 +2592,16 @@ export const MapExplorer = {
   // Events Binding
   // -------------------------------------------------------------
   bindEvents() {
-    // Popover Trigger Button
+    // Area Search Popover
     const pillBtn = document.getElementById("areaSearchPillBtn");
     if (pillBtn) {
-      pillBtn.addEventListener("click", (e) => {
+      pillBtn.addEventListener("click", e => {
         e.stopPropagation();
         this.togglePopover();
       });
     }
 
-    // Close Popover when clicking outside
-    document.addEventListener("click", (e) => {
+    document.addEventListener("click", e => {
       const container = document.getElementById("areaSearchPillContainer");
       if (container && !container.contains(e.target)) {
         this.togglePopover(false);
@@ -2722,11 +2610,15 @@ export const MapExplorer = {
         this.hideMapContextMenu();
       }
     });
+
     document.addEventListener("keydown", e => {
-      if (e.key === "Escape") this.hideMapContextMenu();
+      if (e.key === "Escape") {
+        this.togglePopover(false);
+        this.hideMapContextMenu();
+        this.closeRouteNavModal();
+      }
     });
 
-    // Popover Clear All
     const clearAllBtn = document.getElementById("popoverClearAllBtn");
     if (clearAllBtn) {
       clearAllBtn.addEventListener("click", () => {
@@ -2740,61 +2632,32 @@ export const MapExplorer = {
       });
     }
 
-    // Popover Live Search Input
     const popoverSearch = document.getElementById("popoverSearchInput");
     if (popoverSearch) {
-      popoverSearch.addEventListener("input", (e) => {
+      popoverSearch.addEventListener("input", e => {
         this.popoverSearchQuery = e.target.value.trim();
         this.renderPopover();
       });
-      popoverSearch.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          this.popoverSearchQuery = e.target.value.trim();
-          this.renderPopover();
-        }
-      });
     }
 
-    // Popover City Pills Click Handler
     const cityPillsRow = document.getElementById("popoverCityPills");
     if (cityPillsRow) {
-      cityPillsRow.addEventListener("click", (e) => {
+      cityPillsRow.addEventListener("click", e => {
         const btn = e.target.closest(".popover-pill-btn");
-        if (!btn) return;
-        const cityId = btn.dataset.city;
-        if (!cityId) return;
-
-        this.toggleCity(cityId);
+        if (!btn || !btn.dataset.city) return;
+        this.toggleCity(btn.dataset.city);
       });
     }
 
-    // Popover Neighborhood Pills Click Handler
-    const neighborhoodPillsRow = document.getElementById("popoverNeighborhoodPills");
-    if (neighborhoodPillsRow) {
-      neighborhoodPillsRow.addEventListener("click", (e) => {
+    const nbPillsRow = document.getElementById("popoverNeighborhoodPills");
+    if (nbPillsRow) {
+      nbPillsRow.addEventListener("click", e => {
         const btn = e.target.closest(".popover-pill-btn");
-        if (!btn) return;
-        const nbId = btn.dataset.neighborhood;
-        if (!nbId) return;
-
-        this.toggleNeighborhood(nbId);
+        if (!btn || !btn.dataset.neighborhood) return;
+        this.toggleNeighborhood(btn.dataset.neighborhood);
       });
     }
 
-    // Popover Nearby Recommended Neighborhood Pills Click Handler
-    const nearbyPillsRow = document.getElementById("popoverNearbyPills");
-    if (nearbyPillsRow) {
-      nearbyPillsRow.addEventListener("click", (e) => {
-        const btn = e.target.closest(".popover-pill-btn");
-        if (!btn) return;
-        const nbId = btn.dataset.neighborhood;
-        if (!nbId) return;
-
-        this.toggleNeighborhood(nbId);
-      });
-    }
-
-    // Reset To Central GTA Shortcut
     const resetCenterBtn = document.getElementById("popoverCurrentLocationBtn");
     if (resetCenterBtn) {
       resetCenterBtn.addEventListener("click", () => {
@@ -2812,37 +2675,16 @@ export const MapExplorer = {
     // Category Select
     const catSelect = document.getElementById("mapCategorySelect");
     if (catSelect) {
-      catSelect.addEventListener("change", (e) => {
+      catSelect.addEventListener("change", e => {
         this.activeCategory = e.target.value;
         this.saveFilterState();
-        this.loadPlacesForCurrentArea(false);
+        this.filterAndRenderPlaces();
       });
     }
 
-    // Visited Select
-    const visitedSelect = document.getElementById("mapVisitedSelect");
-    if (visitedSelect) {
-      visitedSelect.addEventListener("change", (e) => {
-        this.activeVisited = e.target.value;
-        this.saveFilterState();
-        this.loadPlacesForCurrentArea(false);
-      });
-    }
-
-    // Outcome Select
-    const outcomeSelect = document.getElementById("mapOutcomeSelect");
-    if (outcomeSelect) {
-      outcomeSelect.addEventListener("change", (e) => {
-        this.activeOutcome = e.target.value;
-        this.saveFilterState();
-        this.loadPlacesForCurrentArea(false);
-      });
-    }
-
-    // Search Keyword Input & Submit
+    // Search Keyword
     const searchInput = document.getElementById("mapKeywordInput");
     const searchBtn = document.getElementById("mapBtnSearchGmap");
-
     const doSearch = () => {
       this.searchKeyword = searchInput ? searchInput.value.trim() : "";
       this.saveFilterState();
@@ -2851,95 +2693,84 @@ export const MapExplorer = {
 
     if (searchBtn) searchBtn.addEventListener("click", doSearch);
     if (searchInput) {
-      searchInput.addEventListener("keydown", (e) => {
+      searchInput.addEventListener("keydown", e => {
         if (e.key === "Enter") doSearch();
       });
     }
 
-    // Batch Add to KV
-    const batchAddBtn = document.getElementById("mapBtnBatchAddToKv");
-    if (batchAddBtn) {
-      batchAddBtn.addEventListener("click", () => this.batchAddToKv());
+    // Left column: + 全部加入路线
+    const addAllBtn = document.getElementById("mapBtnAddAllToRoute");
+    if (addAllBtn) {
+      addAllBtn.addEventListener("click", () => this.addAllToRoute());
     }
 
-    // Plan Route with Field Sales
-    const planRouteBtn = document.getElementById("mapBtnPlanRoute");
-    if (planRouteBtn) {
-      planRouteBtn.addEventListener("click", () => {
-        const selectedList = Array.from(this.selectedMap.values());
-        const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
-        const places = selectedList.length > 0 ? selectedList : list.slice(0, 10);
-        if (places.length === 0) {
-          const msg = "当前列表暂无餐馆可规划路线";
-          if (window.showToast) window.showToast(msg);
-          else alert(msg);
-          return;
-        }
-        getFieldSales().then(fs => {
-          fs.addMultipleToRoute(places, false);
-        });
+    // Middle column: Fit route bounds
+    const fitRouteBtn = document.getElementById("mapBtnFitRoute");
+    if (fitRouteBtn) {
+      fitRouteBtn.addEventListener("click", () => this.fitRouteToBounds());
+    }
+
+    // Middle column: Toggle route mode
+    const toggleRouteBtn = document.getElementById("mapBtnToggleRoute");
+    if (toggleRouteBtn) {
+      toggleRouteBtn.addEventListener("click", () => {
+        this.isRouteMode = !this.isRouteMode;
+        const label = document.getElementById("mapRouteToggleLabel");
+        if (label) label.textContent = this.isRouteMode ? "规划中" : "已暂停";
+        toggleRouteBtn.style.background = this.isRouteMode ? "#2563eb" : "#64748b";
+        toggleRouteBtn.style.borderColor = this.isRouteMode ? "#2563eb" : "#64748b";
       });
     }
 
-    // Select All (Toggle Current Page)
-    const selectAllBtn = document.getElementById("mapBtnSelectAll");
-    if (selectAllBtn) {
-      selectAllBtn.addEventListener("click", () => this.toggleSelectCurrentPage());
-    }
-
-    // Clear Selection
-    const clearSelectionBtn = document.getElementById("mapBtnClearSelection");
-    if (clearSelectionBtn) {
-      clearSelectionBtn.addEventListener("click", () => this.clearSelection());
-    }
-
-    // Export Excel
-    const exportExcelBtn = document.getElementById("mapBtnExportExcel");
-    if (exportExcelBtn) {
-      exportExcelBtn.addEventListener("click", () => {
-        const selectedList = Array.from(this.selectedMap.values());
-        const list = Array.isArray(this.filteredPlaces) ? this.filteredPlaces : [];
-        const candidates = selectedList.length > 0 ? selectedList : list;
-        if (window.XLSX && candidates.length > 0) {
-          const rows = candidates.map(r => ({
-            "餐馆名称": r.name,
-            "地址": r.address,
-            "电话": r.phone || "",
-            "评分": r.rating || "",
-            "评价数": r.reviews || "",
-            "KV状态": r.inKV ? "已在KV" : "未在KV库",
-            "拜访状态": r.isVisited ? `已拜访 (${r.lastOutcome})` : "未拜访"
-          }));
-          const ws = window.XLSX.utils.json_to_sheet(rows);
-          const wb = window.XLSX.utils.book_new();
-          window.XLSX.utils.book_append_sheet(wb, ws, "餐馆列表");
-          window.XLSX.writeFile(wb, `Google_Restaurants_${Date.now()}.xlsx`);
-        } else {
-          const msg = "暂无可导出的餐馆数据";
-          if (window.showToast) window.showToast(msg);
-          else alert(msg);
+    // Right column: Origin input change
+    const originInput = document.getElementById("mapRouteOriginInput");
+    if (originInput) {
+      originInput.addEventListener("change", e => {
+        this.originAddress = e.target.value.trim();
+        this.updateRoute();
+      });
+      originInput.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          this.originAddress = e.target.value.trim();
+          this.updateRoute();
         }
       });
     }
 
-    // ESC key listener to close InfoWindow / Popovers
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" || e.keyCode === 27) {
-        if (this.infoWindow) {
-          this.infoWindow.close();
-          this.activePopupKey = null;
-        }
-        if (this.fallbackMap) {
-          this.fallbackMap.closePopup();
-        }
-        this.togglePopover(false);
-      }
-    });
+    // Right column: Optimize route
+    const optBtn = document.getElementById("mapBtnOptimizeRoute");
+    if (optBtn) {
+      optBtn.addEventListener("click", () => this.optimizeRoute());
+    }
+
+    // Right column: Export waypoints
+    const exportBtn = document.getElementById("mapBtnExportWaypoints");
+    if (exportBtn) {
+      exportBtn.addEventListener("click", () => this.exportWaypoints());
+    }
+
+    // Right column: Clear route
+    const clearRouteBtn = document.getElementById("mapBtnClearRoute");
+    if (clearRouteBtn) {
+      clearRouteBtn.addEventListener("click", () => this.clearRoute());
+    }
+
+    // Right column: External navigation
+    const extNavBtn = document.getElementById("mapBtnExternalNav");
+    if (extNavBtn) {
+      extNavBtn.addEventListener("click", () => this.openGoogleMapsNavigation());
+    }
+
+    // Nav Modal Close buttons
+    const navModalClose = document.getElementById("fsRouteNavModalClose");
+    const navModalCancel = document.getElementById("fsRouteNavModalBtnCancel");
+    if (navModalClose) navModalClose.addEventListener("click", () => this.closeRouteNavModal());
+    if (navModalCancel) navModalCancel.addEventListener("click", () => this.closeRouteNavModal());
   },
 
   escapeHtml(str) {
     if (!str) return "";
-    return String(str).replace(/[&<>"']/g, (m) => ({
+    return String(str).replace(/[&<>"']/g, m => ({
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
@@ -2950,11 +2781,11 @@ export const MapExplorer = {
 
   escapeQuotes(str) {
     if (!str) return "";
-    return String(str).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    return String(str).replace(/'/g, "\'").replace(/"/g, "&quot;");
   }
 };
 
-// Global Window Helpers for onclick handlers
+// Global Window Helpers
 if (typeof window !== "undefined") {
   window.MapExplorer = MapExplorer;
 
@@ -2971,46 +2802,49 @@ if (typeof window !== "undefined") {
       if (MapExplorer.googleMap && !MapExplorer.isFallbackMode) {
         MapExplorer.googleMap.panTo({ lat, lng });
         let marker = MapExplorer.markersMap.get(key);
-        if (!marker && window.google && window.google.maps) {
-          marker = new google.maps.Marker({
-            position: { lat, lng },
-            map: MapExplorer.googleMap,
-            title: r.name,
-            icon: MapExplorer.getPinIcon(r, true),
-            zIndex: 999
-          });
-          marker.addListener("click", () => {
-            MapExplorer.showInfoWindow(r, marker);
-            MapExplorer.scrollCardIntoView(key);
-          });
-          marker.restaurant = r;
-          MapExplorer.markersMap.set(key, marker);
-        }
         if (marker) MapExplorer.showInfoWindow(r, marker);
       } else if (MapExplorer.fallbackMap) {
         MapExplorer.fallbackMap.setView([lat, lng], 16);
       }
     }
+    MapExplorer.scrollCardIntoView(key);
+    MapExplorer.scrollWaypointCardIntoView(key);
   };
 
-  window.mapExplorerAddSingleToKv = function(key) {
-    MapExplorer.addSingleToKv(key);
+  window.mapExplorerWaypointClick = function(key, index) {
+    const w = MapExplorer.routeWaypoints[index] || MapExplorer.findPlace(key);
+    if (!w) return;
+    const lat = parseFloat(w.latitude);
+    const lng = parseFloat(w.longitude);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      if (MapExplorer.googleMap && !MapExplorer.isFallbackMode) {
+        MapExplorer.googleMap.panTo({ lat, lng });
+        let marker = MapExplorer.markersMap.get(key);
+        if (marker) MapExplorer.showInfoWindow(w, marker);
+      } else if (MapExplorer.fallbackMap) {
+        MapExplorer.fallbackMap.setView([lat, lng], 16);
+      }
+    }
+    MapExplorer.scrollWaypointCardIntoView(key);
+    MapExplorer.scrollCardIntoView(key);
   };
 
   window.mapExplorerAddSingleToRoute = function(key) {
     const r = MapExplorer.findPlace(key);
     if (!r) return;
-    getFieldSales().then(fs => {
-      fs.addMultipleToRoute([r], false);
-    });
+    MapExplorer.addWaypointToRoute(r);
   };
 
-  window.mapExplorerLogVisit = function(key) {
-    const r = MapExplorer.findPlace(key);
-    if (!r) return;
-    getFieldSales().then(fs => {
-      fs.openSalesRecordModal(null, r);
-    });
+  window.mapExplorerRemoveSingleFromRoute = function(key) {
+    MapExplorer.removeWaypointFromRoute(key);
+  };
+
+  window.mapExplorerRemoveWaypoint = function(index) {
+    MapExplorer.removeWaypointFromRoute(index);
+  };
+
+  window.mapExplorerMoveWaypoint = function(index, delta) {
+    MapExplorer.moveWaypoint(index, delta);
   };
 
   window.mapExplorerOpenNav = function(name, address) {
@@ -3022,28 +2856,11 @@ if (typeof window !== "undefined") {
     MapExplorer.goToPage(p);
   };
 
-  window.mapExplorerResetToAllGta = function() {
-    MapExplorer.activeCityIds = new Set(["all"]);
-    MapExplorer.activeNeighborhoodIds.clear();
-    MapExplorer.renderPopover();
-    MapExplorer.updateAreaSummaryBtn();
-    MapExplorer.panToSelectedArea();
-    MapExplorer.loadPlacesForCurrentArea();
-  };
-
   window.mapExplorerRemoveCity = function(cityId) {
     MapExplorer.removeCity(cityId);
   };
 
   window.mapExplorerRemoveNeighborhood = function(nbId) {
     MapExplorer.removeNeighborhood(nbId);
-  };
-
-  window.mapExplorerToggleSelect = function(key) {
-    MapExplorer.toggleSelect(key);
-  };
-
-  window.mapExplorerClearSelection = function() {
-    MapExplorer.clearSelection();
   };
 }

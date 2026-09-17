@@ -28,18 +28,11 @@
       </div>
 
       <nav class="sidebar-nav">
-        <button class="nav-item active" data-tab="tab-restaurants" data-title="餐馆查询" data-title-key="page_title_restaurants" title="餐馆查询" data-i18n-title="nav_restaurants">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-          </span>
-          <span data-i18n="nav_restaurants">餐馆查询</span>
-        </button>
-
-        <button class="nav-item" data-tab="tab-mapexplorer" data-title="地图找店" data-title-key="page_title_mapexplorer" title="地图找店" data-i18n-title="nav_mapexplorer">
+        <button class="nav-item active" data-tab="tab-mapexplorer" data-title="地图找店与路径规划" data-title-key="page_title_mapexplorer" title="地图找店与路径规划" data-i18n-title="nav_mapexplorer">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
           </span>
-          <span data-i18n="nav_mapexplorer">地图找店</span>
+          <span data-i18n="nav_mapexplorer">地图找店与路径规划</span>
         </button>
 
         <button class="nav-item" data-tab="tab-calculator" data-title="用油计算器" data-title-key="page_title_calculator" title="用油计算器" data-i18n-title="nav_calculator">
@@ -54,13 +47,6 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
           </span>
           <span data-i18n="nav_greasetrap">Grease Trap</span>
-        </button>
-
-        <button class="nav-item" data-tab="tab-fieldsale" data-title="外勤销售" data-title-key="page_title_fieldsale" title="外勤销售" data-i18n-title="nav_fieldsale">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-          </span>
-          <span data-i18n="nav_fieldsale">外勤销售</span>
         </button>
       </nav>
 
@@ -85,7 +71,7 @@
         <div class="topbar-left">
           <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="菜单">☰</button>
           <button class="sidebar-toggle-btn desktop-only" id="sidebarToggleBtn" title="展开侧边栏" aria-label="展开侧边栏" data-i18n-title="sidebar_expand">&gt;</button>
-          <h1 class="page-title" id="currentPageTitle" data-i18n="page_title_restaurants">餐馆查询</h1>
+          <h1 class="page-title" id="currentPageTitle" data-i18n="page_title_mapexplorer">地图找店与路径规划</h1>
         </div>
 
         <div class="topbar-right">
@@ -103,184 +89,7 @@
       <!-- Main Content Area -->
       <main class="content-area">
 
-        <!-- TAB 1: RESTAURANT QUERY -->
-        <section class="tab-view active" id="tab-restaurants">
-          
-          <!-- Filters Card -->
-          <div class="card">
-            <div class="filters-section">
-              <div class="filter-row-top">
-                <div>
-                  <label class="form-label" for="regionSelect" data-i18n="region_label">选择区域</label>
-                  <select class="form-select" id="regionSelect">
-                    <option value="全部 (All GTA)" data-i18n="region_all">全部区域 (All GTA)</option>
-                    <option value="万锦 (Markham)" data-i18n="region_markham">万锦 (Markham)</option>
-                    <option value="士嘉堡 (Scarborough)" data-i18n="region_scarborough">士嘉堡 (Scarborough)</option>
-                    <option value="北约克 (North York)" data-i18n="region_north_york">北约克 (North York)</option>
-                    <option value="列治文山 (Richmond Hill)" data-i18n="region_richmond_hill">列治文山 (Richmond Hill)</option>
-                    <option value="多伦多市中心 (Downtown Toronto)" data-i18n="region_downtown">多伦多市中心 (Downtown Toronto)</option>
-                    <option value="密西沙加 (Mississauga)" data-i18n="region_mississauga">密西沙加 (Mississauga)</option>
-                    <option value="旺市 (Vaughan)" data-i18n="region_vaughan">旺市 (Vaughan)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="form-label" for="hubSelect" data-i18n="hub_label">商圈 / 商场</label>
-                  <select class="form-select" id="hubSelect">
-                    <option value="all" data-i18n="hub_all">全部商圈与商场</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="form-label" for="restaurantSearch" data-i18n="search_label">搜索</label>
-                  <div class="search-input-wrap">
-                    <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                    </svg>
-                    <input type="text" class="form-input" id="restaurantSearch" data-i18n-placeholder="search_placeholder" placeholder="搜索餐馆名、地址或关键词...">
-                  </div>
-                </div>
-
-                <div>
-                  <label class="form-label" for="sortSelect" data-i18n="sort_label">排序</label>
-                  <select class="form-select" id="sortSelect">
-                    <option value="rating" data-i18n="sort_rating">评分由高到低</option>
-                    <option value="reviews" data-i18n="sort_reviews">评价数量由多到少</option>
-                    <option value="name" data-i18n="sort_name">餐馆名称 A-Z</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="form-label" for="filterVisitedSelect" data-i18n="filter_visited">是否拜访</label>
-                  <select class="form-select" id="filterVisitedSelect">
-                    <option value="all" data-i18n="visited_all">全部 (拜访状态)</option>
-                    <option value="visited" data-i18n="visited_yes">已拜访</option>
-                    <option value="unvisited" data-i18n="visited_no">未拜访</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label class="form-label" for="filterOutcomeSelect" data-i18n="filter_outcome">拜访结果</label>
-                  <select class="form-select" id="filterOutcomeSelect">
-                    <option value="all" data-i18n="outcome_all">全部结果</option>
-                    <option value="签订合同" data-i18n="outcome_contract">签订合同</option>
-                    <option value="有意向" data-i18n="outcome_interested">有意向</option>
-                    <option value="考虑中" data-i18n="outcome_considering">考虑中</option>
-                    <option value="暂无意向" data-i18n="outcome_not_interested">暂无意向</option>
-                    <option value="拒绝" data-i18n="outcome_rejected">拒绝合作</option>
-                    <option value="已打烊" data-i18n="outcome_closed">已打烊/关店</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Categories Pill Filter Row -->
-              <div class="filter-categories-row" style="margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
-                <label class="form-label" data-i18n="cat_label" style="margin-bottom: 0.35rem;">品类筛选：</label>
-                <div class="category-pills" id="categoryPills">
-                  <button class="cat-pill active" data-category="全部" data-i18n="cat_all">全部</button>
-                  <button class="cat-pill" data-category="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</button>
-                  <button class="cat-pill" data-category="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</button>
-                  <button class="cat-pill" data-category="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</button>
-                  <button class="cat-pill" data-category="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</button>
-                  <button class="cat-pill" data-category="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</button>
-                  <button class="cat-pill" data-category="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</button>
-                </div>
-              </div>
-
-              <!-- Selection Controls Row (Dedicated Next Row) -->
-              <div class="filter-selection-row" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px dashed #e2e8f0;">
-                <button class="btn btn-secondary" id="btnSelectAllPage" style="white-space: nowrap; flex-shrink: 0;">
-                  <span id="btnSelectAllPageText" data-i18n="btn_select_page">全选本页</span>
-                </button>
-                <div class="selection-count-tag" id="selectionCountTag" style="display: none; white-space: nowrap; flex-shrink: 0;">
-                  <span data-i18n="sel_selected">已选</span>
-                  <strong class="selection-count-badge" id="selectionCountBadge">0</strong>
-                  <button type="button" class="btn-clear-sel" id="btnClearSelection" data-i18n="btn_clear_selection">清空选择</button>
-                </div>
-                <button class="btn btn-primary" id="btnPlanRouteTop" style="background: #2563eb; border-color: #2563eb; white-space: nowrap; flex-shrink: 0;">
-                  <span data-i18n="btn_plan_route">规划路线</span>
-                </button>
-                <button class="btn btn-primary" id="btnExportCsv" style="background: #10b981; border-color: #10b981; white-space: nowrap; flex-shrink: 0;">
-                  <span data-i18n="btn_export_csv">导出所选</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Results Header & Toggle Bar -->
-          <div class="results-header">
-            <div class="results-count" id="resultsCountDisplay">
-              <span data-i18n="results_count" data-param-total="0">共 0 家餐馆</span>
-            </div>
-
-            <div class="view-controls">
-              <button class="view-toggle-btn active" id="btnCardView">
-                <span data-i18n="view_card">卡片视图</span>
-              </button>
-              <button class="view-toggle-btn" id="btnTableView">
-                <span data-i18n="view_table">表格视图</span>
-              </button>
-              <button class="view-toggle-btn" id="btnHubView">
-                <span data-i18n="view_hubs">商圈聚合</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Loading Indicator -->
-          <div id="restaurantListLoader" style="display: none; text-align: center; padding: 2rem;">
-            <div style="color: var(--text-muted); font-size: 0.9rem;" data-i18n="status_connecting">加载中...</div>
-          </div>
-
-          <!-- Card Grid View -->
-          <div class="restaurant-grid" id="restaurantCardsView"></div>
-
-          <!-- Table View -->
-          <div class="table-container" id="restaurantTableView" style="display: none;">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th style="width: 40px; text-align: center;">
-                    <input type="checkbox" id="thSelectAll" class="custom-checkbox" title="全选当前页" data-i18n-title="btn_select_page" />
-                  </th>
-                  <th data-i18n="th_name">餐馆名称</th>
-                  <th data-i18n="th_region">区域</th>
-                  <th data-i18n="th_hub">商圈/商场</th>
-                  <th data-i18n="th_category">分类</th>
-                  <th data-i18n="th_rating">评分与评价</th>
-                  <th data-i18n="th_status">状态</th>
-                  <th data-i18n="th_price">消费档次</th>
-                  <th data-i18n="th_address">地址</th>
-                  <th data-i18n="th_phone">电话</th>
-                  <th data-i18n="th_actions">操作</th>
-                </tr>
-              </thead>
-              <tbody id="restaurantTableBody"></tbody>
-            </table>
-          </div>
-
-          <!-- Hubs Grid View -->
-          <div class="hubs-grid" id="restaurantHubsView" style="display: none;"></div>
-
-          <!-- Pagination Bar -->
-          <div class="pagination-container" id="paginationContainer">
-            <div class="pagination-info" id="paginationInfoText"></div>
-
-            <div class="pagination-controls" id="paginationControls"></div>
-
-            <div class="page-size-wrap">
-              <label for="pageSizeSelect" data-i18n="page_size_label">每页：</label>
-              <select class="page-size-select" id="pageSizeSelect">
-                <option value="10">10</option>
-                <option value="20" selected>20</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-              </select>
-            </div>
-          </div>
-
-        </section>
-
-        <!-- TAB 2: OIL CONSUMPTION CALCULATOR -->
+        <!-- TAB 1: OIL CONSUMPTION CALCULATOR -->
         <section class="tab-view" id="tab-calculator">
           
           <div class="calculator-grid">
@@ -596,288 +405,12 @@
         </section>
 
       
-        <!-- TAB 4: FIELD SALE WORKBENCH -->
-        <section class="tab-view" id="tab-fieldsale">
-          
-          <!-- Sub-Tab Header Bar -->
-          <div class="fs-subtab-bar">
-            <button class="fs-subtab-btn active" data-subtab="route">
-              <span data-i18n="fs_tab_route">路线规划</span>
-            </button>
-            <button class="fs-subtab-btn" data-subtab="records">
-              <span data-i18n="fs_tab_records">拜访记录</span>
-            </button>
-            <button class="fs-subtab-btn" data-subtab="analytics">
-              <span data-i18n="fs_tab_analytics">统计报告</span>
-            </button>
-          </div>
-
-          <!-- SUBVIEW 1: ROUTE PLANNING -->
-          <div class="fs-subview active" id="fs-view-route">
-            <div class="card" style="margin-bottom: 1.25rem;">
-              <div class="fs-route-config-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-                <!-- Origin Config -->
-                <div class="form-group" style="margin-bottom: 0;">
-                  <label class="form-label" for="fsRouteOriginInput" data-i18n="fs_route_origin">起点地址 (Green Oil Inc)</label>
-                  <input type="text" class="form-input" id="fsRouteOriginInput" data-i18n-placeholder="fs_route_origin_placeholder" placeholder="Green Oil Inc, Toronto, ON">
-                </div>
-
-                <!-- Departure Time -->
-                <div class="form-group" style="margin-bottom: 0;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; min-height: 24px;">
-                    <label class="form-label" for="fsRouteDepartureTime" style="margin-bottom: 0;" data-i18n="fs_route_departure_time">出发时间</label>
-                    <button type="button" class="btn btn-secondary btn-sm" id="fsRouteBtnNow" style="font-size: 0.76rem; padding: 0.15rem 0.5rem; color: #059669; border-color: rgba(5,150,105,0.3);">
-                      <span data-i18n="fs_route_btn_now">当前时间</span>
-                    </button>
-                  </div>
-                  <input type="datetime-local" class="form-input" id="fsRouteDepartureTime" style="font-size: 0.88rem; width: 100%;">
-                </div>
-
-                <!-- Add Stops / Address Batch -->
-                <div class="form-group" style="margin-bottom: 0;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; min-height: 24px; flex-wrap: wrap; gap: 0.5rem;">
-                    <label class="form-label" style="margin-bottom: 0;" data-i18n="fs_route_add_stops">添加站点到路线</label>
-                    <button class="btn btn-secondary btn-sm" id="fsRouteBtnGoQuery" style="font-size: 0.78rem; padding: 0.2rem 0.6rem; color: #2563eb; border-color: rgba(37,99,235,0.3);">
-                      <span data-i18n="fs_route_btn_go_query">从餐馆查询批量选择导入 &rarr;</span>
-                    </button>
-                  </div>
-                  <div style="display: flex; gap: 0.5rem; align-items: center;">
-                    <button class="btn btn-primary" id="fsRouteBtnManualAdd" style="white-space: nowrap; flex: 1; justify-content: center; padding: 0.55rem 1rem;">
-                      <span data-i18n="fs_route_btn_manual_add">手动添加地址</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Action Bar -->
-              <div class="fs-route-toolbar">
-                <div class="fs-route-toolbar-left">
-                  <button class="btn btn-secondary btn-sm" id="fsRouteBtnOptimize">
-                    <span data-i18n="fs_route_btn_optimize">智能最短路径排序</span>
-                  </button>
-                  <button class="btn btn-secondary btn-sm" id="fsRouteBtnClear" style="color: #ef4444; border-color: rgba(239,68,68,0.3);">
-                    <span data-i18n="fs_route_btn_clear">清空路线</span>
-                  </button>
-                </div>
-
-                <div class="fs-route-toolbar-right">
-                  <button class="btn btn-primary" id="fsRouteBtnNavigate" style="background: #2563eb; border: none; font-weight: 600; padding: 0.6rem 1.25rem;">
-                    <span data-i18n="fs_route_btn_navigate">在 Google 地图开启导航</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Waypoints List -->
-            <div class="fs-waypoints-container">
-              <div class="fs-section-header">
-                <h3 style="font-size: 1.05rem; font-weight: 700; color: var(--primary-dark);">
-                  <span data-i18n="fs_route_stops_title">途经站点清单</span> (<span id="fsRouteStopsBadge">0</span> <span data-i18n="fs_route_stops_unit">家餐馆</span>)
-                </h3>
-              </div>
-
-              <!-- Route Tabs Bar -->
-              <div class="fs-route-tabs-wrapper" id="fsRouteTabsWrapper">
-                <div class="fs-route-tabs-bar" id="fsRouteTabsBar" role="tablist"></div>
-                <div class="fs-route-tabs-actions" id="fsRouteTabsActions">
-                  <button type="button" class="btn btn-sm btn-outline fs-route-tab-action-btn" id="fsRouteBtnNewTab" title="新建路线标签">
-                    <span data-i18n="fs_route_tab_new">+ 新建</span>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline fs-route-tab-action-btn" id="fsRouteBtnDuplicateTab" title="复制当前路线标签">
-                    <span data-i18n="fs_route_tab_duplicate">复制</span>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline fs-route-tab-action-btn fs-btn-danger" id="fsRouteBtnDeleteTab" title="删除当前路线标签">
-                    <span data-i18n="fs_route_tab_delete">删除</span>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-outline fs-route-tab-action-btn" id="fsRouteBtnRenameTab" title="重命名当前路线标签">
-                    <span data-i18n="fs_route_tab_rename">重命名</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Waypoints Search & Batch Toolbar -->
-              <div class="fs-waypoints-toolbar card" style="padding: 0.65rem 0.85rem; margin-bottom: 0.75rem; background: #f8fafc; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px;">
-                <div style="display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: center; justify-content: space-between;">
-                  <!-- Search Filter -->
-                  <div style="flex: 1; min-width: 220px; position: relative;">
-                    <input type="text" class="form-input" id="fsRouteSearchInput" placeholder="搜索途经站点（店名/地址/电话）..." data-i18n-placeholder="fs_route_waypoints_search_placeholder" style="padding: 0.4rem 0.65rem; font-size: 0.85rem; width: 100%; border-radius: 6px;">
-                  </div>
-                  <!-- Batch Control Buttons -->
-                  <div style="display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center;">
-                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; user-select: none; margin-right: 0.35rem; color: #334155;">
-                      <input type="checkbox" id="fsRouteSelectAll" style="width: 15px; height: 15px; cursor: pointer;">
-                      <span data-i18n="fs_route_select_all">全选</span>
-                      <span id="fsRouteSelectedCount" style="color: #64748b; font-size: 0.8rem; font-weight: normal;">(已选 0)</span>
-                    </label>
-
-                    <button class="btn btn-sm btn-outline" id="fsRouteBtnBatchNav" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; color: #2563eb; border-color: #bfdbfe; background: #eff6ff;" title="在 Google 地图导航所选站点">
-                      <span data-i18n="fs_route_btn_batch_nav">导航所选</span>
-                    </button>
-
-                    <button class="btn btn-sm btn-outline" id="fsRouteBtnBatchDelete" style="font-size: 0.8rem; padding: 0.35rem 0.6rem; color: #dc2626; border-color: #fecaca; background: #fef2f2;" title="批量移除所选站点">
-                      <span data-i18n="fs_route_btn_batch_delete">批量删除</span>
-                    </button>
-
-                    <button class="btn btn-sm btn-primary" id="fsRouteBtnExportExcel" style="font-size: 0.8rem; padding: 0.35rem 0.7rem; background: #059669; border-color: #059669; color: white;" title="导出 Excel 清单 (含拜访记录)">
-                      <span data-i18n="fs_route_btn_export_excel">导出 Excel</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="fs-waypoints-list" id="fsRouteWaypointsList"></div>
-              <div class="fs-empty-notice" id="fsRouteEmptyNotice" style="display: none;" data-i18n="fs_route_empty">
-                暂未添加途经餐馆。您可以从餐馆查询列表勾选后一键导入，或在上方搜索添加。
-              </div>
-            </div>
-          </div>
-
-          <!-- SUBVIEW 2: SALES VISIT RECORDS -->
-          <div class="fs-subview" id="fs-view-records">
-            <div class="card" style="margin-bottom: 1.25rem;">
-              <div class="fs-records-filter-bar">
-                <div style="flex: 2; min-width: 200px;">
-                  <label class="form-label" data-i18n="search_label">搜索记录</label>
-                  <input type="text" class="form-input" id="fsSearchRecordsInput" data-i18n-placeholder="fs_search_records_placeholder" placeholder="搜索餐馆名、地址、备注或竞品...">
-                </div>
-
-                <div style="flex: 1; min-width: 140px;">
-                  <label class="form-label" data-i18n="fs_record_outcome">销售结果</label>
-                  <select class="form-select" id="fsFilterOutcome">
-                    <option value="all" data-i18n="fs_filter_all">全部结果</option>
-                    <option value="contract_signed" data-i18n="fs_outcome_contract">签订合同</option>
-                    <option value="interested" data-i18n="fs_outcome_interested">有意向</option>
-                    <option value="rejected" data-i18n="fs_outcome_rejected">拒绝</option>
-                    <option value="signed_others" data-i18n="fs_outcome_signed_others">已签其他</option>
-                  </select>
-                </div>
-
-                <div style="flex: 1; min-width: 130px;">
-                  <label class="form-label" data-i18n="fs_record_method">拜访方式</label>
-                  <select class="form-select" id="fsFilterMethod">
-                    <option value="all" data-i18n="fs_filter_all">全部方式</option>
-                    <option value="onsite" data-i18n="fs_method_onsite">现场拜访</option>
-                    <option value="phone" data-i18n="fs_method_phone">电话沟通</option>
-                  </select>
-                </div>
-
-                <div style="align-self: flex-end;">
-                  <button class="btn btn-primary" id="fsBtnNewRecord" style="white-space: nowrap;">
-                    <span data-i18n="fs_record_btn_new">+ 新建拜访记录</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="results-header">
-              <div class="results-count" id="fsRecordsCountText" data-i18n="fs_records_count" data-param-count="0">共 0 条拜访记录</div>
-              <div class="view-controls">
-                <button class="view-toggle-btn active" id="fsBtnRecordsListView">
-                  <span data-i18n="view_list">列表视图</span>
-                </button>
-                <button class="view-toggle-btn" id="fsBtnRecordsCalendarView">
-                  <span data-i18n="view_calendar">日历视图</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- List View Container -->
-            <div class="fs-records-list" id="fsRecordsList"></div>
-
-            <!-- Calendar View Container -->
-            <div class="fs-calendar-container" id="fsRecordsCalendarView" style="display: none;"></div>
-          </div>
-
-          <!-- SUBVIEW 3: ANALYTICS & VISUAL REPORTS -->
-          <div class="fs-subview" id="fs-view-analytics">
-            <!-- KPI Summary Cards -->
-            <div class="fs-kpi-grid">
-              <div class="fs-kpi-card">
-                <div class="fs-kpi-label" data-i18n="fs_kpi_total_visits">总拜访次数</div>
-                <div class="fs-kpi-val" id="fsKpiTotalVisits">0</div>
-              </div>
-              <div class="fs-kpi-card">
-                <div class="fs-kpi-label" data-i18n="fs_kpi_signed_count">成功签约</div>
-                <div class="fs-kpi-val" id="fsKpiSignedCount" style="color: #10b981;">0</div>
-              </div>
-              <div class="fs-kpi-card">
-                <div class="fs-kpi-label" data-i18n="fs_kpi_interested_count">有意向</div>
-                <div class="fs-kpi-val" id="fsKpiInterestedCount" style="color: #3b82f6;">0</div>
-              </div>
-              <div class="fs-kpi-card">
-                <div class="fs-kpi-label" data-i18n="fs_kpi_conversion_rate">签约转化率</div>
-                <div class="fs-kpi-val" id="fsKpiConversionRate" style="color: #10b981;">0.0%</div>
-              </div>
-              <div class="fs-kpi-card">
-                <div class="fs-kpi-label" data-i18n="fs_kpi_onsite_ratio">现场拜访占比</div>
-                <div class="fs-kpi-val" id="fsKpiOnsiteRatio">0.0%</div>
-              </div>
-            </div>
-
-            <!-- Visual Charts Grid (Pie & Bar) -->
-            <div class="fs-charts-grid">
-              <!-- Chart 1: Outcomes Donut Chart -->
-              <div class="card fs-chart-card">
-                <h4 class="fs-chart-title" data-i18n="fs_chart_outcomes_title">销售结果分布 (饼状图)</h4>
-                <div id="fsChartOutcomesContainer" class="fs-chart-container"></div>
-              </div>
-
-              <!-- Chart 2: Rejection / Lost Reasons Donut Chart -->
-              <div class="card fs-chart-card">
-                <h4 class="fs-chart-title" data-i18n="fs_chart_reasons_title">拒绝与竞品流失原因分布 (饼状图)</h4>
-                <div id="fsChartReasonsContainer" class="fs-chart-container"></div>
-              </div>
-
-              <!-- Chart 3: Sales Methods Comparison Bar Chart -->
-              <div class="card fs-chart-card">
-                <h4 class="fs-chart-title" data-i18n="fs_chart_methods_title">拜访方式成效对比 (柱状图)</h4>
-                <div id="fsChartMethodsContainer" class="fs-chart-container"></div>
-              </div>
-
-              <!-- Chart 4: Regional Distribution Bar Chart -->
-              <div class="card fs-chart-card">
-                <h4 class="fs-chart-title" data-i18n="fs_chart_regions_title">各区域拜访分布 (柱状图)</h4>
-                <div id="fsChartRegionsContainer" class="fs-chart-container"></div>
-              </div>
-            </div>
-
-            <!-- Competitor Intelligence Summary Table -->
-            <div class="card" style="margin-top: 1.25rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-                <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--primary-dark);" data-i18n="fs_competitor_table_title">
-                  现场竞品报价与情报汇总
-                </h4>
-                <button class="btn btn-primary btn-sm" id="fsBtnExportSales" style="background: #10b981; border: none;">
-                  <span data-i18n="fs_btn_export_sales">导出销售报告 (Excel/CSV)</span>
-                </button>
-              </div>
-
-              <div class="table-container">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th data-i18n="th_name">餐馆名称</th>
-                      <th data-i18n="fs_th_competitor_supplier">竞品供应商</th>
-                      <th data-i18n="fs_th_competitor_quote">竞品报价 / 补贴</th>
-                      <th data-i18n="fs_th_contract_expiry">合同到期日</th>
-                      <th data-i18n="fs_th_notes">原因说明 / 纪要</th>
-                    </tr>
-                  </thead>
-                  <tbody id="fsCompetitorTableBody"></tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-
-        </section>
-
-        <!-- TAB 5: EMBEDDED GOOGLE MAPS RESTAURANT EXPLORER -->
-        <section class="tab-view" id="tab-mapexplorer">
-          <!-- Topbar Search & Filter Ribbon (Apartments.com inspired) -->
+        <!-- TAB 3: EMBEDDED GOOGLE MAPS & DYNAMIC ROUTE PLANNER (3-COLUMN WORKBENCH) -->
+        <section class="tab-view active" id="tab-mapexplorer">
+          <!-- Topbar Search & Filter Ribbon -->
           <div class="card map-explorer-toolbar-card" style="margin-bottom: 0.85rem; padding: 0.65rem 0.85rem;">
             <div class="map-explorer-toolbar">
-              <!-- 1. Independent Area Search Pill with Floating Popover Panel -->
+              <!-- 1. Area Search Pill with Popover Panel -->
               <div class="area-search-pill-container" id="areaSearchPillContainer">
                 <div class="area-search-pill-btn" id="areaSearchPillBtn" title="点击展开大区区划多选" data-i18n-title="map_area_pill_title">
                   <div class="area-active-tags-summary" id="areaActiveTagsSummary">
@@ -886,7 +419,7 @@
                   <span class="area-pill-chevron">▼</span>
                 </div>
 
-                <!-- Floating Popover Modal (Screenshot 2) -->
+                <!-- Floating Popover Modal -->
                 <div class="area-popover-panel" id="areaPopoverPanel" style="display: none;">
                   <div class="popover-search-input-wrap">
                     <span class="popover-search-icon">
@@ -896,9 +429,7 @@
                   </div>
 
                   <div class="popover-top-bar">
-                    <div class="popover-tags-row" id="popoverActiveTagsRow">
-                      <!-- Selected tags rendered dynamically with ✕ -->
-                    </div>
+                    <div class="popover-tags-row" id="popoverActiveTagsRow"></div>
                     <button type="button" class="btn-clear-all" id="popoverClearAllBtn" data-i18n="popover_clear_all">Clear All</button>
                   </div>
 
@@ -906,28 +437,22 @@
                     <span data-i18n="popover_reset_all_gta">重置为多伦多大区中心 (All GTA)</span>
                   </div>
 
-                  <!-- Nearby Recommended Neighborhoods Section (Apartments.com style) -->
+                  <!-- Nearby Recommended Neighborhoods Section -->
                   <div class="popover-section" id="popoverNearbySection" style="display: none;">
                     <div class="popover-section-title" id="popoverNearbyTitle">周边推荐社区 (NEARBY NEIGHBORHOODS)</div>
-                    <div class="popover-pills-row" id="popoverNearbyPills">
-                      <!-- Rendered dynamically with adjacent spatial neighbors -->
-                    </div>
+                    <div class="popover-pills-row" id="popoverNearbyPills"></div>
                   </div>
 
                   <!-- Cities Pills Section -->
                   <div class="popover-section">
                     <div class="popover-section-title" data-i18n="map_filter_city">大区城市 (CITIES)</div>
-                    <div class="popover-pills-row" id="popoverCityPills">
-                      <!-- Rendered dynamically -->
-                    </div>
+                    <div class="popover-pills-row" id="popoverCityPills"></div>
                   </div>
 
                   <!-- Neighborhoods Pills Section -->
                   <div class="popover-section" id="popoverNeighborhoodSection">
                     <div class="popover-section-title" data-i18n="map_filter_neighborhood">细分社区 / 商圈 (NEIGHBORHOODS)</div>
-                    <div class="popover-pills-row" id="popoverNeighborhoodPills">
-                      <!-- Rendered dynamically -->
-                    </div>
+                    <div class="popover-pills-row" id="popoverNeighborhoodPills"></div>
                   </div>
                 </div>
               </div>
@@ -945,29 +470,7 @@
                 </select>
               </div>
 
-              <!-- 3. Visited Filter Dropdown (是否拜访过) -->
-              <div class="toolbar-filter-item">
-                <select class="form-select toolbar-select" id="mapVisitedSelect">
-                  <option value="all" data-i18n="visited_all">是否拜访 (全部)</option>
-                  <option value="visited" data-i18n="visited_yes">已拜访</option>
-                  <option value="unvisited" data-i18n="visited_no">未拜访</option>
-                </select>
-              </div>
-
-              <!-- 4. Outcome Filter Dropdown (拜访结果) -->
-              <div class="toolbar-filter-item">
-                <select class="form-select toolbar-select" id="mapOutcomeSelect">
-                  <option value="all" data-i18n="outcome_all">拜访结果 (全部)</option>
-                  <option value="签订合同" data-i18n="outcome_contract">签订合同</option>
-                  <option value="有意向" data-i18n="outcome_interested">有意向</option>
-                  <option value="考虑中" data-i18n="outcome_considering">考虑中</option>
-                  <option value="暂无意向" data-i18n="outcome_not_interested">暂无意向</option>
-                  <option value="拒绝" data-i18n="outcome_rejected">拒绝合作</option>
-                  <option value="已打烊" data-i18n="outcome_closed">已打烊/关店</option>
-                </select>
-              </div>
-
-              <!-- 5. Search Keyword Input -->
+              <!-- 3. Search Keyword Input -->
               <div class="toolbar-filter-item toolbar-search-wrap">
                 <input type="text" class="form-input toolbar-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." data-i18n-placeholder="map_search_placeholder" />
                 <button class="btn btn-primary btn-sm" id="mapBtnSearchGmap" title="搜索 Google Maps" data-i18n-title="btn_search">
@@ -979,11 +482,10 @@
               <select id="mapCitySelect" style="display: none;"><option value="all">全部</option></select>
               <select id="mapNeighborhoodSelect" style="display: none;"><option value="all">全部</option></select>
               <select id="mapStreetSelect" style="display: none;"><option value="all">全部</option></select>
-              <select id="mapKvStatusSelect" style="display: none;"><option value="all">全部</option></select>
             </div>
           </div>
 
-          <!-- Google Maps API Not Activated Notice Banner -->
+          <!-- Google Maps API Notice Banner -->
           <div id="mapApiNotice" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
               <div>
@@ -991,7 +493,7 @@
                   Google Maps JavaScript API 尚未激活 (ApiNotActivatedMapError)
                 </div>
                 <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;">
-                  检测到您的 Google Cloud 项目尚未启用 <b>Maps JavaScript API</b>。已自动无缝切换至备用交互地图模式（餐馆标绘、社区筛选、导出与外勤路线功能正常可用）。
+                  检测到您的 Google Cloud 项目尚未启用 <b>Maps JavaScript API</b>。已自动无缝切换至备用交互地图模式（标绘、规划与路线功能正常可用）。
                 </div>
               </div>
               <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
@@ -1002,70 +504,132 @@
             </div>
           </div>
 
-          <!-- Split Screen View: Left Map (~58%), Right List (~42%) (Apartments.com style) -->
+          <!-- 3-COLUMN WORKSPACE: LEFT (RESTAURANTS) | CENTER (MAP) | RIGHT (WAYPOINTS) -->
           <div class="map-explorer-split">
-            <!-- Left Map Column -->
-            <div class="map-explorer-map-column">
-              <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
-              <div class="map-floating-legend">
-                <span class="legend-item"><span class="legend-dot in-kv"></span><span data-i18n="legend_in_kv">已入库</span></span>
-                <span class="legend-item"><span class="legend-dot new-place"></span><span data-i18n="legend_new_place">未入库</span></span>
-              </div>
-            </div>
-
-            <!-- Right List Column -->
-            <div class="map-explorer-list-column">
-              <!-- List Header -->
+            
+            <!-- 1. LEFT COLUMN: Google Maps Restaurant Results (~340px) -->
+            <div class="map-explorer-left-column">
               <div class="map-list-header">
                 <div>
-                  <h3 class="map-list-title" id="mapResultsRegionTitle">餐馆列表 (Restaurants)</h3>
+                  <h3 class="map-list-title" id="mapResultsRegionTitle">餐馆列表 (Google Maps)</h3>
                   <div class="map-list-subtitle" id="mapResultsSummary">
-                    共匹配 <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">0</span> 家餐馆 
-                    <span style="color: #64748b;">(未入库: <span id="mapUnsavedCount" style="font-weight: 700; color: #d97706;">0</span> 家)</span>
+                    共检索到 <span id="mapResultsCount" style="font-weight: 700; color: #16a34a;">0</span> 家 Google 商家
                   </div>
                 </div>
                 <div class="map-list-actions">
-                  <button class="btn btn-secondary btn-sm" id="mapBtnSelectAll" style="white-space: nowrap; flex-shrink: 0; min-width: 52px;" title="全选当前餐馆" data-i18n-title="btn_select_all">
-                    <span id="mapBtnSelectAllText" data-i18n="btn_select_all">全选</span>
-                  </button>
-                  <div class="selection-count-tag map-selection-tag" id="mapSelectionCountTag" style="display: none; white-space: nowrap; flex-shrink: 0;">
-                    <span data-i18n="sel_selected">已选</span>
-                    <strong class="selection-count-badge" id="mapSelectedCountNum">0</strong>
-                    <button type="button" class="btn-clear-sel" id="mapBtnClearSelection" data-i18n="btn_clear_selection">清空选择</button>
-                  </div>
-                  <button class="btn btn-primary btn-sm" id="mapBtnBatchAddToKv" style="background: #059669; border-color: #059669; white-space: nowrap; flex-shrink: 0;" title="批量保存到数据库" data-i18n-title="btn_batch_add_to_kv">
-                    <span data-i18n="btn_batch_add_to_kv">保存至数据库</span>
-                  </button>
-                  <button class="btn btn-primary btn-sm" id="mapBtnPlanRoute" style="background: #2563eb; border-color: #2563eb; white-space: nowrap; flex-shrink: 0;" title="规划路线" data-i18n-title="btn_plan_route">
-                    <span data-i18n="btn_plan_route">规划路线</span>
-                  </button>
-                  <button class="btn btn-secondary btn-sm" id="mapBtnExportExcel" style="white-space: nowrap; flex-shrink: 0;" title="导出所选 Excel" data-i18n-title="btn_export_excel">
-                    <span data-i18n="btn_export_excel">导出Excel</span>
+                  <button class="btn btn-primary btn-sm" id="mapBtnAddAllToRoute" style="background: #2563eb; border-color: #2563eb; font-size: 0.78rem; padding: 0.25rem 0.6rem;" title="将当前列表全部加入途经点">
+                    <span>+ 全部加入路线</span>
                   </button>
                 </div>
               </div>
 
-              <!-- Scrollable Cards Container -->
-              <div class="map-places-cards-container" id="mapPlacesCardsContainer">
+              <!-- Scrollable Restaurant Cards Container -->
+              <div class="map-places-cards-container custom-scrollbar" id="mapPlacesCardsContainer">
                 <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-                  正在加载餐馆与地图数据...
+                  正在加载 Google Maps 餐馆数据...
                 </div>
               </div>
 
               <!-- List Pagination -->
-              <div class="map-list-pagination" id="mapPaginationWrap" style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.85rem; border-top: 1px solid var(--border); background: #f8fafc; font-size: 0.8rem;">
-                <div id="mapPaginationInfo" style="color: var(--text-muted);">显示 0 - 0 / 共 0 家</div>
+              <div class="map-list-pagination" id="mapPaginationWrap">
+                <div id="mapPaginationInfo" style="color: var(--text-muted); font-size: 0.8rem;">显示 0 - 0 / 共 0 家</div>
                 <div id="mapPaginationControls" style="display: flex; gap: 0.35rem;"></div>
               </div>
             </div>
+
+            <!-- 2. MIDDLE COLUMN: Interactive Google Map & Blue Route (Flex-1) -->
+            <div class="map-explorer-map-column">
+              <!-- Floating Route Status Ribbon (Top of Map) -->
+              <div class="map-floating-route-ribbon" id="mapFloatingRouteRibbon">
+                <div class="route-ribbon-left">
+                  <span class="route-ribbon-pulse"></span>
+                  <span class="route-ribbon-title">动态路径规划</span>
+                  <span class="route-ribbon-divider">|</span>
+                  <span class="route-ribbon-stat">经停: <b id="mapRouteStopsCount" style="color: #2563eb;">0</b> 站</span>
+                  <span class="route-ribbon-stat">总里程: <b id="mapRouteDistance">0</b> km</span>
+                  <span class="route-ribbon-stat">预估耗时: <b id="mapRouteTime">0</b> 分钟</span>
+                </div>
+                <div class="route-ribbon-actions">
+                  <button type="button" class="btn btn-secondary btn-sm route-ribbon-btn" id="mapBtnFitRoute" title="居中展示全路线视野">
+                    居中全景
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm route-ribbon-btn" id="mapBtnToggleRoute" style="background: #2563eb; border-color: #2563eb;">
+                    <span id="mapRouteToggleLabel">规划中</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Map Canvas -->
+              <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
+
+              <!-- Map Legend -->
+              <div class="map-floating-legend">
+                <span class="legend-item"><span class="legend-dot start-point">🚩</span> 起点 (HQ)</span>
+                <span class="legend-item"><span class="legend-dot route-point">①</span> 途经经停点</span>
+                <span class="legend-item"><span class="legend-dot search-point">●</span> 待选餐馆</span>
+              </div>
+            </div>
+
+            <!-- 3. RIGHT COLUMN: Waypoints Management & Route Schedule (~340px) -->
+            <div class="map-explorer-right-column">
+              <div class="map-waypoints-header">
+                <div class="waypoints-header-top">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2563eb;"></span>
+                    <h3 class="waypoints-title">途经经停点清单</h3>
+                    <span class="waypoints-count-badge" id="mapWaypointsBadge">0 站</span>
+                  </div>
+                  <button type="button" class="btn-clear-waypoints" id="mapBtnClearRoute" title="清空所有经停点">
+                    清空路线
+                  </button>
+                </div>
+
+                <!-- Starting Point Selector Box -->
+                <div class="waypoints-origin-box">
+                  <div class="origin-label-row">
+                    <span class="origin-label">🚩 起点 (Departure)</span>
+                    <span class="origin-tag">Green Oil HQ</span>
+                  </div>
+                  <div class="origin-address-row">
+                    <input type="text" id="mapRouteOriginInput" class="form-input origin-input" value="Green Oil Inc, 888 Progress Ave, Scarborough, ON" placeholder="输入或修改起点地址..." />
+                  </div>
+                </div>
+
+                <!-- Action Toolbar: Smart Optimize & Export -->
+                <div class="waypoints-toolbar">
+                  <button type="button" class="btn btn-primary btn-sm btn-optimize" id="mapBtnOptimizeRoute" title="使用Anti-shuttle走廊分片与2-opt TSP算法智能最优排序">
+                    ✨ 智能最优排序
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm btn-export" id="mapBtnExportWaypoints" title="导出当前调整后顺序的Excel/CSV清单">
+                    📤 导出清单
+                  </button>
+                </div>
+
+                <div class="waypoints-drag-tip">
+                  <span>✋ 按住卡片左侧手柄拖拽排序，地图蓝线实时响应更新</span>
+                </div>
+              </div>
+
+              <!-- Scrollable Drag-and-Drop Waypoints List -->
+              <div class="map-waypoints-container custom-scrollbar" id="mapWaypointsCardsContainer">
+                <!-- Rendered dynamically -->
+              </div>
+
+              <!-- Right Footer: External Google Maps Navigation -->
+              <div class="map-waypoints-footer">
+                <button type="button" class="btn btn-primary btn-nav-google" id="mapBtnExternalNav">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                  在 Google 地图开启导航
+                </button>
+              </div>
+            </div>
+
           </div>
         </section>
 
       </main>
     </div>
   </div>
-
-
 
   <!-- RESTAURANT DETAIL MODAL -->
   <div class="modal-overlay" id="detailModalOverlay">
@@ -1076,7 +640,6 @@
       </div>
 
       <div class="modal-body">
-        
         <div class="modal-rest-image-wrap" id="modalRestImageWrap">
           <img id="modalRestImage" src="" alt="Restaurant photo" />
           <span class="modal-rest-badge" id="modalRestImageBadge">🍽️</span>
@@ -1145,9 +708,6 @@
         <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modalBtnMaps">
           <span data-i18n="btn_modal_maps">Google 地图</span>
         </a>
-        <button class="btn btn-secondary btn-sm" id="btnModalLogVisit" style="background: #10b981; color: white; border: none;">
-          <span data-i18n="btn_log_visit">记录拜访</span>
-        </button>
         <button class="btn btn-primary btn-sm" id="btnModalAddToRoute" style="background: #2563eb; color: white; border: none;">
           <span data-i18n="btn_add_to_route">加入路线</span>
         </button>
@@ -1177,161 +737,6 @@
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; margin-top: 0.5rem;">
           <span data-i18n="login_submit">登录</span>
         </button>
-      </form>
-    </div>
-  </div>
-
-  
-  <!-- FIELD SALE VISIT RECORD MODAL -->
-  <div class="modal-overlay" id="fsRecordModalOverlay">
-    <div class="modal-card fs-modal-card">
-      <div class="modal-header">
-        <h3 class="modal-title" id="fsRecordModalTitle" data-i18n="fs_record_title_new">新建外勤拜访记录</h3>
-        <button class="modal-close-btn" id="fsRecordModalClose" aria-label="关闭">✕</button>
-      </div>
-
-      <form id="fsRecordForm" class="modal-body">
-        
-        <!-- Restaurant Selection & Proximity -->
-        <div class="form-group">
-          <label class="form-label" for="fsRecordRestSelect" data-i18n="fs_record_select_rest">关联餐馆</label>
-          <select class="form-select" id="fsRecordRestSelect" required style="font-weight: 500;">
-            <!-- Populated via JS with route waypoints only -->
-          </select>
-          <div style="font-size: 0.78rem; color: #2563eb; margin-top: 0.25rem;" data-i18n="fs_record_route_prompt">
-            仅可选择当前路线规划中的途经站点
-          </div>
-        </div>
-
-        <!-- Editable Restaurant Info (Syncs to DB) -->
-        <div class="fs-edit-rest-box">
-          <div class="fs-edit-rest-title" data-i18n="fs_edit_rest_section">现场核对 / 修改餐馆资料 (自动同步至数据库)</div>
-          <div class="fs-form-row">
-            <div class="form-group" style="flex: 1; margin-bottom: 0.5rem;">
-              <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_phone">联系电话</label>
-              <input type="text" class="form-input" id="fsEditRestPhone" data-i18n-placeholder="fs_rest_phone_placeholder" placeholder="电话号码">
-            </div>
-            <div class="form-group" style="flex: 1; margin-bottom: 0.5rem;">
-              <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_contact">联系人 / 老板</label>
-              <input type="text" class="form-input" id="fsEditRestContact" data-i18n-placeholder="fs_rest_contact_placeholder" placeholder="负责人姓名或称呼">
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom: 0.5rem;">
-            <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_address">详细地址</label>
-            <input type="text" class="form-input" id="fsEditRestAddress" data-i18n-placeholder="fs_rest_address_placeholder" placeholder="详细街道地址与门牌">
-          </div>
-          <div class="form-group" style="margin-bottom: 0.5rem;">
-            <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_rest_hours">营业时间</label>
-            <textarea class="form-input" id="fsEditRestHours" data-i18n-placeholder="fs_rest_hours_placeholder" placeholder="例: 11:00-22:00 或按星期分行填入" rows="2" style="font-size: 0.8rem; resize: vertical;"></textarea>
-          </div>
-          <label class="fs-checkbox-label" style="font-size: 0.8rem; color: var(--primary-dark);">
-            <input type="checkbox" id="fsSyncRestToKv" class="custom-checkbox" checked>
-            <span data-i18n="fs_rest_sync_tip">保存记录时同步修改餐馆数据库</span>
-          </label>
-        </div>
-
-        <!-- Sale Method & Visit Time -->
-        <div class="fs-form-row" style="margin-top: 0.75rem;">
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" data-i18n="fs_record_method">销售方式</label>
-            <div class="fs-radio-group">
-              <label class="fs-radio-btn">
-                <input type="radio" name="fsMethod" value="onsite" checked>
-                <span data-i18n="fs_record_method_onsite">现场拜访</span>
-              </label>
-              <label class="fs-radio-btn">
-                <input type="radio" name="fsMethod" value="phone">
-                <span data-i18n="fs_record_method_phone">电话沟通</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="form-group" style="flex: 1;">
-            <label class="form-label" for="fsRecordTime" data-i18n="fs_record_time">拜访时间 (精确到小时)</label>
-            <input type="datetime-local" class="form-input" id="fsRecordTime" required>
-          </div>
-        </div>
-
-        <!-- Sale Outcome -->
-        <div class="form-group">
-          <label class="form-label" data-i18n="fs_record_outcome">销售结果</label>
-          <div class="fs-outcome-selector">
-            <label class="fs-outcome-btn fs-outcome-signed">
-              <input type="radio" name="fsOutcome" value="contract_signed">
-              <span data-i18n="fs_record_outcome_signed">签订合同</span>
-            </label>
-            <label class="fs-outcome-btn fs-outcome-interested">
-              <input type="radio" name="fsOutcome" value="interested" checked>
-              <span data-i18n="fs_record_outcome_interested">有意向</span>
-            </label>
-            <label class="fs-outcome-btn fs-outcome-rejected">
-              <input type="radio" name="fsOutcome" value="rejected">
-              <span data-i18n="fs_record_outcome_rejected">拒绝</span>
-            </label>
-            <label class="fs-outcome-btn fs-outcome-others">
-              <input type="radio" name="fsOutcome" value="signed_others">
-              <span data-i18n="fs_record_outcome_signed_others">已签其他</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Conditional: Rejection Reason -->
-        <div class="form-group" id="fsRejectReasonGroup" style="display: none;">
-          <label class="form-label" for="fsRejectReason" data-i18n="fs_reject_reason">拒绝原因</label>
-          <select class="form-select" id="fsRejectReason" style="margin-bottom: 0.5rem;">
-            <option value="价格无优势" data-i18n="fs_reject_price">价格无优势</option>
-            <option value="觉得换油/换服务商麻烦" data-i18n="fs_reject_hassle">觉得换油/换服务商麻烦</option>
-            <option value="店主不在/无法决策" data-i18n="fs_reject_decision_maker">店主不在/无法决策</option>
-            <option value="用油量极少无回收价值" data-i18n="fs_reject_low_volume">用油量极少无回收价值</option>
-            <option value="对目前服务商满意" data-i18n="fs_reject_satisfied">对目前服务商满意</option>
-            <option value="其他原因" data-i18n="fs_reject_other">其他原因</option>
-          </select>
-          <input type="text" class="form-input" id="fsRejectDetails" data-i18n-placeholder="fs_reject_detail_placeholder" placeholder="补充详细拒绝说明...">
-        </div>
-
-        <!-- Conditional: Signed Others & Competitor Quote -->
-        <div class="form-group" id="fsOthersGroup" style="display: none;">
-          <label class="form-label" for="fsOthersReason" data-i18n="fs_others_reason">签其他原因</label>
-          <select class="form-select" id="fsOthersReason" style="margin-bottom: 0.75rem;">
-            <option value="已有长期排他合同未到期" data-i18n="fs_others_locked">已有长期排他合同未到期</option>
-            <option value="现任供应商提供特殊设备/高额补贴" data-i18n="fs_others_equipment">现任供应商提供特殊设备/高额补贴</option>
-            <option value="现任供应商提供原料捆绑供货" data-i18n="fs_others_bundle">现任供应商提供原料捆绑供货</option>
-            <option value="其他原因" data-i18n="fs_others_other">其他原因</option>
-          </select>
-
-          <!-- Competitor Quote Intelligence -->
-          <div class="fs-competitor-box">
-            <div class="fs-comp-title" data-i18n="fs_competitor_quote_title">竞品供应商报价与情报补充</div>
-            <div class="fs-form-row">
-              <div class="form-group" style="flex: 1; margin-bottom: 0.5rem;">
-                <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_competitor_name">其他供应商名称</label>
-                <input type="text" class="form-input" id="fsCompetitorName" data-i18n-placeholder="fs_competitor_name_placeholder" placeholder="例如 Darling, Rothsay, 自营等">
-              </div>
-              <div class="form-group" style="flex: 1; margin-bottom: 0.5rem;">
-                <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_contract_expiry">合同预计到期时间</label>
-                <input type="month" class="form-input" id="fsContractExpiry">
-              </div>
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label" style="font-size: 0.8rem;" data-i18n="fs_competitor_quote">竞品报价 / 补贴标准</label>
-              <input type="text" class="form-input" id="fsCompetitorQuote" data-i18n-placeholder="fs_competitor_quote_placeholder" placeholder="例如 $0.25/L 或 $15/桶 或 赠送隔油池清洗">
-            </div>
-          </div>
-        </div>
-
-        <!-- Meeting Notes -->
-        <div class="form-group" style="margin-top: 0.75rem;">
-          <label class="form-label" for="fsRecordNotes" data-i18n="fs_notes">沟通纪要 / 下次拜访建议</label>
-          <textarea class="form-input" id="fsRecordNotes" rows="3" data-i18n-placeholder="fs_notes_placeholder" placeholder="记录关键沟通细节、用油规模、老板微信等..."></textarea>
-        </div>
-
-        <div class="modal-footer" style="padding: 1rem 0 0 0; margin-top: 1rem;">
-          <button type="button" class="btn btn-secondary btn-sm" id="fsRecordBtnCancel" data-i18n="btn_cancel">取消</button>
-          <button type="submit" class="btn btn-primary btn-sm" id="fsBtnSubmitRecord" style="background: #10b981; border: none; padding: 0.5rem 1.5rem;">
-            <span data-i18n="fs_btn_save">保存拜访记录</span>
-          </button>
-        </div>
-
       </form>
     </div>
   </div>
@@ -1376,80 +781,7 @@
     </div>
   </div>
 
-  <!-- ROUTE MANUAL ADDRESS BATCH ADD MODAL -->
-  <div class="modal-overlay" id="fsRouteManualAddModalOverlay">
-    <div class="modal-card fs-modal-card" style="max-width: 620px;">
-      <div class="modal-header">
-        <h3 class="modal-title" data-i18n="fs_route_manual_modal_title">手动添加地址</h3>
-        <button class="modal-close-btn" id="fsRouteManualModalClose" aria-label="关闭">✕</button>
-      </div>
-      <div class="modal-body" style="padding: 1.25rem;">
-        <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.75rem;" data-i18n="fs_route_manual_modal_desc">
-          支持批量粘贴多行地址
-        </p>
-        <div class="form-group" style="margin-bottom: 0.75rem;">
-          <textarea id="fsRouteManualAddressesInput" class="form-input" rows="8" style="width: 100%; font-family: monospace; font-size: 0.85rem; line-height: 1.45; resize: vertical;" data-i18n-placeholder="fs_route_manual_placeholder" placeholder="支持批量粘贴多行地址，例如：&#10;915 Danforth Ave, Toronto, ON M4J 1L8&#10;3235 Hwy 7 Unit 17, Markham, ON L3R 3P3&#10;493 Danforth Ave, Toronto, ON"></textarea>
-        </div>
-        <div class="form-group" id="fsRouteManualTabGroup" style="margin-bottom: 0; display: none;">
-          <label class="form-label" style="font-size: 0.85rem;" data-i18n="fs_route_manual_tab_label">目标标签：</label>
-          <select class="form-select" id="fsRouteManualTargetTabSelect" style="font-size: 0.85rem;"></select>
-        </div>
-      </div>
-      <div class="modal-footer" style="padding: 0.75rem 1.25rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 0.5rem;">
-        <button class="btn btn-outline" id="fsRouteManualModalBtnCancel" data-i18n="btn_cancel">取消</button>
-        <button class="btn btn-primary" id="fsRouteManualModalBtnSubmit" data-i18n="fs_route_manual_btn_submit">确认添加</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ROUTE SELECT TAB MODAL (FOR MAP & RESTAURANT QUERY IMPORT) -->
-  <div class="modal-overlay" id="fsRouteSelectTabModalOverlay">
-    <div class="modal-card fs-modal-card" style="max-width: 480px;">
-      <div class="modal-header">
-        <h3 class="modal-title" data-i18n="fs_route_select_tab_title">选择添加至路线标签</h3>
-        <button class="modal-close-btn" id="fsRouteSelectTabModalClose" aria-label="关闭">✕</button>
-      </div>
-      <div class="modal-body" style="padding: 1.25rem;">
-        <p style="font-size: 0.88rem; color: #475569; margin-bottom: 0.85rem;" id="fsRouteSelectTabModalDesc" data-i18n="fs_route_select_tab_desc">
-          选择目标标签：
-        </p>
-        <div id="fsRouteSelectTabOptionsList" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; max-height: 240px; overflow-y: auto;">
-          <!-- Rendered via JS -->
-        </div>
-        <button class="btn btn-sm btn-outline" id="fsRouteSelectTabBtnNewOption" style="font-size: 0.82rem; border-style: dashed; width: 100%; justify-content: center;">
-          <span data-i18n="fs_route_select_tab_new_option">+ 新建标签并添加</span>
-        </button>
-      </div>
-      <div class="modal-footer" style="padding: 0.75rem 1.25rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 0.5rem;">
-        <button class="btn btn-outline" id="fsRouteSelectTabBtnCancel" data-i18n="btn_cancel">取消</button>
-        <button class="btn btn-primary" id="fsRouteSelectTabBtnConfirm" data-i18n="btn_confirm">确定</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ROUTE RENAME TAB MODAL -->
-  <div class="modal-overlay" id="fsRouteRenameModalOverlay">
-    <div class="modal-card fs-modal-card" style="max-width: 420px;">
-      <div class="modal-header">
-        <h3 class="modal-title" data-i18n="fs_route_tab_rename_title">重命名路线标签</h3>
-        <button class="modal-close-btn" id="fsRouteRenameModalClose" aria-label="关闭">✕</button>
-      </div>
-      <div class="modal-body" style="padding: 1.25rem;">
-        <div class="form-group" style="margin-bottom: 0;">
-          <label class="form-label" style="font-size: 0.85rem;" data-i18n="fs_route_tab_rename_prompt">请输入路线标签名称：</label>
-          <input type="text" id="fsRouteRenameInput" class="form-input" maxlength="30" style="font-size: 0.9rem; width: 100%;">
-        </div>
-      </div>
-      <div class="modal-footer" style="padding: 0.75rem 1.25rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 0.5rem;">
-        <button class="btn btn-outline" id="fsRouteRenameModalBtnCancel" data-i18n="btn_cancel">取消</button>
-        <button class="btn btn-primary" id="fsRouteRenameModalBtnSave" data-i18n="btn_save">保存</button>
-      </div>
-    </div>
-  </div>
-
-  <datalist id="fsRestaurantsDatalist"></datalist>
-
   <!-- App Entry Scripts -->
-  <script type="module" src="assets/js/app.js?v=20260916_01"></script>
+  <script type="module" src="assets/js/app.js?v=20260918_v2"></script>
 </body>
 </html>
