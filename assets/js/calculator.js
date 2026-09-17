@@ -175,7 +175,7 @@ export const Calculator = {
           </div>
           ${this.fryers.length > 1 ? `
             <button class="btn btn-danger btn-sm" onclick="window.removeFryerItem(${f.id})" title="Delete">
-              ✕
+              &times;
             </button>
           ` : ''}
         </div>
@@ -473,7 +473,7 @@ export const Calculator = {
     const badge = document.getElementById("calcTargetRestBadge");
     if (badge) {
       const prefix = i18n.t("calc_linked_rest");
-      badge.innerHTML = `${prefix}：<b>${restaurant.name}</b> <button onclick="window.clearCalcRestaurant()" style="background:none; border:none; color:white; cursor:pointer; margin-left:6px;">✕</button>`;
+      badge.innerHTML = `${prefix}：<b>${restaurant.name}</b> <button onclick="window.clearCalcRestaurant()" style="background:none; border:none; color:white; cursor:pointer; margin-left:6px;">&times;</button>`;
       badge.style.display = "inline-flex";
     }
     this.calculate();
@@ -512,7 +512,7 @@ export const Calculator = {
       const restDisplay = restaurantName || "Standard Restaurant";
       const basisLabel = pricingMode === "total" ? "Total Cooking Oil" : "UCO Recovery (75%)";
       const lines = [
-        `[Green Oil Recycling - Cooking Oil & UCO Estimate]`,
+        `[Green Oil - Cooking Oil & UCO Estimate]`,
         `Restaurant: ${restDisplay}`,
         `----------------------------------------`,
         `[Usage & Waste Oil Projection]`,
@@ -523,8 +523,8 @@ export const Calculator = {
         `· Pricing Basis: ${basisLabel} (${basisVolume} L/mo)`,
         `· Suggested UCO Price: ${ucoPricing ? ucoPricing.rateDisplay : '$0.40 / L'} (${ucoPricing ? ucoPricing.tierRange : '300 L+ / month'})`,
         `· Est. Monthly Rebate: ${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
-        `· Recommended Container Setup: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
-        `· Recommended Pickup Plan: ${pickupAdvice}`,
+        `· Container Setup: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
+        `· Pickup Schedule: ${pickupAdvice}`,
         `----------------------------------------`,
         `* Estimates are for reference only. Actual specifications are subject to on-site inspection and service agreement.`
       ];
@@ -533,7 +533,7 @@ export const Calculator = {
       const restDisplay = restaurantName || "일반 식당";
       const basisLabel = pricingMode === "total" ? "총 식용유량 기준" : "폐유 회수율(75%) 기준";
       const lines = [
-        `[Green Oil 친환경 식용유 및 폐유 산정 견적서]`,
+        `[Green Oil 식용유 및 폐식용유 산정서]`,
         `식당명: ${restDisplay}`,
         `----------------------------------------`,
         `[식용유 사용 및 폐유 수거 예상]`,
@@ -544,8 +544,8 @@ export const Calculator = {
         `· 단가 산정기준: ${basisLabel} (${basisVolume} L/월)`,
         `· 권장 폐유 수거단가: ${ucoPricing ? ucoPricing.rateDisplay : '$0.40 / L'} (${ucoPricing ? ucoPricing.tierRange : '300 L+ / month'})`,
         `· 예상 월간 수거 보상금: ${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
-        `· 권장 수거용기 구성: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
-        `· 권장 수거 솔루션: ${pickupAdvice}`,
+        `· 수거용기 규격: ${containerConfig ? containerConfig.spec : '200L Drum'}`,
+        `· 수거 주기 안내: ${pickupAdvice}`,
         `----------------------------------------`,
         `* 본 산정 결과는 참고용이며, 실제 조건은 현장 실사 및 서비스 계약서에 따릅니다.`
       ];
@@ -554,7 +554,7 @@ export const Calculator = {
       const restDisplay = restaurantName || "普通餐馆";
       const basisLabel = pricingMode === "total" ? "按总用油量" : "按出油率 (75%)";
       const lines = [
-        `【Green Oil 环保回收用油测算】`,
+        `【Green Oil 餐厅用油与废油测算单】`,
         `餐馆名称：${restDisplay}`,
         `----------------------------------------`,
         `[用油与废油预估]`,
@@ -565,8 +565,8 @@ export const Calculator = {
         `· 测算基准口径：${basisLabel} (${basisVolume} 升/月)`,
         `· 建议回收报价：${ucoPricing ? ucoPricing.rateDisplay : '$0.40 / L'} (对应阶梯: ${ucoPricing ? ucoPricing.tierRange : '300 L+ / month'})`,
         `· 预估月回收返还：${ucoPricing ? ucoPricing.monthlyEstimateDisplay : '$0.00'}`,
-        `· 推荐回收设备配置：${containerConfig ? containerConfig.spec : '200L Drum'}`,
-        `· 建议回收方案：${pickupAdvice}`,
+        `· 建议容器规格：${containerConfig ? containerConfig.spec : '200L Drum'}`,
+        `· 收运周期建议：${pickupAdvice}`,
         `----------------------------------------`,
         `* 测算数据仅供参考，实际以现场勘测及回收服务协议为准。`
       ];

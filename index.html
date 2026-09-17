@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title data-i18n="app_title">Green Oil 工作台</title>
   <link rel="stylesheet" href="assets/css/app.css?v=20260915_01">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%2316a34a%22/><text x=%2250%22 y=%2267%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2252%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-weight=%22700%22>G</text></svg>">
   <script src="assets/js/vendor/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -58,6 +58,7 @@
           </div>
         </div>
         <button class="btn-logout" id="btnLogout" title="退出登录" data-i18n-title="btn_logout">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           <span data-i18n="btn_logout">退出登录</span>
         </button>
       </div>
@@ -69,7 +70,7 @@
       <!-- Topbar Header -->
       <header class="topbar">
         <div class="topbar-left">
-          <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="菜单">☰</button>
+          <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
           <button class="sidebar-toggle-btn desktop-only" id="sidebarToggleBtn" title="展开侧边栏" aria-label="展开侧边栏" data-i18n-title="sidebar_expand">&gt;</button>
           <h1 class="page-title" id="currentPageTitle" data-i18n="page_title_mapexplorer">地图找店与路径规划</h1>
         </div>
@@ -78,9 +79,9 @@
           <!-- Language Selector -->
           <div class="lang-select-wrap">
             <select id="langSelect" class="lang-select" aria-label="Language">
-              <option value="zh">🇨🇳 中文</option>
-              <option value="en">🇨🇦 English</option>
-              <option value="ko">🇰🇷 한국어</option>
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+              <option value="ko">한국어</option>
             </select>
           </div>
         </div>
@@ -174,7 +175,7 @@
                 </div>
 
                 <div class="sub-metric">
-                  <div class="sub-metric-label" data-i18n="calc_res_200l_drums">推荐回收设备 (Drum / Bin)</div>
+                  <div class="sub-metric-label" data-i18n="calc_res_200l_drums">建议配置容器 (Drum / Bin)</div>
                   <div class="sub-metric-val" id="res200LDrums">-</div>
                 </div>
 
@@ -314,7 +315,7 @@
                   建议清洗频率
                 </label>
                 <select id="gtCleanFrequency" class="form-input" style="font-size: 0.95rem; padding: 0.6rem 0.75rem; width: 100%;">
-                  <option value="1" selected data-i18n="trap_freq_1">每月清洗 1 次 (高客流餐饮推荐)</option>
+                  <option value="1" selected data-i18n="trap_freq_1">每月清洗 1 次 (高频使用)</option>
                   <option value="2" data-i18n="trap_freq_2">每 2 个月清洗 1 次 (标准中大型餐馆)</option>
                   <option value="3" data-i18n="trap_freq_3">每季度清洗 1 次 (3个月 / 市政法定最低维保线)</option>
                 </select>
@@ -437,9 +438,9 @@
                     <span data-i18n="popover_reset_all_gta">重置为多伦多大区中心 (All GTA)</span>
                   </div>
 
-                  <!-- Nearby Recommended Neighborhoods Section -->
+                  <!-- Nearby Neighborhoods Section -->
                   <div class="popover-section" id="popoverNearbySection" style="display: none;">
-                    <div class="popover-section-title" id="popoverNearbyTitle">周边推荐社区 (NEARBY NEIGHBORHOODS)</div>
+                    <div class="popover-section-title" id="popoverNearbyTitle" data-i18n="popover_nearby_title">周边社区 (NEARBY NEIGHBORHOODS)</div>
                     <div class="popover-pills-row" id="popoverNearbyPills"></div>
                   </div>
 
@@ -490,15 +491,15 @@
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
               <div>
                 <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;">
-                  Google Maps JavaScript API 尚未激活 (ApiNotActivatedMapError)
+                  地图服务提示
                 </div>
                 <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;">
-                  检测到您的 Google Cloud 项目尚未启用 <b>Maps JavaScript API</b>。已自动无缝切换至备用交互地图模式（标绘、规划与路线功能正常可用）。
+                  Google Maps 服务未激活，已自动切换至备用地图视图（路线规划与地点检索功能正常可用）。
                 </div>
               </div>
               <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
                 <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;">
-                  前往 Google Cloud 一键启用
+                  服务配置说明
                 </a>
               </div>
             </div>
@@ -564,9 +565,9 @@
 
               <!-- Map Legend -->
               <div class="map-floating-legend">
-                <span class="legend-item"><span class="legend-dot start-point">🚩</span> 起点 (HQ)</span>
-                <span class="legend-item"><span class="legend-dot route-point">①</span> 途经经停点</span>
-                <span class="legend-item"><span class="legend-dot search-point">●</span> 待选餐馆</span>
+                <span class="legend-item"><span class="legend-dot start-point">HQ</span> 起点</span>
+                <span class="legend-item"><span class="legend-dot route-point">1</span> 途经点</span>
+                <span class="legend-item"><span class="legend-dot search-point"></span> 候选餐馆</span>
               </div>
             </div>
 
@@ -587,7 +588,7 @@
                 <!-- Starting Point Selector Box -->
                 <div class="waypoints-origin-box">
                   <div class="origin-label-row">
-                    <span class="origin-label">🚩 起点 (Departure)</span>
+                    <span class="origin-label">起点</span>
                     <span class="origin-tag">Green Oil HQ</span>
                   </div>
                   <div class="origin-address-row">
@@ -595,18 +596,18 @@
                   </div>
                 </div>
 
-                <!-- Action Toolbar: Smart Optimize & Export -->
+                <!-- Action Toolbar: Route Optimize & Export -->
                 <div class="waypoints-toolbar">
-                  <button type="button" class="btn btn-primary btn-sm btn-optimize" id="mapBtnOptimizeRoute" title="使用Anti-shuttle走廊分片与2-opt TSP算法智能最优排序">
-                    ✨ 智能最优排序
+                  <button type="button" class="btn btn-primary btn-sm btn-optimize" id="mapBtnOptimizeRoute" title="优化经停路线顺序">
+                    路线优化
                   </button>
                   <button type="button" class="btn btn-secondary btn-sm btn-export" id="mapBtnExportWaypoints" title="导出当前调整后顺序的Excel/CSV清单">
-                    📤 导出清单
+                    导出清单
                   </button>
                 </div>
 
                 <div class="waypoints-drag-tip">
-                  <span>✋ 按住卡片左侧手柄拖拽排序，地图蓝线实时响应更新</span>
+                  <span>拖拽调整途经点顺序，路线实时更新</span>
                 </div>
               </div>
 
@@ -636,13 +637,13 @@
     <div class="modal-card">
       <div class="modal-header">
         <h3 class="modal-title" id="modalRestName" data-i18n="modal_title">餐馆详情</h3>
-        <button class="modal-close-btn" id="detailModalClose" aria-label="关闭">✕</button>
+        <button class="modal-close-btn" id="detailModalClose" aria-label="关闭">&times;</button>
       </div>
 
       <div class="modal-body">
         <div class="modal-rest-image-wrap" id="modalRestImageWrap">
           <img id="modalRestImage" src="" alt="Restaurant photo" />
-          <span class="modal-rest-badge" id="modalRestImageBadge">🍽️</span>
+          <span class="modal-rest-badge" id="modalRestImageBadge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2v20M21 2v6a3 3 0 0 1-3 3M6 2v10M9 2v10M3 2v10a3 3 0 0 0 3 3v7M6 15v7"/></svg></span>
         </div>
 
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
@@ -718,7 +719,9 @@
   <!-- LOGIN OVERLAY -->
   <div class="modal-overlay" id="loginOverlay">
     <div class="login-box">
-      <div class="login-icon">🌱</div>
+      <div class="login-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13C4 8.5 7.5 4 13 4c2.5 0 5 1 7 3-1 3.5-3 5.5-6 6.5-1.5.5-3 0-3 0"></path><path d="M11 20c1.5-3 3-5 6-6.5"></path></svg>
+      </div>
       <h2 class="login-title" data-i18n="login_title">Green Oil 工作台</h2>
 
       <div class="login-alert" id="loginAlert" data-i18n="login_error">账号或密码错误</div>
@@ -745,21 +748,21 @@
   <div class="modal-overlay" id="fsRouteNavModalOverlay">
     <div class="modal-card fs-modal-card" style="max-width: 640px;">
       <div class="modal-header">
-        <h3 class="modal-title" id="fsRouteNavModalTitle" data-i18n="fs_route_nav_modal_title">智能路线导航方案</h3>
-        <button class="modal-close-btn" id="fsRouteNavModalClose" aria-label="关闭">✕</button>
+        <h3 class="modal-title" id="fsRouteNavModalTitle" data-i18n="fs_route_nav_modal_title">路线导航方案</h3>
+        <button class="modal-close-btn" id="fsRouteNavModalClose" aria-label="关闭">&times;</button>
       </div>
 
       <div class="modal-body" style="padding: 1.25rem;">
         <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem; color: #1e40af; margin-bottom: 1rem; line-height: 1.5;">
-          <div style="font-weight: 600; margin-bottom: 0.25rem;">💡 <span data-i18n="nav_hint_title">导航提示</span></div>
+          <div style="font-weight: 600; margin-bottom: 0.25rem;"><span data-i18n="nav_hint_title">导航说明</span></div>
           <div id="fsRouteNavModalTip" data-i18n="fs_route_nav_modal_tip">
-            当前路线包含较多地点。由于手机端 Google Maps App 外部调用限制为最多 10 个地点，建议手机跑店使用分段导航；网页端或车机大屏可直接打开全量拼接路线。
+            当前路线包含较多经停点。建议移动端采用分段导航；桌面端或车载终端可直接查看完整路线。
           </div>
         </div>
 
         <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.25rem;">
           <button class="btn btn-primary" id="fsRouteNavBtnFull" style="flex: 1; min-width: 200px; background: #2563eb; border-color: #2563eb; font-size: 0.88rem; padding: 0.6rem 0.8rem; font-weight: 600;">
-            <span data-i18n="fs_route_nav_btn_full">打开全量完整路线 (网页版/车机推荐)</span>
+            <span data-i18n="fs_route_nav_btn_full">打开完整路线 (网页/车载)</span>
           </button>
           <button class="btn btn-outline" id="fsRouteNavBtnOpenAll" style="flex: 1; min-width: 180px; font-size: 0.88rem; padding: 0.6rem 0.8rem; font-weight: 600; color: #0f766e; border-color: #99f6e4; background: #f0fdfa;">
             <span data-i18n="fs_route_nav_btn_open_all">在新标签页打开所有分段</span>

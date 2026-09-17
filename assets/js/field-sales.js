@@ -2076,7 +2076,7 @@ export const FieldSales = {
       const phoneStr = w.phone && w.phone !== "无" ? `<a href="tel:${w.phone}" class="fs-link fs-wp-phone">${w.phone}</a>` : "";
       const isVisited = !!w.visited;
       const visitedBadge = isVisited 
-        ? `<span class="fs-wp-status-badge is-visited" style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">✓ ${i18n.t("visited_yes")}</span>` 
+        ? `<span class="fs-wp-status-badge is-visited" style="background: #d1fae5; color: #065f46; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${i18n.t("visited_yes")}</span>` 
         : `<span class="fs-wp-status-badge is-pending" style="background: #fef3c7; color: #92400e; font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">${i18n.t("visited_pending")}</span>`;
 
       const estArrival = arrivalTimeMap.get(w._uid) || depTime;
@@ -2354,7 +2354,7 @@ export const FieldSales = {
           (selectedRest.placeId && w.placeId && selectedRest.placeId === w.placeId) ||
           (selectedRest.name && w.name && selectedRest.name === w.name)
         );
-        const statusStr = w.visited ? `✓ ${i18n.t("visited_yes")}` : i18n.t("visited_pending");
+        const statusStr = w.visited ? i18n.t("visited_yes") : i18n.t("visited_pending");
         const val = w.placeId || w.name;
         const optLabel = i18n.t("fs_opt_stop_format", { stop: idx + 1, status: statusStr, name: w.name, region: w.address || Restaurants.formatRegion(w.region) || "GTA" });
         html += `<option value="${val}" ${isSelected ? "selected" : ""}>${optLabel}</option>`;
@@ -2833,7 +2833,7 @@ export const FieldSales = {
       <div class="fs-calendar-day-panel">
         <div class="fs-cal-panel-header">
           <div class="fs-cal-panel-title">
-            📅 ${this.selectedCalendarDate} ${i18n.t("fs_tab_records") || "拜访记录"} (${selRecords.length})
+            ${this.selectedCalendarDate} ${i18n.t("fs_tab_records") || "拜访记录"} (${selRecords.length})
           </div>
           <button class="btn btn-primary btn-sm" id="fsCalBtnAddVisit">
             + ${i18n.t("cal_btn_add_visit") || "录入此日拜访"}

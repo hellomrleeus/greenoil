@@ -223,7 +223,7 @@ export const GreaseTrap = {
     const badge = document.getElementById("trapTargetRestBadge");
     if (badge) {
       const prefix = i18n.t("calc_linked_rest");
-      badge.innerHTML = `${prefix}：<b>${restaurant.name}</b> <button onclick="window.clearTrapRestaurant()" style="background:none; border:none; color:white; cursor:pointer; margin-left:6px;">✕</button>`;
+      badge.innerHTML = `${prefix}：<b>${restaurant.name}</b> <button onclick="window.clearTrapRestaurant()" style="background:none; border:none; color:white; cursor:pointer; margin-left:6px;">&times;</button>`;
       badge.style.display = "inline-flex";
     }
     this.calculate();
@@ -264,7 +264,7 @@ export const GreaseTrap = {
         : (frequencyMonths === 2 ? "Every 2 months (6 services / year)" : "Every quarter (4 services / year)");
 
       const lines = [
-        `[Green Oil Commercial Grease Trap Cleaning Quote]`,
+        `[Green Oil Grease Trap Maintenance Quote]`,
         `Client / Restaurant: ${restDisplay}`,
         `----------------------------------------`,
         `[Grease Trap Specifications]`,
@@ -280,7 +280,7 @@ export const GreaseTrap = {
         `----------------------------------------`,
         `[Compliance & Service Standards]`,
         `1. Full vacuum pump-out of grease cap and heavy bottom sludge, followed by high-pressure wall scraping`,
-        `2. 100% compliant with Ontario Building Code & Municipal Sewer Use Bylaws`,
+        `2. Compliant with Ontario Building Code & Municipal Sewer Use Bylaws`,
         `----------------------------------------`,
         `* Quote is for reference. Final pricing subject to on-site pipeline inspection and service agreement.`
       ];
@@ -292,7 +292,7 @@ export const GreaseTrap = {
         : (frequencyMonths === 2 ? "2개월마다 1회 (연간 6회)" : "분기별 1회 (연간 4회)");
 
       const lines = [
-        `[Green Oil 그리스 트랩 전문 세척 견적서]`,
+        `[Green Oil 그리스 트랩 유지보수 견적서]`,
         `고객 / 식당명: ${restDisplay}`,
         `----------------------------------------`,
         `[그리스 트랩 규격 사양]`,
@@ -307,8 +307,8 @@ export const GreaseTrap = {
         `· 연간 예상 유지보수 예산: $${annualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 년`,
         `----------------------------------------`,
         `[서비스 보증 및 환경 규정 준수]`,
-        `1. 상부 유지류 및 바닥 침전 오니 100% 완전 흡입 배출 및 내벽 고압 제트 세척`,
-        `2. Ontario Building Code 및 지자체 하수도 조례 완벽 준수`,
+        `1. 상부 유지류 및 바닥 침전 오니 완전 흡입 배출 및 내벽 고압 세척`,
+        `2. Ontario Building Code 및 지자체 하수도 조례 기준 준수`,
         `----------------------------------------`,
         `* 본 견적은 참고용이며, 현장 배관 상태 및 최종 서비스 계약에 따라 확정됩니다.`
       ];
@@ -320,7 +320,7 @@ export const GreaseTrap = {
         : (frequencyMonths === 2 ? "每 2 个月清洗 1 次 (全年 6 次)" : "每季度清洗 1 次 (全年 4 次)");
 
       const lines = [
-        `【Green Oil 隔油池清洁专业报价单】`,
+        `【Green Oil 隔油池维护报价单】`,
         `客户/餐馆：${restDisplay}`,
         `----------------------------------------`,
         `[隔油池规格配置]`,
@@ -334,9 +334,9 @@ export const GreaseTrap = {
         `· 单次税后实付总额：$${total.toFixed(2)}`,
         `· 预估年度维保预算：$${annualTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / 年`,
         `----------------------------------------`,
-        `[服务保障与环保合规]`,
-        `1. 包含彻底抽吸沉淀浮油与高压冲洗池壁`,
-        `2. 100% 满足 Ontario Building Code 与 Municipal Sewer Use Bylaw 环保要求`,
+        `[维保标准与市政合规]`,
+        `1. 包含抽吸沉淀浮油与高压冲洗池壁`,
+        `2. 符合 Ontario Building Code 与 Municipal Sewer Use Bylaw 环保要求`,
         `----------------------------------------`,
         `* 报价仅供参考，具体以现场管线勘测与服务协议为准。`
       ];

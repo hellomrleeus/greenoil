@@ -371,9 +371,9 @@ body {
   display: none !important;
 }
 
-.app-container.sidebar-collapsed .btn-logout::before {
-  content: "⏻";
-  font-size: 1.1rem;
+.app-container.sidebar-collapsed .btn-logout {
+  justify-content: center;
+  padding: 0.5rem;
 }
 
 
@@ -1503,9 +1503,9 @@ body {
 }
 
 .uco-pricing-table tr.uco-tier-active td.tier-vol-cell::before {
-  content: "▶ ";
+  content: "• ";
   color: #34d399;
-  font-size: 0.7rem;
+  font-size: 0.9rem;
   margin-right: 0.25rem;
 }
 
@@ -4030,7 +4030,41 @@ body {
 }
 
 .legend-dot {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.legend-dot.start-point {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.legend-dot.route-point {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.legend-dot.search-point {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px #d97706;
 }
 
 /* 3. Right Column: Waypoints & Schedule */

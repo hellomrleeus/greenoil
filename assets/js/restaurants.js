@@ -584,7 +584,7 @@ export const Restaurants = {
           </div>
 
           <div class="card-rating-row">
-            <span class="stars">★ ${r.rating ? r.rating.toFixed(1) : '-'}</span>
+            <span class="stars"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? r.rating.toFixed(1) : '-'}</span>
             <span class="reviews-count">(${r.reviews})</span>
             <span class="price-tag">${r.price || '-'}</span>
           </div>
@@ -597,7 +597,6 @@ export const Restaurants = {
           ${r.hubId && r.hubId !== "street_retail" ? `
             <div style="margin-top: -0.25rem;">
               <span class="hub-badge" title="${this.escapeHtml(hubName)}">
-                <span>${r.hubIcon || '🏬'}</span>
                 <span>${this.escapeHtml(hubName)}</span>
               </span>
             </div>
@@ -671,13 +670,12 @@ export const Restaurants = {
           <td>
             ${r.hubId && r.hubId !== "street_retail" ? `
               <span class="hub-badge" title="${this.escapeHtml(hubName)}">
-                <span>${r.hubIcon || '🏬'}</span>
                 <span>${this.escapeHtml(hubName)}</span>
               </span>
             ` : '<span style="color: var(--text-light); font-size: 0.78rem;">-</span>'}
           </td>
           <td class="col-category" title="${this.escapeHtml(this.formatCategory(r.categoriesRaw))}">${this.escapeHtml(this.formatCategory(r.categoriesRaw))}</td>
-          <td><b>★ ${r.rating ? r.rating.toFixed(1) : '-'}</b> (${r.reviews})</td>
+          <td><b><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? r.rating.toFixed(1) : '-'}</b> (${r.reviews})</td>
           <td>
             <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
             ${r.isVisited ? `<div style="margin-top: 3px;"><span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 4px; border-radius:3px; font-weight:600;" title="${i18n.t("visited_recent_tooltip", { time: this.escapeHtml(r.lastVisitTime || '') })}">${this.escapeHtml(this.formatOutcome(r.lastOutcome))}</span></div>` : ''}
@@ -732,7 +730,7 @@ export const Restaurants = {
       return `
         <div class="hub-card" onclick="window.selectHubAndFilter('${h.id}')">
           <div class="hub-card-header">
-            <div class="hub-card-icon">${h.icon || '🏬'}</div>
+            <div class="hub-card-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></div>
             <div class="hub-card-titles">
               <h4 class="hub-card-name">${this.escapeHtml(hubName)}</h4>
               <div class="hub-card-region">${this.escapeHtml(this.formatRegion(h.region))}</div>
@@ -742,7 +740,7 @@ export const Restaurants = {
           <div class="hub-card-stats">
             <div class="hub-stat-item">
               <span class="hub-stat-label">${i18n.t("th_rating")}</span>
-              <span class="hub-stat-val">★ ${h.avgRating}</span>
+              <span class="hub-stat-val"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${h.avgRating}</span>
             </div>
             <div class="hub-stat-item">
               <span class="hub-stat-label">${i18n.t("hub_restaurant_count")}</span>
@@ -982,14 +980,14 @@ export const Restaurants = {
     if (modalHub) {
       if (r.hubId && r.hubId !== "street_retail") {
         const hubName = i18n.currentLang === 'en' ? (r.hubNameEn || r.hubName) : (i18n.currentLang === 'ko' ? (r.hubNameKo || r.hubName) : r.hubName);
-        modalHub.innerHTML = `<span class="hub-badge">${r.hubIcon || '🏬'} ${this.escapeHtml(hubName)}</span>`;
+        modalHub.innerHTML = `<span class="hub-badge">${this.escapeHtml(hubName)}</span>`;
       } else {
         modalHub.textContent = i18n.t("hub_street_retail");
       }
     }
 
     document.getElementById("modalRestCategory").textContent = this.formatCategory(r.categoriesRaw || (r.categories ? r.categories.join(" | ") : ""));
-    document.getElementById("modalRestRating").innerHTML = `★ ${r.rating ? r.rating.toFixed(1) : '-'} <span style="color:var(--text-muted); font-weight:normal;">(${r.reviews})</span>`;
+    document.getElementById("modalRestRating").innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? r.rating.toFixed(1) : '-'} <span style="color:var(--text-muted); font-weight:normal;">(${r.reviews})</span>`;
     document.getElementById("modalRestPrice").textContent = r.price || "-";
     document.getElementById("modalRestAddress").textContent = r.address || "-";
     document.getElementById("modalRestPhone").textContent = r.phone || "-";
