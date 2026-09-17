@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js";
+import { Api } from "./api.js?v=20260918_v4";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 

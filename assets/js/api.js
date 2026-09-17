@@ -269,20 +269,124 @@ export const Api = {
   },
 
   async searchGooglePlaces(query) {
-    const workerUrl = this.getWorkerUrl();
+    const apiKey = await this.getGoogleMapsApiKey();
+    if (!apiKey) {
+      return { success: false, error: "API key missing", places: [] };
+    }
+
+    let finalQuery = (query || "").trim();
+    const qLower = finalQuery.toLowerCase();
+    if (!qLower.includes("ontario") && !qLower.includes("canada")) {
+      finalQuery = `${finalQuery} Ontario Canada`;
+    }
+
+    const fieldMask = [
+      "places.id",
+      "places.displayName",
+      "places.formattedAddress",
+      "places.nationalPhoneNumber",
+      "places.websiteUri",
+      "places.googleMapsUri",
+      "places.rating",
+      "places.userRatingCount",
+      "places.regularOpeningHours",
+      "places.currentOpeningHours",
+      "places.priceLevel",
+      "places.primaryType",
+      "places.location",
+      "places.photos"
+    ].join(",");
+
     try {
-      const url = new URL(`${workerUrl}/api/places/search`);
-      url.searchParams.set("query", query);
-      const resp = await fetch(url.toString(), {
-        method: "GET",
-        headers: this.getAuthHeaders(),
-        credentials: "include"
+      const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": apiKey,
+          "X-Goog-FieldMask": fieldMask
+        },
+        body: JSON.stringify({
+          textQuery: finalQuery,
+          maxResultCount: 20,
+          languageCode: "zh-CN",
+          regionCode: "CA",
+          locationBias: {
+            circle: {
+              center: { latitude: 43.7282, longitude: -79.3832 },
+              radius: 45000
+            }
+          }
+        })
       });
-      return await resp.json();
+
+      if (!resp.ok) {
+        throw new Error(`Google API returned ${resp.status}`);
+      }
+
+      const data = await resp.json();
+      const rawPlaces = data.places || [];
+      const places = rawPlaces.map(p => this.transformGooglePlace(p, apiKey));
+      return { success: true, places };
     } catch (e) {
-      console.warn("searchGooglePlaces failed:", e);
+      console.warn("Direct Google Places search failed:", e);
       return { success: false, error: e.message, places: [] };
     }
+  },
+
+  transformGooglePlace(p, apiKey) {
+    const name = p.displayName?.text || "未命名餐馆";
+    const address = p.formattedAddress || "";
+    const phone = p.nationalPhoneNumber || "无";
+    const website = p.websiteUri || "";
+    const mapsUrl = p.googleMapsUri || `https://www.google.com/maps/place/?q=place_id:${p.id}`;
+    const rating = p.rating ? parseFloat(p.rating) : 4.2;
+    const reviews = p.userRatingCount ? parseInt(p.userRatingCount, 10) : 0;
+    const primaryType = p.primaryType || "restaurant";
+    const lat = p.location?.latitude || 43.76;
+    const lng = p.location?.longitude || -79.41;
+
+    let openingHours = "未提供";
+    if (p.regularOpeningHours?.weekdayDescriptions) {
+      openingHours = p.regularOpeningHours.weekdayDescriptions.join("\n");
+    }
+
+    let status = "未知";
+    if (p.currentOpeningHours?.openNow !== undefined) {
+      status = p.currentOpeningHours.openNow ? "营业中" : "已打烊";
+    }
+
+    const priceMap = {
+      "PRICE_LEVEL_INEXPENSIVE": "$ (经济实惠)",
+      "PRICE_LEVEL_MODERATE": "$$ (适中消费)",
+      "PRICE_LEVEL_EXPENSIVE": "$$$ (较高消费)",
+      "PRICE_LEVEL_VERY_EXPENSIVE": "$$$$ (高档消费)"
+    };
+    const price = priceMap[p.priceLevel] || "$$ (适中消费)";
+
+    let photoUrl = "";
+    if (p.photos && p.photos.length > 0 && p.photos[0].name) {
+      photoUrl = `https://places.googleapis.com/v1/${p.photos[0].name}/media?maxHeightPx=300&maxWidthPx=300&key=${apiKey}`;
+    }
+
+    return {
+      placeId: p.id,
+      name,
+      address,
+      phone,
+      website,
+      mapsUrl,
+      rating,
+      ratingRaw: rating ? rating.toString() : "4.2",
+      reviews,
+      reviewsRaw: reviews.toString(),
+      status,
+      openingHours,
+      price,
+      latitude: lat,
+      longitude: lng,
+      primaryType,
+      photoUrl
+    };
   },
 
   /**
@@ -361,14 +465,7 @@ export const Api = {
    * Get Google Maps API Key from worker config or fallback
    */
   async getGoogleMapsApiKey() {
-    try {
-      const resp = await fetch(`${this.getWorkerUrl()}/api/maps/config`);
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data && data.apiKey) return data.apiKey;
-      }
-    } catch (e) {}
-    return "";
+    return "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc";
   },
 
   /**
