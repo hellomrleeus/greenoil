@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v8";
+import { Api } from "./api.js?v=20260918_v10";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -649,14 +649,37 @@ export const MapExplorer = {
     const hqPopup = i18n.t("map_origin_hq_popup") || "Origin: Green Oil HQ";
 
     if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
+      const useAdvanced = !!(window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement);
+
       if (!this.originMarker) {
-        this.originMarker = new google.maps.Marker({
-          position: pos,
-          map: this.googleMap,
-          title: hqTitle,
-          icon: this.getOriginIcon(),
-          zIndex: 1000
-        });
+        if (useAdvanced) {
+          try {
+            this.originMarker = new google.maps.marker.AdvancedMarkerElement({
+              position: pos,
+              map: this.googleMap,
+              title: hqTitle,
+              content: this.buildOriginElement(),
+              zIndex: 1000
+            });
+          } catch (err) {
+            this.originMarker = new google.maps.Marker({
+              position: pos,
+              map: this.googleMap,
+              title: hqTitle,
+              icon: this.getOriginIcon(),
+              zIndex: 1000
+            });
+          }
+        } else {
+          this.originMarker = new google.maps.Marker({
+            position: pos,
+            map: this.googleMap,
+            title: hqTitle,
+            icon: this.getOriginIcon(),
+            zIndex: 1000
+          });
+        }
+
         this.originMarker.addListener("click", () => {
           if (this.infoWindow) {
             this.infoWindow.setContent(`
@@ -665,11 +688,15 @@ export const MapExplorer = {
                 <div style="font-size: 11px; color: #475569; margin-top: 4px;">${this.escapeHtml(origin.address)}</div>
               </div>
             `);
-            this.infoWindow.open(this.googleMap, this.originMarker);
+            this.infoWindow.open({ map: this.googleMap, anchor: this.originMarker });
           }
         });
       } else {
-        this.originMarker.setPosition(pos);
+        if (this.originMarker.position !== undefined) {
+          this.originMarker.position = pos;
+        } else if (this.originMarker.setPosition) {
+          this.originMarker.setPosition(pos);
+        }
       }
     } else if (this.fallbackMap && window.L) {
       if (this.originMarker) {
@@ -1721,7 +1748,8 @@ export const MapExplorer = {
   clearMarkers() {
     this.cancelMarkerBatches();
     this.markersMap.forEach(marker => {
-      if (marker.setMap) marker.setMap(null);
+      if (marker.map !== undefined) marker.map = null;
+      else if (marker.setMap) marker.setMap(null);
       else if (this.fallbackLayerGroup) this.fallbackLayerGroup.removeLayer(marker);
     });
     this.markersMap.clear();
@@ -1783,14 +1811,42 @@ export const MapExplorer = {
       const isWaypoint = wpIdx !== -1;
 
       if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-        const icon = isWaypoint ? this.getNumberedWaypointIcon(wpIdx + 1, false) : this.getPinIcon(r, false);
-        const marker = new google.maps.Marker({
-          position: { lat, lng },
-          map: this.googleMap,
-          title: r.name,
-          icon: icon,
-          zIndex: isWaypoint ? 100 + (wpIdx + 1) : 20
-        });
+        const useAdvanced = !!(window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement);
+        let marker;
+
+        if (useAdvanced) {
+          try {
+            const content = isWaypoint
+              ? this.buildWaypointElement(wpIdx + 1, false)
+              : this.buildPinElement(r, false);
+
+            marker = new google.maps.marker.AdvancedMarkerElement({
+              position: { lat, lng },
+              map: this.googleMap,
+              title: r.name,
+              content: content,
+              zIndex: isWaypoint ? 100 + (wpIdx + 1) : 20
+            });
+          } catch (err) {
+            const icon = isWaypoint ? this.getNumberedWaypointIcon(wpIdx + 1, false) : this.getPinIcon(r, false);
+            marker = new google.maps.Marker({
+              position: { lat, lng },
+              map: this.googleMap,
+              title: r.name,
+              icon: icon,
+              zIndex: isWaypoint ? 100 + (wpIdx + 1) : 20
+            });
+          }
+        } else {
+          const icon = isWaypoint ? this.getNumberedWaypointIcon(wpIdx + 1, false) : this.getPinIcon(r, false);
+          marker = new google.maps.Marker({
+            position: { lat, lng },
+            map: this.googleMap,
+            title: r.name,
+            icon: icon,
+            zIndex: isWaypoint ? 100 + (wpIdx + 1) : 20
+          });
+        }
 
         marker.addListener("click", () => {
           this.showInfoWindow(r, marker);
@@ -1846,6 +1902,70 @@ export const MapExplorer = {
       if (next < markerPlaces.length) this.markerBatchTimer = setTimeout(renderBatch, 16);
     };
     renderBatch();
+  },
+
+  buildWaypointElement(stopNumber, isHighlight = false) {
+    const size = isHighlight ? 34 : 28;
+    const bgColor = isHighlight ? "#1d4ed8" : "#2563eb";
+    const div = document.createElement("div");
+    div.className = "greenoil-waypoint-pin";
+    div.style.width = `${size}px`;
+    div.style.height = `${size}px`;
+    div.style.borderRadius = "50%";
+    div.style.backgroundColor = bgColor;
+    div.style.color = "#ffffff";
+    div.style.border = "2.5px solid #ffffff";
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.justifyContent = "center";
+    div.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    div.style.fontSize = `${Math.round(size * 0.44)}px`;
+    div.style.fontWeight = "700";
+    div.style.boxShadow = "0 2px 6px rgba(0,0,0,0.35)";
+    div.style.cursor = "pointer";
+    div.style.userSelect = "none";
+    div.innerText = `${stopNumber}`;
+    return div;
+  },
+
+  buildPinElement(r, isHighlight = false) {
+    const div = document.createElement("div");
+    div.className = "greenoil-restaurant-pin";
+    div.style.cursor = "pointer";
+    div.style.filter = "drop-shadow(0 2px 5px rgba(0,0,0,0.32))";
+    div.style.transition = "transform 0.15s ease";
+    if (isHighlight) div.style.transform = "scale(1.2)";
+    const fillColor = isHighlight ? "#2563eb" : "#f59e0b";
+    const strokeColor = isHighlight ? "#1d4ed8" : "#ffffff";
+    div.innerHTML = `
+      <svg width="26" height="34" viewBox="0 0 24 32" style="display:block;">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="${fillColor}" stroke="${strokeColor}" stroke-width="1.5"/>
+      </svg>
+    `;
+    return div;
+  },
+
+  buildOriginElement(isHighlight = false) {
+    const size = isHighlight ? 36 : 30;
+    const div = document.createElement("div");
+    div.className = "greenoil-origin-pin";
+    div.style.width = `${size}px`;
+    div.style.height = `${size}px`;
+    div.style.borderRadius = "50%";
+    div.style.backgroundColor = "#dc2626";
+    div.style.color = "#ffffff";
+    div.style.border = "2.5px solid #ffffff";
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.justifyContent = "center";
+    div.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+    div.style.fontSize = "11px";
+    div.style.fontWeight = "700";
+    div.style.boxShadow = "0 2px 6px rgba(0,0,0,0.35)";
+    div.style.cursor = "pointer";
+    div.style.userSelect = "none";
+    div.innerText = "HQ";
+    return div;
   },
 
   getNumberedWaypointIcon(stopNumber, isHighlight = false) {
@@ -1905,10 +2025,15 @@ export const MapExplorer = {
     const wpIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
     const isWaypoint = wpIdx !== -1;
 
-    if (this.googleMap && !this.isFallbackMode && marker.setIcon) {
-      const icon = isWaypoint ? this.getNumberedWaypointIcon(wpIdx + 1, highlight) : this.getPinIcon(r, highlight);
-      marker.setIcon(icon);
-      marker.setZIndex(highlight ? 999 : (isWaypoint ? 100 + (wpIdx + 1) : 20));
+    if (this.googleMap && !this.isFallbackMode) {
+      if (marker.content !== undefined) {
+        marker.content = isWaypoint ? this.buildWaypointElement(wpIdx + 1, highlight) : this.buildPinElement(r, highlight);
+        marker.zIndex = highlight ? 999 : (isWaypoint ? 100 + (wpIdx + 1) : 20);
+      } else if (marker.setIcon) {
+        const icon = isWaypoint ? this.getNumberedWaypointIcon(wpIdx + 1, highlight) : this.getPinIcon(r, highlight);
+        marker.setIcon(icon);
+        marker.setZIndex(highlight ? 999 : (isWaypoint ? 100 + (wpIdx + 1) : 20));
+      }
     }
   },
 
@@ -2005,7 +2130,7 @@ export const MapExplorer = {
     this.poiRequestId++;
     this.activePopupKey = r.placeId || r.name;
     this.infoWindow.setContent(this.getPopupHtml(r));
-    this.infoWindow.open(this.googleMap, marker);
+    this.infoWindow.open({ map: this.googleMap, anchor: marker });
   },
 
   async openGooglePoi(placeId, position) {
@@ -2050,31 +2175,30 @@ export const MapExplorer = {
       }
     }
 
-    // 2. Client-side PlacesService fallback
-    if (!restaurant && this.placesService) {
-      restaurant = await new Promise(resolve => {
-        this.placesService.getDetails({
-          placeId: placeId,
-          fields: ["place_id", "name", "formatted_address", "geometry", "rating", "user_ratings_total", "formatted_phone_number", "opening_hours", "types"]
-        }, (place, status) => {
-          if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-            resolve({
-              placeId: place.place_id || placeId,
-              name: place.name || "Unknown Place",
-              address: place.formatted_address || "",
-              latitude: place.geometry?.location?.lat() || (position && typeof position.lat === "function" ? position.lat() : 0),
-              longitude: place.geometry?.location?.lng() || (position && typeof position.lng === "function" ? position.lng() : 0),
-              rating: place.rating || "",
-              reviews: place.user_ratings_total || "",
-              phone: place.formatted_phone_number || "",
-              openingHours: place.opening_hours?.weekday_text?.join(" | ") || "",
-              types: place.types || []
-            });
-          } else {
-            resolve(null);
-          }
+    // 2. Modern google.maps.places.Place fallback
+    if (!restaurant && window.google?.maps?.places?.Place) {
+      try {
+        const place = new google.maps.places.Place({ id: placeId });
+        await place.fetchFields({
+          fields: ["id", "displayName", "formattedAddress", "location", "rating", "userRatingCount", "nationalPhoneNumber", "regularOpeningHours", "types"]
         });
-      });
+        const lat = place.location ? (typeof place.location.lat === "function" ? place.location.lat() : place.location.lat) : (position && typeof position.lat === "function" ? position.lat() : 0);
+        const lng = place.location ? (typeof place.location.lng === "function" ? place.location.lng() : place.location.lng) : (position && typeof position.lng === "function" ? position.lng() : 0);
+        restaurant = {
+          placeId: place.id || placeId,
+          name: place.displayName || "Unknown Place",
+          address: place.formattedAddress || "",
+          latitude: lat,
+          longitude: lng,
+          rating: place.rating || "",
+          reviews: place.userRatingCount || "",
+          phone: place.nationalPhoneNumber || "",
+          openingHours: place.regularOpeningHours?.weekdayDescriptions?.join(" | ") || "",
+          types: place.types || []
+        };
+      } catch (err) {
+        console.warn("Place fetchFields fallback failed:", err);
+      }
     }
 
     // 3. Fallback to API worker proxy
@@ -2139,7 +2263,7 @@ export const MapExplorer = {
     try {
       await new Promise((resolve, reject) => {
         const script = document.createElement("script");
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&callback=__greenOilInitMapCallback`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry,marker&loading=async&callback=__greenOilInitMapCallback`;
         script.async = true;
         script.defer = true;
         window.__greenOilInitMapCallback = () => {
@@ -2168,15 +2292,12 @@ export const MapExplorer = {
       this.googleMap = new google.maps.Map(canvas, {
         center: { ...defaultCommunity.center },
         zoom: defaultCommunity.zoom || 13,
+        mapId: "DEMO_MAP_ID",
         mapTypeControl: false,
         streetViewControl: true,
         fullscreenControl: true,
         zoomControl: true
       });
-
-      if (google.maps.places) {
-        this.placesService = new google.maps.places.PlacesService(this.googleMap);
-      }
 
       this.infoWindow = new google.maps.InfoWindow();
       this.infoWindow.addListener("closeclick", () => {
@@ -2193,20 +2314,20 @@ export const MapExplorer = {
         }
 
         // Proximity hit-test: if clicked on POI text/canvas without explicit placeId
-        if (event.latLng && this.placesService) {
+        if (event.latLng && window.google?.maps?.places?.Place?.searchNearby) {
           const lat = typeof event.latLng.lat === "function" ? event.latLng.lat() : event.latLng.lat;
           const lng = typeof event.latLng.lng === "function" ? event.latLng.lng() : event.latLng.lng;
-          this.placesService.nearbySearch({
-            location: { lat, lng },
-            radius: 35
-          }, (results, status) => {
-            if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
-              const nearest = results[0];
-              if (nearest && nearest.place_id) {
-                this.openGooglePoi(nearest.place_id, nearest.geometry?.location || event.latLng);
+          try {
+            google.maps.places.Place.searchNearby({
+              locationRestriction: { center: { lat, lng }, radius: 35 },
+              fields: ["id", "location"],
+              maxResultCount: 1
+            }).then(({ places }) => {
+              if (places && places.length > 0 && places[0].id) {
+                this.openGooglePoi(places[0].id, places[0].location || event.latLng);
               }
-            }
-          });
+            }).catch(() => {});
+          } catch (e) {}
         }
       });
 
