@@ -4152,7 +4152,7 @@ body {
   right: 0;
   top: 0;
   bottom: 0;
-  width: 680px;
+  width: 520px;
   max-width: calc(100vw - 420px);
   z-index: 50;
   box-shadow: -8px 0 28px rgba(15, 23, 42, 0.16);
@@ -4225,109 +4225,16 @@ body {
   font-size: 0.78rem;
 }
 
-/* Expanded Waypoints: Strict List Layout (Horizontal List Rows instead of Card Grid) */
+/* Expanded Waypoints: Maintain original comfortable vertical card layout */
 .map-explorer-right-column.is-expanded .map-waypoints-container {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 0.95rem;
+  gap: 8px;
   border-bottom-left-radius: 12px;
   border-bottom-right-radius: 12px;
 }
 
 .map-explorer-right-column.is-expanded .map-waypoint-card {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 12px;
-  border-radius: 6px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  transition: background 0.12s ease, border-color 0.12s ease;
-}
-
-.map-explorer-right-column.is-expanded .map-waypoint-card:hover {
-  background: #f8fafc;
-  border-color: #3b82f6;
-  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.1);
-  transform: none;
-}
-
-.map-explorer-right-column.is-expanded .map-waypoint-card.is-locked {
-  border-left: 4px solid #4f46e5 !important;
-  background: #fbfbfe;
-}
-
-.map-explorer-right-column.is-expanded .waypoint-card-body {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.map-explorer-right-column.is-expanded .waypoint-title {
-  flex: 0 0 190px;
-  max-width: 220px;
-  min-width: 140px;
-  font-size: 0.84rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.map-explorer-right-column.is-expanded .waypoint-tag-row {
-  flex-shrink: 0;
-  margin: 0;
-}
-
-.map-explorer-right-column.is-expanded .waypoint-meta {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.map-explorer-right-column.is-expanded .waypoint-rating {
-  flex-shrink: 0;
-}
-
-.map-explorer-right-column.is-expanded .waypoint-address {
-  flex: 1 1 auto;
-  min-width: 120px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.76rem;
-  color: #64748b;
-}
-
-.map-explorer-right-column.is-expanded .waypoint-eta {
-  flex-shrink: 0;
-  margin: 0;
-  white-space: nowrap;
-  font-size: 0.74rem;
-  color: #0369a1;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-radius: 4px;
-  padding: 1px 6px;
-}
-
-.map-explorer-right-column.is-expanded .waypoint-card-actions {
-  flex-shrink: 0;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  margin-left: auto;
+  padding: 9px 12px;
 }
 
 .map-waypoints-header {
