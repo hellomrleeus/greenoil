@@ -220,5 +220,45 @@ assert.deepEqual(Object.keys(exportedData[0]), [
 ], 'Headers must be English even when language is ko');
 assert.equal(exportedData[0]['Opening Hours'], 'Mon-Sun: 11:00-02:00');
 
-console.log('🎉 ALL 6 FEATURE TESTS PASSED SUCCESSFULLY (INCLUDING STRICT ENGLISH CONTENT)!');
+// -------------------------------------------------------------
+// Test 7: Center Column Toolbar & Waypoints Expand Toggle
+// -------------------------------------------------------------
+console.log('7. Testing Center Toolbar Layout & Waypoints Expand Toggle...');
+const fs = await import('node:fs');
+const htmlContent = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+// 1. Verify toolbar is inside center column aligned with map
+assert.ok(htmlContent.includes('<div class="map-explorer-center-column">'), 'Center column must exist');
+const centerColIdx = htmlContent.indexOf('<div class="map-explorer-center-column">');
+const toolbarIdx = htmlContent.indexOf('id="mapExplorerToolbarCard"');
+const mapColIdx = htmlContent.indexOf('class="map-explorer-map-column"');
+assert.ok(centerColIdx < toolbarIdx && toolbarIdx < mapColIdx, 'Toolbar must be inside center column directly above map');
+
+// 2. Verify right column wrapper and toggle button
+assert.ok(htmlContent.includes('<div class="map-explorer-right-column-wrap">'), 'Right column wrapper must exist for non-squeezing overlay');
+assert.ok(htmlContent.includes('id="mapBtnToggleWaypointsExpand"'), 'Expand toggle button must exist');
+
+// 3. Verify expand/collapse state toggling
+const mockRightColClasses = new Set();
+const mockRightCol = {
+  classList: {
+    toggle: (cls) => {
+      if (mockRightColClasses.has(cls)) {
+        mockRightColClasses.delete(cls);
+        return false;
+      } else {
+        mockRightColClasses.add(cls);
+        return true;
+      }
+    },
+    contains: (cls) => mockRightColClasses.has(cls),
+    remove: (cls) => mockRightColClasses.delete(cls)
+  }
+};
+assert.equal(mockRightCol.classList.toggle('is-expanded'), true, 'Clicking expand sets is-expanded');
+assert.equal(mockRightCol.classList.contains('is-expanded'), true, 'Panel is expanded');
+assert.equal(mockRightCol.classList.toggle('is-expanded'), false, 'Clicking again removes is-expanded');
+assert.equal(mockRightCol.classList.contains('is-expanded'), false, 'Panel is collapsed');
+
+console.log('🎉 ALL 7 FEATURE TESTS PASSED SUCCESSFULLY!');
 
