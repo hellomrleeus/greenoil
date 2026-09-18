@@ -653,7 +653,7 @@
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.3"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                     </span>
                     <input type="text" id="mapWaypointsSearchInput" class="form-input waypoints-search-input" style="padding-left: 1.6rem; padding-right: 1.5rem; font-size: 0.78rem; height: 28px; width: 100%; border-radius: 4px;" placeholder="搜索途经站点（店名/地址）..." data-i18n-placeholder="waypoints_search_placeholder" />
-                    <button type="button" class="waypoints-search-clear" id="mapWaypointsSearchClear" style="display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1;" title="清空搜索">&times;</button>
+                    <button type="button" class="waypoints-search-clear" id="mapWaypointsSearchClear" style="display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1;" title="清空搜索" data-i18n-title="tip_clear_search">&times;</button>
                   </div>
 
                   <!-- Batch Actions Ribbon (Select All, Lock Group, Batch Delete) -->
@@ -663,13 +663,13 @@
                       <span id="mapWaypointsSelectAllLabel" data-i18n="batch_select_all" style="font-weight: 600; color: #475569;">全选</span>
                     </label>
                     <div class="batch-actions-btns" style="display: flex; gap: 0.35rem; align-items: center;">
-                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnLockWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #4338ca; border-color: #c7d2fe; background: #eef2ff;" title="锁定选中的站点为整体组合（需>=2个）">
+                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnLockWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #4338ca; border-color: #c7d2fe; background: #eef2ff;" title="锁定选中的站点为整体组合（需>=2个）" data-i18n-title="tip_lock_stops">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg><span data-i18n="btn_lock_stops">锁定组合</span>
                       </button>
-                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnUnlockWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #b45309; border-color: #fde68a; background: #fffbeb;" title="解除选中站点的锁定">
+                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnUnlockWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #b45309; border-color: #fde68a; background: #fffbeb;" title="解除选中站点的锁定" data-i18n-title="tip_unlock_stops">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg><span data-i18n="btn_unlock_stops">解锁</span>
                       </button>
-                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnBatchDeleteWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #dc2626; border-color: #fecaca; background: #fef2f2;" title="批量移除选中的站点">
+                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnBatchDeleteWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #dc2626; border-color: #fecaca; background: #fef2f2;" title="批量移除选中的站点" data-i18n-title="tip_batch_delete">
                         <span data-i18n="btn_batch_delete">批量删除</span>
                       </button>
                     </div>

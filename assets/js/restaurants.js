@@ -387,13 +387,18 @@ export const Restaurants = {
 
   formatCategory(cat) {
     if (!cat) return "-";
-    if (cat.includes("中式") || cat.includes("台式")) return i18n.t("cat_chinese");
-    if (cat.includes("西式") || cat.includes("快餐") || cat.includes("炸鸡翅")) return i18n.t("cat_western");
-    if (cat.includes("韩式") || cat.includes("韩国")) return i18n.t("cat_korean");
-    if (cat.includes("炸鱼") || cat.includes("薯条")) return i18n.t("cat_fish_chips");
-    if (cat.includes("日式") || cat.includes("猪排") || cat.includes("天妇罗")) return i18n.t("cat_japanese");
-    if (cat.includes("热狗") || cat.includes("甜甜圈") || cat.includes("吉事果")) return i18n.t("cat_sweets");
+    if (i18n && typeof i18n.formatCategory === "function") {
+      return i18n.formatCategory(cat);
+    }
     return cat;
+  },
+
+  formatPrice(price) {
+    if (!price) return "-";
+    if (i18n && typeof i18n.formatPrice === "function") {
+      return i18n.formatPrice(price);
+    }
+    return price;
   },
 
   formatOutcome(outcome) {
@@ -586,7 +591,7 @@ export const Restaurants = {
           <div class="card-rating-row">
             <span class="stars"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? r.rating.toFixed(1) : '-'}</span>
             <span class="reviews-count">(${r.reviews})</span>
-            <span class="price-tag">${r.price || '-'}</span>
+            <span class="price-tag">${this.escapeHtml(this.formatPrice(r.price))}</span>
           </div>
 
           <div class="card-region-category">
@@ -680,7 +685,7 @@ export const Restaurants = {
             <span class="status-badge ${statusObj.cls}">${statusObj.label}</span>
             ${r.isVisited ? `<div style="margin-top: 3px;"><span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-size:0.68rem; padding:1px 4px; border-radius:3px; font-weight:600;" title="${i18n.t("visited_recent_tooltip", { time: this.escapeHtml(r.lastVisitTime || '') })}">${this.escapeHtml(this.formatOutcome(r.lastOutcome))}</span></div>` : ''}
           </td>
-          <td>${this.escapeHtml(r.price)}</td>
+          <td>${this.escapeHtml(this.formatPrice(r.price))}</td>
           <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(r.address)}</td>
           <td>${this.escapeHtml(r.phone)}</td>
           <td>
@@ -988,7 +993,7 @@ export const Restaurants = {
 
     document.getElementById("modalRestCategory").textContent = this.formatCategory(r.categoriesRaw || (r.categories ? r.categories.join(" | ") : ""));
     document.getElementById("modalRestRating").innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? r.rating.toFixed(1) : '-'} <span style="color:var(--text-muted); font-weight:normal;">(${r.reviews})</span>`;
-    document.getElementById("modalRestPrice").textContent = r.price || "-";
+    document.getElementById("modalRestPrice").textContent = this.formatPrice(r.price);
     document.getElementById("modalRestAddress").textContent = r.address || "-";
     document.getElementById("modalRestPhone").textContent = r.phone || "-";
 
@@ -1018,7 +1023,7 @@ export const Restaurants = {
     }
 
     document.getElementById("modalRestHours").textContent = r.openingHours || i18n.t("hours_not_provided");
-    document.getElementById("modalRestType").textContent = r.primaryType || "-";
+    document.getElementById("modalRestType").textContent = this.formatCategory(r.primaryType || "-");
     document.getElementById("modalRestKeywords").textContent = r.keywordsRaw || (r.keywords ? r.keywords.join(", ") : "-");
     document.getElementById("modalRestPlaceId").textContent = r.placeId || "-";
     document.getElementById("modalRestCoordinates").textContent = (r.latitude && r.longitude) ? `${r.latitude}, ${r.longitude}` : "-";
