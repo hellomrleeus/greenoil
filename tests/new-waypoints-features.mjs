@@ -260,10 +260,11 @@ assert.equal(mockRightCol.classList.contains('is-expanded'), true, 'Panel is exp
 assert.equal(mockRightCol.classList.toggle('is-expanded'), false, 'Clicking again removes is-expanded');
 assert.equal(mockRightCol.classList.contains('is-expanded'), false, 'Panel is collapsed');
 
-// 4. Verify expanded layout uses list rows (flex column) and not card grid
+// 4. Verify expanded layout preserves original vertical card layout (not a 2-col grid and not a single cramped row)
 const cssContent = fs.readFileSync(new URL('../assets/css/app.css', import.meta.url), 'utf8');
 assert.ok(!cssContent.includes('.map-explorer-right-column.is-expanded .map-waypoints-container {\n  display: grid;'), 'Expanded waypoints must not be a grid');
-assert.ok(cssContent.includes('.map-explorer-right-column.is-expanded .map-waypoints-container {\n  display: flex;\n  flex-direction: column;'), 'Expanded waypoints must be a list');
+assert.ok(!cssContent.includes('.map-explorer-right-column.is-expanded .waypoint-card-body'), 'Waypoint cards must retain original vertical layout instead of cramped single row');
+assert.ok(cssContent.includes('.map-waypoints-container {\n  flex: 1;\n  overflow-y: auto;\n  padding: 0.6rem;\n  display: flex;\n  flex-direction: column;'), 'Waypoints container is a vertical list');
 
 // 5. Verify NO emojis in index.html and map-explorer.js and badge strings
 const emojiCheckRegex = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
