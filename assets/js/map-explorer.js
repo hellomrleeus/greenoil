@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v14";
+import { Api } from "./api.js?v=20260918_v15";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -1353,7 +1353,7 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   // Left Column Restaurant Cards & Google Discovery
   // -------------------------------------------------------------
-  async loadPlacesForCurrentArea(searchGoogle = true) {
+  async loadPlacesForCurrentArea(searchGoogle = true, autoExpand = true) {
     const requestId = ++this.areaLoadId;
     this.areaAbort?.abort();
     this.areaAbort = new AbortController();
@@ -1374,7 +1374,11 @@ export const MapExplorer = {
       `;
     }
 
-    if (searchGoogle) this.drawSelectedBoundaries();
+    if (searchGoogle && !this.isViewportSearchMode) {
+      this.drawSelectedBoundaries();
+    } else if (this.isViewportSearchMode) {
+      this.clearBoundaries();
+    }
 
     const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
     const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
@@ -1384,12 +1388,20 @@ export const MapExplorer = {
     let areaQuery = "";
     let bounds = null;
 
-    if (this.isViewportSearchMode && this.googleMap && this.googleMap.getBounds()) {
-      const b = this.googleMap.getBounds();
-      bounds = {
-        sw: { lat: b.getSouthWest().lat(), lng: b.getSouthWest().lng() },
-        ne: { lat: b.getNorthEast().lat(), lng: b.getNorthEast().lng() }
-      };
+    if (this.isViewportSearchMode) {
+      if (this.googleMap && this.googleMap.getBounds()) {
+        const b = this.googleMap.getBounds();
+        bounds = {
+          sw: { lat: b.getSouthWest().lat(), lng: b.getSouthWest().lng() },
+          ne: { lat: b.getNorthEast().lat(), lng: b.getNorthEast().lng() }
+        };
+      } else if (this.fallbackMap && typeof this.fallbackMap.getBounds === "function") {
+        const b = this.fallbackMap.getBounds();
+        bounds = {
+          sw: { lat: b.getSouthWest().lat, lng: b.getSouthWest().lng },
+          ne: { lat: b.getNorthEast().lat, lng: b.getNorthEast().lng }
+        };
+      }
       areaQuery = this.searchKeyword ? this.searchKeyword : "restaurants";
     } else if (this.searchKeyword) {
       areaQuery = this.searchKeyword;
@@ -1415,6 +1427,15 @@ export const MapExplorer = {
           this.googleNextPageToken = result?.nextPageToken || null;
           this.displayedPlaces = this.googleAreaPlaces;
           this.filterAndRenderPlaces();
+
+          if (this.isViewportSearchMode && window.showToast) {
+            window.showToast(i18n.t("map_viewport_toast", { count: this.displayedPlaces.length }) || `已刷新当前视野商户：共 ${this.displayedPlaces.length} 家`);
+          }
+
+          // Auto-expand results up to 60 (Google max for single query)
+          if (autoExpand && this.googleNextPageToken) {
+            this.autoExpandResults(requestId, searchId, 60);
+          }
         }
       } catch (error) {
         if (requestId !== this.areaLoadId) return;
@@ -1429,17 +1450,134 @@ export const MapExplorer = {
     }
   },
 
-  searchPlacesInCurrentBounds() {
-    if (!this.googleMap || !this.googleMap.getBounds()) return;
-    this.isViewportSearchMode = true;
-    const btn = document.getElementById("mapSearchThisAreaBtn");
-    if (btn) btn.style.display = "none";
-    const center = this.googleMap.getCenter();
-    if (center) {
-      this.lastSearchedCenter = { lat: center.lat(), lng: center.lng() };
-      this.lastSearchedZoom = this.googleMap.getZoom();
+  async autoExpandResults(requestId, searchId, maxTarget = 60) {
+    if (!this.googleNextPageToken || this.isLoadingMore) return;
+    this.isLoadingMore = true;
+
+    try {
+      while (this.googleNextPageToken && this.googleAreaPlaces.length < maxTarget) {
+        if (requestId !== this.areaLoadId || searchId !== this.googleSearchId) break;
+
+        await new Promise(r => setTimeout(r, 600));
+        if (requestId !== this.areaLoadId || searchId !== this.googleSearchId) break;
+
+        const bounds = this.lastSearchBounds || null;
+        const query = this.lastSearchQuery || this.searchKeyword || "restaurants";
+        const result = await Api.searchGooglePlaces(query, {
+          bounds,
+          pageToken: this.googleNextPageToken
+        });
+
+        if (requestId !== this.areaLoadId || searchId !== this.googleSearchId) break;
+
+        if (result && result.success && Array.isArray(result.places) && result.places.length > 0) {
+          this.googleNextPageToken = result.nextPageToken || null;
+          const existingKeys = new Set(this.googleAreaPlaces.map(p => p.placeId || p.name));
+          const newPlaces = result.places.filter(p => !existingKeys.has(p.placeId || p.name));
+          if (newPlaces.length === 0) {
+            this.googleNextPageToken = null;
+            break;
+          }
+          this.googleAreaPlaces = [...this.googleAreaPlaces, ...newPlaces];
+          this.displayedPlaces = this.googleAreaPlaces;
+          this.filterAndRenderPlaces(true);
+        } else {
+          this.googleNextPageToken = null;
+          break;
+        }
+      }
+    } catch (e) {
+      console.warn("autoExpandResults error:", e);
+    } finally {
+      this.isLoadingMore = false;
+      this.renderPlacesCards();
     }
-    this.loadPlacesForCurrentArea(true);
+  },
+
+  async searchPlacesInCurrentBounds() {
+    let hasMap = false;
+    if (this.googleMap && this.googleMap.getBounds()) {
+      hasMap = true;
+      const center = this.googleMap.getCenter();
+      if (center) {
+        this.lastSearchedCenter = { lat: center.lat(), lng: center.lng() };
+        this.lastSearchedZoom = this.googleMap.getZoom();
+      }
+    } else if (this.fallbackMap && typeof this.fallbackMap.getBounds === "function") {
+      hasMap = true;
+      const center = this.fallbackMap.getCenter();
+      if (center) {
+        this.lastSearchedCenter = { lat: center.lat, lng: center.lng };
+        this.lastSearchedZoom = this.fallbackMap.getZoom();
+      }
+    }
+
+    if (!hasMap) return;
+
+    this.isViewportSearchMode = true;
+    this.clearBoundaries();
+
+    const btn = document.getElementById("mapSearchThisAreaBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="loading-spinner" style="width:12px;height:12px;border:2px solid #94a3b8;border-top-color:#2563eb;border-radius:50%;display:inline-block;animation:spin 0.8s linear infinite;"></span> <span>${i18n.t("btn_search_this_area_loading") || "正在搜索当前视野..."}</span>`;
+    }
+
+    try {
+      await this.loadPlacesForCurrentArea(true, true);
+    } finally {
+      if (btn) {
+        btn.style.display = "none";
+        btn.disabled = false;
+        btn.innerHTML = `
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span data-i18n="btn_search_this_area">${i18n.t("btn_search_this_area") || "在当前地图视野内找店"}</span>
+        `;
+      }
+    }
+  },
+
+  async deepSearchGooglePlaces() {
+    if (this.isLoadingMore) return;
+    this.isLoadingMore = true;
+    this.renderPlacesCards();
+    if (window.showToast) {
+      window.showToast(i18n.t("deep_searching") || "正在深度探测周边商家...");
+    }
+
+    const bounds = this.lastSearchBounds || null;
+    const additionalQueries = [
+      "chinese restaurant",
+      "asian restaurant",
+      "fast food",
+      "bakery cafe"
+    ];
+
+    try {
+      for (const subQuery of additionalQueries) {
+        let q = subQuery;
+        if (!bounds && !q.includes("Ontario")) q = `${q} Ontario Canada`;
+        const res = await Api.searchGooglePlaces(q, { bounds });
+        if (res && res.success && Array.isArray(res.places)) {
+          const existingKeys = new Set(this.googleAreaPlaces.map(p => p.placeId || p.name));
+          const newPlaces = res.places.filter(p => !existingKeys.has(p.placeId || p.name));
+          if (newPlaces.length > 0) {
+            this.googleAreaPlaces = [...this.googleAreaPlaces, ...newPlaces];
+            this.displayedPlaces = this.googleAreaPlaces;
+            this.filterAndRenderPlaces(true);
+          }
+        }
+        await new Promise(r => setTimeout(r, 400));
+      }
+      if (window.showToast) {
+        window.showToast(i18n.t("deep_search_toast", { count: this.displayedPlaces.length }) || `深度探测完成：共聚合 ${this.displayedPlaces.length} 家商户`);
+      }
+    } catch (err) {
+      console.warn("deepSearchGooglePlaces error:", err);
+    } finally {
+      this.isLoadingMore = false;
+      this.renderPlacesCards();
+    }
   },
 
   async loadMoreGooglePlaces() {
@@ -1519,27 +1657,32 @@ export const MapExplorer = {
     const lang = this.getCurrentLanguage();
     const sep = lang === "zh" ? "、" : ", ";
 
-    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
-    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
-    const allNbs = this.getAllNeighborhoods();
-    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
+    let titleText = "";
+    if (this.isViewportSearchMode) {
+      titleText = i18n.t("map_viewport_title") || "当前地图视野";
+    } else {
+      const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+      const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+      const allNbs = this.getAllNeighborhoods();
+      const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
 
-    let titleText = this.getLocalizedAllGta();
-    if (selectedNbs.length > 0) {
-      if (selectedNbs.length === 1) {
-        titleText = this.getLocalizedName(selectedNbs[0]);
-      } else if (selectedNbs.length === 2) {
-        titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])}`;
-      } else {
-        titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
-      }
-    } else if (!isAll && selectedCities.length > 0) {
-      if (selectedCities.length === 1) {
-        titleText = this.getLocalizedName(selectedCities[0]);
-      } else if (selectedCities.length === 2) {
-        titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])}`;
-      } else {
-        titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
+      titleText = this.getLocalizedAllGta();
+      if (selectedNbs.length > 0) {
+        if (selectedNbs.length === 1) {
+          titleText = this.getLocalizedName(selectedNbs[0]);
+        } else if (selectedNbs.length === 2) {
+          titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])}`;
+        } else {
+          titleText = `${this.getLocalizedName(selectedNbs[0])}${sep}${this.getLocalizedName(selectedNbs[1])} (+${selectedNbs.length - 2})`;
+        }
+      } else if (!isAll && selectedCities.length > 0) {
+        if (selectedCities.length === 1) {
+          titleText = this.getLocalizedName(selectedCities[0]);
+        } else if (selectedCities.length === 2) {
+          titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])}`;
+        } else {
+          titleText = `${this.getLocalizedName(selectedCities[0])}${sep}${this.getLocalizedName(selectedCities[1])} (+${selectedCities.length - 2})`;
+        }
       }
     }
 
@@ -1548,7 +1691,11 @@ export const MapExplorer = {
     }
 
     if (summaryEl) {
-      summaryEl.innerHTML = i18n.t("map_results_found", { count: `<span style="font-weight:700; color:#2563eb;">${total}</span>` });
+      if (this.isViewportSearchMode) {
+        summaryEl.innerHTML = i18n.t("map_viewport_summary", { count: `<span style="font-weight:700; color:#2563eb;">${total}</span>` }) || `当前地图视野内共检索到 <span style="font-weight:700; color:#2563eb;">${total}</span> 家商家`;
+      } else {
+        summaryEl.innerHTML = i18n.t("map_results_found", { count: `<span style="font-weight:700; color:#2563eb;">${total}</span>` });
+      }
     } else if (countEl) {
       countEl.textContent = total;
     }
@@ -1640,7 +1787,22 @@ export const MapExplorer = {
       cardsHtml += `
         <div style="padding: 0.75rem 0.25rem 0.5rem; text-align: center;">
           <button type="button" class="btn btn-outline btn-sm w-100" id="btnLoadMorePlaces" onclick="window.mapExplorerLoadMore();" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;font-weight:600;font-size:0.82rem;border-color:#cbd5e1;color:#1e293b;background:#ffffff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);cursor:pointer;">
-            ${this.isLoadingMore ? i18n.t('map_loading_more') : i18n.t('map_load_more', { count: this.displayedPlaces.length })}
+            ${this.isLoadingMore
+              ? `<span class="loading-spinner" style="width:12px;height:12px;border:2px solid #94a3b8;border-top-color:#2563eb;border-radius:50%;display:inline-block;animation:spin 0.8s linear infinite;"></span> ${i18n.t('map_loading_more') || '正在加载更多...'}`
+              : `${i18n.t('map_load_more_batch') || '加载更多商家 (+20)'} · 已有 ${this.displayedPlaces.length} 家`}
+          </button>
+        </div>
+      `;
+    } else if (this.displayedPlaces.length >= 20) {
+      cardsHtml += `
+        <div style="padding: 0.75rem 0.25rem 0.5rem; text-align: center; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem;">
+          <div style="font-size: 0.78rem; color: #64748b; margin-bottom: 0.4rem;">
+            ${i18n.t('map_all_loaded', { count: this.displayedPlaces.length }) || `已加载全部 ${this.displayedPlaces.length} 家商户`}
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btnDeepSearchPlaces" onclick="window.mapExplorerDeepSearch();" style="font-size: 0.78rem; padding: 5px 12px; border-radius: 6px; font-weight: 600; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+            ${this.isLoadingMore
+              ? `<span class="loading-spinner" style="width:11px;height:11px;border:2px solid #94a3b8;border-top-color:#2563eb;border-radius:50%;display:inline-block;animation:spin 0.8s linear infinite;"></span> 探测中...`
+              : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> ${i18n.t('btn_deep_search') || '深度探测 (100+)'}`}
           </button>
         </div>
       `;
@@ -2416,6 +2578,25 @@ export const MapExplorer = {
       this.showMapContextMenu(point.lat, point.lng, original?.clientX ?? 0, original?.clientY ?? 0);
     });
 
+    this.fallbackMap.on("moveend", () => {
+      const center = this.fallbackMap.getCenter();
+      const zoom = this.fallbackMap.getZoom();
+      if (!center) return;
+      if (this.lastSearchedCenter) {
+        const dist = this.getHaversineDistance(
+          this.lastSearchedCenter.lat, this.lastSearchedCenter.lng,
+          center.lat, center.lng
+        );
+        if (dist > 0.35 || Math.abs(zoom - (this.lastSearchedZoom || zoom)) >= 1) {
+          const btn = document.getElementById("mapSearchThisAreaBtn");
+          if (btn) btn.style.display = "inline-flex";
+        }
+      } else {
+        this.lastSearchedCenter = { lat: center.lat, lng: center.lng };
+        this.lastSearchedZoom = zoom;
+      }
+    });
+
     this.drawSelectedBoundaries();
     this.renderMarkers();
     this.updateOriginMarker();
@@ -2723,6 +2904,7 @@ export const MapExplorer = {
   },
 
   toggleCity(cityId) {
+    this.isViewportSearchMode = false;
     if (cityId === "all") {
       this.activeCityIds = new Set(["all"]);
       this.activeNeighborhoodIds.clear();
@@ -2745,6 +2927,7 @@ export const MapExplorer = {
   },
 
   removeCity(cityId) {
+    this.isViewportSearchMode = false;
     this.activeCityIds.delete(cityId);
     if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
       this.activeCityIds.add("all");
@@ -2757,6 +2940,7 @@ export const MapExplorer = {
   },
 
   toggleNeighborhood(nbId) {
+    this.isViewportSearchMode = false;
     this.activeCityIds.delete("all");
     if (this.activeNeighborhoodIds.has(nbId)) {
       this.activeNeighborhoodIds.delete(nbId);
@@ -2774,6 +2958,7 @@ export const MapExplorer = {
   },
 
   removeNeighborhood(nbId) {
+    this.isViewportSearchMode = false;
     this.activeNeighborhoodIds.delete(nbId);
     if (this.activeCityIds.size === 0 && this.activeNeighborhoodIds.size === 0) {
       this.activeCityIds.add("all");
@@ -2932,6 +3117,7 @@ export const MapExplorer = {
     const clearAllBtn = document.getElementById("popoverClearAllBtn");
     if (clearAllBtn) {
       clearAllBtn.addEventListener("click", () => {
+        this.isViewportSearchMode = false;
         this.activeCityIds = new Set(["all"]);
         this.activeNeighborhoodIds.clear();
         this.renderPopover();
@@ -2971,6 +3157,7 @@ export const MapExplorer = {
     const resetCenterBtn = document.getElementById("popoverCurrentLocationBtn");
     if (resetCenterBtn) {
       resetCenterBtn.addEventListener("click", () => {
+        this.isViewportSearchMode = false;
         this.activeCityIds = new Set(["all"]);
         this.activeNeighborhoodIds.clear();
         this.renderPopover();
@@ -2980,6 +3167,18 @@ export const MapExplorer = {
         this.loadPlacesForCurrentArea();
         this.togglePopover(false);
       });
+    }
+
+    // Infinite scroll for left column cards
+    const cardsContainer = document.getElementById("mapPlacesCardsContainer");
+    if (cardsContainer) {
+      cardsContainer.addEventListener("scroll", () => {
+        if (cardsContainer.scrollTop + cardsContainer.clientHeight >= cardsContainer.scrollHeight - 80) {
+          if (this.googleNextPageToken && !this.isLoadingMore) {
+            this.loadMoreGooglePlaces();
+          }
+        }
+      }, { passive: true });
     }
 
     // Category Select
@@ -2996,6 +3195,7 @@ export const MapExplorer = {
     const searchInput = document.getElementById("mapKeywordInput");
     const searchBtn = document.getElementById("mapBtnSearchGmap");
     const doSearch = () => {
+      this.isViewportSearchMode = false;
       this.searchKeyword = searchInput ? searchInput.value.trim() : "";
       this.saveFilterState();
       this.loadPlacesForCurrentArea();
@@ -3180,5 +3380,9 @@ if (typeof window !== "undefined") {
 
   window.mapExplorerLoadMore = function() {
     MapExplorer.loadMoreGooglePlaces();
+  };
+
+  window.mapExplorerDeepSearch = function() {
+    MapExplorer.deepSearchGooglePlaces();
   };
 }

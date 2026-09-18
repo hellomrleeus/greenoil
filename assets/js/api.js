@@ -406,6 +406,31 @@ export const Api = {
     // which fail with "无法连接服务器" in restricted/proxy networks and trigger billable Place Photo requests.
     const photoUrl = "";
 
+    const typeCategoryMap = {
+      chinese_restaurant: ["中餐", "Chinese"],
+      asian_restaurant: ["亚洲菜", "Asian"],
+      fast_food_restaurant: ["快餐", "Fast Food"],
+      bakery: ["烘焙", "Bakery"],
+      cafe: ["咖啡", "Cafe"],
+      coffee_shop: ["咖啡", "Coffee Shop"],
+      japanese_restaurant: ["日料", "Japanese"],
+      korean_restaurant: ["韩餐", "Korean"],
+      barbecue_restaurant: ["烧烤", "Barbecue"],
+      hot_pot_restaurant: ["火锅", "Hot Pot"],
+      seafood_restaurant: ["海鲜", "Seafood"],
+      vietnamese_restaurant: ["越南菜", "Vietnamese"],
+      thai_restaurant: ["泰国菜", "Thai"],
+      indian_restaurant: ["印度菜", "Indian"],
+      italian_restaurant: ["意餐", "Italian"],
+      mexican_restaurant: ["墨西哥菜", "Mexican"],
+      pizza_restaurant: ["披萨", "Pizza"],
+      dessert_shop: ["甜品", "Dessert"],
+      tea_house: ["茶饮", "Tea House"],
+      bar: ["酒吧", "Bar"]
+    };
+    const categories = typeCategoryMap[primaryType] || ["餐饮美食", primaryType.replace(/_/g, " ")];
+    const categoriesRaw = categories.join(" · ");
+
     return {
       placeId: p.id,
       name,
@@ -423,6 +448,8 @@ export const Api = {
       latitude: lat,
       longitude: lng,
       primaryType,
+      categories,
+      categoriesRaw,
       photoUrl
     };
   },

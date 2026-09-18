@@ -5,7 +5,7 @@
 import { Auth } from "./auth.js";
 import { Calculator } from "./calculator.js";
 import { GreaseTrap } from "./grease-trap.js";
-import { MapExplorer } from "./map-explorer.js?v=20260918_v14";
+import { MapExplorer } from "./map-explorer.js?v=20260918_v15";
 import { i18n } from "./i18n.js";
 
 // Global Toast Notification System
