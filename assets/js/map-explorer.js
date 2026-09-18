@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v13";
+import { Api } from "./api.js?v=20260918_v14";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -771,15 +771,13 @@ export const MapExplorer = {
           </div>
           <div class="waypoint-seq-badge">${index + 1}</div>
           <div class="waypoint-card-body">
-            <div class="waypoint-card-header">
-              <div class="waypoint-title" title="${this.escapeHtml(w.name)}">${this.escapeHtml(w.name)}</div>
-              ${hoursBadge}
-            </div>
+            <div class="waypoint-title" title="${this.escapeHtml(w.name)}">${this.escapeHtml(w.name)}</div>
+            ${hoursBadge ? `<div class="waypoint-tag-row">${hoursBadge}</div>` : ""}
             <div class="waypoint-meta">
               <span class="waypoint-rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${w.rating ? parseFloat(w.rating).toFixed(1) : "4.2"}</span>
               <span class="waypoint-address" title="${this.escapeHtml(w.address || '')}">${this.escapeHtml(w.address || "Ontario GTA")}</span>
             </div>
-            ${w._estArrivalStr ? `<div style="font-size: 0.72rem; color: #4338ca; margin-top: 2px;">${i18n.t("fs_route_est_arrival")} ${w._estArrivalStr}</div>` : ""}
+            ${w._estArrivalStr ? `<div class="waypoint-eta">${i18n.t("fs_route_est_arrival")} ${w._estArrivalStr}</div>` : ""}
           </div>
           <div class="waypoint-card-actions">
             <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, -1);" ${index === 0 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_up"))}">↑</button>
