@@ -1015,8 +1015,10 @@ export const MapExplorer = {
         ? `<span class="status-badge ${statusObj.cls}" style="font-size:0.68rem; padding:1px 5px; border-radius:3px;">${statusObj.label}</span>`
         : "";
 
+      const lockBadgeText = (i18n.t("badge_locked_group") || "组{groupNum}").replace("{groupNum}", groupNum);
+      const lockBadgeTip = i18n.t("badge_locked_group_tip") || "已锁定为不可分割整体";
       const lockBadgeHtml = isLocked 
-        ? `<span class="waypoint-lock-badge" title="已锁定为不可分割整体">🔒 组${groupNum}</span>` 
+        ? `<span class="waypoint-lock-badge" title="${this.escapeHtml(lockBadgeTip)}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:2px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>${this.escapeHtml(lockBadgeText)}</span>` 
         : "";
 
       return `
@@ -3314,7 +3316,7 @@ export const MapExplorer = {
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: "© OpenStreetMap contributors | Green Oil"
+      attribution: "&copy; OpenStreetMap contributors | Green Oil"
     }).addTo(this.fallbackMap);
 
     this.fallbackLayerGroup = L.layerGroup().addTo(this.fallbackMap);
