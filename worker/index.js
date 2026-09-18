@@ -143,8 +143,14 @@ export default {
         return await handleSaveRouteWaypoints(request, env, corsHeaders);
       }
 
-      // 10. Google Maps Client Config (Frontend Key restricted to Website domain)
+      // 10. Google Maps Client Config (Frontend Key restricted to Website domain, protected by auth)
       if (url.pathname === "/api/maps/config" && request.method === "GET") {
+        if (!checkAuth(request, env)) {
+          return new Response(JSON.stringify({ error: "Unauthorized: Please log in" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
         return new Response(JSON.stringify({
           apiKey: env.GOOGLE_MAPS_FRONTEND_KEY || env.GOOGLE_MAPS_API_KEY || ""
         }), {

@@ -5,6 +5,7 @@
  */
 
 const DEFAULT_WORKER_URL = "https://greenoil-api.ydxhjw4j5w.workers.dev";
+let _cachedGoogleApiKey = null;
 
 export const Api = {
   getWorkerUrl() {
@@ -527,10 +528,31 @@ export const Api = {
   },
 
   /**
-   * Get Google Maps API Key from worker config or fallback
+   * Get Google Maps API Key from worker config (Requires active user session)
    */
   async getGoogleMapsApiKey() {
-    return "AIzaSyDj_AUrYZzu1DANM8ql9HHGPgccq7YZyRc";
+    if (_cachedGoogleApiKey) return _cachedGoogleApiKey;
+    try {
+      const resp = await fetch(`${this.getWorkerUrl()}/api/maps/config`, {
+        headers: this.getAuthHeaders()
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.apiKey) {
+          _cachedGoogleApiKey = data.apiKey;
+          return _cachedGoogleApiKey;
+        }
+      } else if (resp.status === 401) {
+        console.warn("Google Maps API Key requires active login. Please sign in first.");
+      }
+    } catch (e) {
+      console.warn("Failed to fetch Google Maps config from worker:", e);
+    }
+    return "";
+  },
+
+  clearGoogleMapsApiKey() {
+    _cachedGoogleApiKey = null;
   },
 
   /**
