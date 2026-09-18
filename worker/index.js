@@ -19,6 +19,7 @@ const KV_LAST_UPDATED_KEY = "last_updated_time";
 const KV_SALES_KEY = "field_sales_records";
 const KV_CUSTOM_REST_KEY = "custom_restaurants_patch";
 const KV_ROUTE_KEY = "field_sales_route_waypoints";
+const KV_MAP_ROUTES_KEY = "map_explorer_route_groups";
 
 export default {
   /**
@@ -141,6 +142,14 @@ export default {
       }
       if (url.pathname === "/api/route" && request.method === "POST") {
         return await handleSaveRouteWaypoints(request, env, corsHeaders);
+      }
+
+      // 9.1 Map Explorer Grouped Routes API (New Endpoint, Protected)
+      if (url.pathname === "/api/map-routes" && request.method === "GET") {
+        return await handleGetMapRoutes(request, env, corsHeaders);
+      }
+      if (url.pathname === "/api/map-routes" && request.method === "POST") {
+        return await handleSaveMapRoutes(request, env, corsHeaders);
       }
 
       // 10. Google Maps Client Config (Frontend Key restricted to Website domain, protected by auth)
@@ -1568,6 +1577,123 @@ async function handleSaveRouteWaypoints(request, env, corsHeaders) {
   }
 
   return new Response(JSON.stringify({ success: true, message: "Simulated route saved", data: routeData }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
+}
+
+/**
+ * Map Explorer: Get persisted grouped routes from KV (New Endpoint)
+ */
+async function handleGetMapRoutes(request, env, corsHeaders) {
+  let mapRouteData = {
+    groups: [
+      {
+        id: "group_default",
+        name: "路线 1",
+        origin: "Green Oil Inc, 888 Progress Ave, Scarborough, ON",
+        waypoints: []
+      }
+    ],
+    activeGroupId: "group_default",
+    origin: "Green Oil Inc, 888 Progress Ave, Scarborough, ON",
+    updatedAt: null
+  };
+
+  if (env.RESTAURANTS_KV) {
+    try {
+      const data = await env.RESTAURANTS_KV.get(KV_MAP_ROUTES_KEY, { type: "json" });
+      if (data && Array.isArray(data.groups) && data.groups.length > 0) {
+        mapRouteData = data;
+      }
+    } catch (err) {
+      return new Response(JSON.stringify({ success: false, error: err.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+  }
+
+  // Enrich opening hours if any are missing
+  if (Array.isArray(mapRouteData.groups)) {
+    for (const grp of mapRouteData.groups) {
+      if (Array.isArray(grp.waypoints) && grp.waypoints.length > 0) {
+        await enrichWaypointsWithHours(grp.waypoints, env);
+      }
+    }
+  }
+
+  return new Response(JSON.stringify({
+    success: true,
+    data: mapRouteData
+  }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
+  });
+}
+
+/**
+ * Map Explorer: Save grouped routes to KV (New Endpoint)
+ */
+async function handleSaveMapRoutes(request, env, corsHeaders) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+
+  const groups = Array.isArray(body.groups) && body.groups.length > 0 ? body.groups : [
+    {
+      id: "group_default",
+      name: "路线 1",
+      origin: body.origin || "Green Oil Inc, 888 Progress Ave, Scarborough, ON",
+      waypoints: Array.isArray(body.waypoints) ? body.waypoints : []
+    }
+  ];
+  const activeGroupId = body.activeGroupId || groups[0].id;
+  const origin = body.origin || groups[0].origin || "Green Oil Inc, 888 Progress Ave, Scarborough, ON";
+  const now = new Date().toISOString();
+
+  for (const grp of groups) {
+    if (Array.isArray(grp.waypoints)) {
+      await enrichWaypointsWithHours(grp.waypoints, env);
+    }
+  }
+
+  const mapRouteData = {
+    groups,
+    activeGroupId,
+    origin,
+    updatedAt: now
+  };
+
+  if (env.RESTAURANTS_KV) {
+    try {
+      await env.RESTAURANTS_KV.put(KV_MAP_ROUTES_KEY, JSON.stringify(mapRouteData));
+      return new Response(JSON.stringify({
+        success: true,
+        message: "地图路线分组数据已成功保存至云端",
+        data: mapRouteData
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ success: false, error: err.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+  }
+
+  return new Response(JSON.stringify({
+    success: true,
+    data: mapRouteData
+  }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" }
   });

@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v15";
+import { Api } from "./api.js";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -126,13 +126,55 @@ export const MapExplorer = {
   lastSearchedCenter: null,
   lastSearchedZoom: null,
 
-  // Route Planning State
-  routeWaypoints: [],
+  // Route Planning State (Multi-Route Groups)
+  routeGroups: [
+    {
+      id: "group_default",
+      name: "路线 1",
+      origin: DEFAULT_ORIGIN_ADDRESS,
+      waypoints: []
+    }
+  ],
+  activeGroupId: "group_default",
+  get routeWaypoints() {
+    const grp = this.getActiveRouteGroup();
+    return grp ? grp.waypoints : [];
+  },
+  set routeWaypoints(val) {
+    const grp = this.getActiveRouteGroup();
+    if (grp) {
+      grp.waypoints = Array.isArray(val) ? val : [];
+    }
+  },
+  getActiveRouteGroup() {
+    if (!Array.isArray(this.routeGroups) || this.routeGroups.length === 0) {
+      this.routeGroups = [
+        {
+          id: "group_default",
+          name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+          origin: this.originAddress || DEFAULT_ORIGIN_ADDRESS,
+          waypoints: []
+        }
+      ];
+      this.activeGroupId = "group_default";
+    }
+    let grp = this.routeGroups.find(g => g.id === this.activeGroupId);
+    if (!grp) {
+      grp = this.routeGroups[0];
+      this.activeGroupId = grp.id;
+    }
+    if (!Array.isArray(grp.waypoints)) {
+      grp.waypoints = [];
+    }
+    return grp;
+  },
   selectedWaypointKeys: new Set(),
   waypointSearchKeyword: "",
   isRouteMode: true,
   originAddress: DEFAULT_ORIGIN_ADDRESS,
   originCoords: { ...DEFAULT_ORIGIN_COORDS },
+  _saveDebounceTimer: null,
+  _isSyncingFromBackend: false,
 
   // GeoJSON Municipal Boundaries Dataset & Hash Map Index
   neighbourhoodsGeoJson: null,
@@ -329,34 +371,418 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
-  // Route State Management
+  // Route State Management & Cloud Persistence (Multi-Group KV)
   // -------------------------------------------------------------
   initRouteState() {
+    // 1. Immediate local cache read (0ms instant render)
     try {
-      const saved = localStorage.getItem("greenoil_route_waypoints_v2");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          this.routeWaypoints = parsed;
+      const savedGroups = localStorage.getItem("greenoil_map_route_groups_v1");
+      const savedActiveId = localStorage.getItem("greenoil_map_active_group_id_v1");
+      if (savedGroups) {
+        const parsed = JSON.parse(savedGroups);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.routeGroups = parsed;
+          if (savedActiveId && this.routeGroups.some(g => g.id === savedActiveId)) {
+            this.activeGroupId = savedActiveId;
+          } else {
+            this.activeGroupId = this.routeGroups[0].id;
+          }
         }
+      } else {
+        // Fallback / auto-migration from older v2 single route if present
+        const oldSaved = localStorage.getItem("greenoil_route_waypoints_v2");
+        const oldOrigin = localStorage.getItem("greenoil_route_origin_v2") || DEFAULT_ORIGIN_ADDRESS;
+        let oldWaypoints = [];
+        if (oldSaved) {
+          try {
+            const parsedOld = JSON.parse(oldSaved);
+            if (Array.isArray(parsedOld)) oldWaypoints = parsedOld;
+          } catch (e) {}
+        }
+        this.routeGroups = [
+          {
+            id: "group_default",
+            name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+            origin: oldOrigin,
+            waypoints: oldWaypoints
+          }
+        ];
+        this.activeGroupId = "group_default";
+      }
+
+      const activeGroup = this.getActiveRouteGroup();
+      if (activeGroup && activeGroup.origin) {
+        this.originAddress = activeGroup.origin;
       }
     } catch (e) {
-      console.warn("Failed to load route waypoints:", e);
+      console.warn("Failed to load route groups from local storage:", e);
     }
 
     const originInput = document.getElementById("mapRouteOriginInput");
-    if (originInput && originInput.value) {
-      this.originAddress = originInput.value.trim();
+    if (originInput) {
+      if (this.originAddress) {
+        originInput.value = this.originAddress;
+      } else if (originInput.value) {
+        this.originAddress = originInput.value.trim();
+      }
     }
     this.renderWaypoints();
+
+    // 2. Asynchronous remote sync with Cloudflare KV (New Dedicated Endpoint)
+    this.syncRouteFromBackend();
   },
 
-  saveRouteWaypoints() {
+  async syncRouteFromBackend() {
+    if (this._isSyncingFromBackend) return;
+    this._isSyncingFromBackend = true;
     try {
-      localStorage.setItem("greenoil_route_waypoints_v2", JSON.stringify(this.routeWaypoints));
-    } catch (e) {
-      console.warn("Failed to save route waypoints:", e);
+      const res = await Api.getMapRoutes();
+      if (!res || !res.success || !res.data) return;
+
+      const serverData = res.data;
+      const serverGroups = Array.isArray(serverData.groups) && serverData.groups.length > 0 ? serverData.groups : null;
+
+      if (serverGroups) {
+        serverGroups.forEach(grp => {
+          if (Array.isArray(grp.waypoints)) {
+            grp.waypoints.forEach(w => {
+              if (!w._uid) {
+                w._uid = "wp_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
+              }
+            });
+          } else {
+            grp.waypoints = [];
+          }
+        });
+      }
+
+      const localUpdated = localStorage.getItem("greenoil_map_routes_updated_at") || "";
+      const serverUpdated = serverData.updatedAt || "";
+      const serverTotalWaypoints = serverGroups ? serverGroups.reduce((acc, g) => acc + (g.waypoints ? g.waypoints.length : 0), 0) : 0;
+      const localTotalWaypoints = this.routeGroups.reduce((acc, g) => acc + (g.waypoints ? g.waypoints.length : 0), 0);
+
+      if (serverGroups && serverGroups.length > 0) {
+        // If local is empty or server data is newer/same, adopt server route groups
+        if (localTotalWaypoints === 0 || !localUpdated || (serverUpdated && serverUpdated >= localUpdated)) {
+          this.routeGroups = serverGroups;
+          if (serverData.activeGroupId && this.routeGroups.some(g => g.id === serverData.activeGroupId)) {
+            this.activeGroupId = serverData.activeGroupId;
+          } else {
+            this.activeGroupId = this.routeGroups[0].id;
+          }
+
+          const activeGroup = this.getActiveRouteGroup();
+          if (activeGroup && activeGroup.origin) {
+            this.originAddress = activeGroup.origin;
+          } else if (serverData.origin) {
+            this.originAddress = serverData.origin;
+          }
+
+          try {
+            localStorage.setItem("greenoil_map_route_groups_v1", JSON.stringify(this.routeGroups));
+            localStorage.setItem("greenoil_map_active_group_id_v1", this.activeGroupId);
+            if (serverUpdated) localStorage.setItem("greenoil_map_routes_updated_at", serverUpdated);
+            localStorage.setItem("greenoil_route_waypoints_v2", JSON.stringify(this.routeWaypoints));
+            if (this.originAddress) localStorage.setItem("greenoil_route_origin_v2", this.originAddress);
+          } catch (e) {}
+
+          const originInput = document.getElementById("mapRouteOriginInput");
+          if (originInput) originInput.value = this.originAddress;
+
+          this.renderWaypoints();
+          this.updateRoute();
+          this.renderMarkers();
+          this.renderPlacesCards();
+        }
+      } else if (localTotalWaypoints > 0 && serverTotalWaypoints === 0) {
+        // Local has existing waypoints but server is empty: upload to cloud immediately
+        this.saveRouteWaypoints({ immediate: true });
+      } else if (serverData.origin && !this.originAddress) {
+        this.originAddress = serverData.origin;
+        const originInput = document.getElementById("mapRouteOriginInput");
+        if (originInput) originInput.value = this.originAddress;
+      }
+    } catch (err) {
+      console.warn("Failed to sync route groups from cloud:", err);
+    } finally {
+      this._isSyncingFromBackend = false;
     }
+  },
+
+  saveRouteWaypoints(options = {}) {
+    const nowIso = new Date().toISOString();
+    // 1. Immediate local persistence
+    try {
+      const activeGroup = this.getActiveRouteGroup();
+      if (activeGroup) {
+        const originInput = document.getElementById("mapRouteOriginInput");
+        const effectiveOrigin = (originInput ? originInput.value.trim() : this.originAddress) || DEFAULT_ORIGIN_ADDRESS;
+        activeGroup.origin = effectiveOrigin;
+        this.originAddress = effectiveOrigin;
+      }
+
+      localStorage.setItem("greenoil_map_route_groups_v1", JSON.stringify(this.routeGroups));
+      localStorage.setItem("greenoil_map_active_group_id_v1", this.activeGroupId);
+      localStorage.setItem("greenoil_map_routes_updated_at", nowIso);
+      localStorage.setItem("greenoil_route_waypoints_v2", JSON.stringify(this.routeWaypoints));
+      localStorage.setItem("greenoil_route_updated_at", nowIso);
+      if (this.originAddress) {
+        localStorage.setItem("greenoil_route_origin_v2", this.originAddress);
+      }
+    } catch (e) {
+      console.warn("Failed to save route groups to local storage:", e);
+    }
+
+    // 2. Debounced or immediate sync to Cloudflare KV
+    if (this._saveDebounceTimer) {
+      clearTimeout(this._saveDebounceTimer);
+      this._saveDebounceTimer = null;
+    }
+
+    if (options.immediate) {
+      this._pushRouteWaypointsToBackend();
+    } else {
+      this._saveDebounceTimer = setTimeout(() => {
+        this._pushRouteWaypointsToBackend();
+      }, 800);
+    }
+  },
+
+  async _pushRouteWaypointsToBackend() {
+    this._saveDebounceTimer = null;
+    try {
+      const originInput = document.getElementById("mapRouteOriginInput");
+      const effectiveOrigin = (originInput ? originInput.value.trim() : this.originAddress) || DEFAULT_ORIGIN_ADDRESS;
+
+      await Api.saveMapRoutes(
+        this.routeGroups,
+        this.activeGroupId,
+        effectiveOrigin
+      );
+    } catch (err) {
+      console.warn("Failed to persist map route groups to backend:", err);
+    }
+  },
+
+  // -------------------------------------------------------------
+  // Route Groups & Tabs UI Operations
+  // -------------------------------------------------------------
+  renderRouteTabs() {
+    const bar = document.getElementById("mapRouteTabsBar");
+    if (!bar) return;
+
+    this.getActiveRouteGroup();
+
+    const canDelete = this.routeGroups.length > 1;
+    const btnDel = document.getElementById("mapRouteBtnDeleteTab");
+    if (btnDel) {
+      btnDel.disabled = !canDelete;
+      btnDel.style.opacity = canDelete ? "1" : "0.45";
+      btnDel.style.cursor = canDelete ? "pointer" : "not-allowed";
+      btnDel.title = (typeof i18n !== "undefined" && i18n.t)
+        ? (canDelete ? i18n.t("fs_route_tab_delete") : i18n.t("fs_route_tab_min_alert"))
+        : (canDelete ? "删除当前路线标签" : "至少保留一个路线标签");
+    }
+
+    bar.innerHTML = this.routeGroups.map(grp => {
+      const isActive = grp.id === this.activeGroupId;
+      const count = Array.isArray(grp.waypoints) ? grp.waypoints.length : 0;
+      const safeName = (grp.name || "路线").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return `
+        <button type="button" class="map-route-tab-pill ${isActive ? "active" : ""}" data-group-id="${grp.id}" title="${safeName}">
+          <span class="tab-pill-name">${safeName}</span>
+          <span class="tab-count-badge">${count}</span>
+        </button>
+      `;
+    }).join("");
+
+    const activePill = bar.querySelector(".map-route-tab-pill.active");
+    if (activePill && typeof activePill.scrollIntoView === "function") {
+      activePill.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
+
+    bar.querySelectorAll(".map-route-tab-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        const gid = pill.dataset.groupId;
+        if (gid && gid !== this.activeGroupId) {
+          this.switchRouteGroup(gid);
+        }
+      });
+      pill.addEventListener("dblclick", e => {
+        e.stopPropagation();
+        const gid = pill.dataset.groupId;
+        if (gid) {
+          this.renameRouteGroup(gid);
+        }
+      });
+    });
+  },
+
+  switchRouteGroup(groupId) {
+    if (!groupId || groupId === this.activeGroupId) return;
+    const target = this.routeGroups.find(g => g.id === groupId);
+    if (!target) return;
+
+    // Persist current origin to current active group
+    const originInput = document.getElementById("mapRouteOriginInput");
+    if (originInput && this.activeGroupId) {
+      const curGroup = this.routeGroups.find(g => g.id === this.activeGroupId);
+      if (curGroup) {
+        curGroup.origin = originInput.value.trim() || DEFAULT_ORIGIN_ADDRESS;
+      }
+    }
+
+    this.activeGroupId = groupId;
+    this.selectedWaypointKeys.clear();
+    this.waypointSearchKeyword = "";
+    const wpSearchInput = document.getElementById("mapWaypointsSearchInput");
+    if (wpSearchInput) wpSearchInput.value = "";
+    const wpSearchClear = document.getElementById("mapWaypointsSearchClear");
+    if (wpSearchClear) wpSearchClear.style.display = "none";
+
+    // Set origin to target group's origin
+    if (target.origin) {
+      this.originAddress = target.origin;
+      if (originInput) originInput.value = this.originAddress;
+    }
+
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+  },
+
+  newRouteGroup(name = null) {
+    if (!name) {
+      let num = this.routeGroups.length + 1;
+      const basePrefix = (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1").replace(/\d+$/, "").trim();
+      while (this.routeGroups.some(g => g.name === `${basePrefix} ${num}` || g.name === `路线 ${num}` || g.name === `Route ${num}`)) {
+        num++;
+      }
+      name = `${basePrefix || "路线"} ${num}`;
+    }
+
+    const newGroup = {
+      id: "group_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      name: name.trim(),
+      origin: this.originAddress || DEFAULT_ORIGIN_ADDRESS,
+      waypoints: []
+    };
+
+    this.routeGroups.push(newGroup);
+    this.activeGroupId = newGroup.id;
+    this.selectedWaypointKeys.clear();
+
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+
+    const msg = (typeof i18n !== "undefined" && i18n.t)
+      ? i18n.t("toast_created_tab", { name: newGroup.name })
+      : `已新建路线标签「${newGroup.name}」`;
+    if (window.showToast) window.showToast(msg);
+    return newGroup;
+  },
+
+  duplicateRouteGroup(groupId = this.activeGroupId) {
+    const target = this.routeGroups.find(g => g.id === groupId) || this.getActiveRouteGroup();
+    if (!target) return;
+
+    const copySuffix = (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_copy_suffix") : " (副本)") || " (副本)";
+    const newName = `${target.name || "路线"}${copySuffix}`;
+
+    const copiedWaypoints = (target.waypoints || []).map(w => ({
+      ...w,
+      _uid: "wp_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7)
+    }));
+
+    const newGroup = {
+      id: "group_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+      name: newName,
+      origin: target.origin || this.originAddress || DEFAULT_ORIGIN_ADDRESS,
+      waypoints: copiedWaypoints
+    };
+
+    this.routeGroups.push(newGroup);
+    this.activeGroupId = newGroup.id;
+    this.selectedWaypointKeys.clear();
+
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+
+    const msg = (typeof i18n !== "undefined" && i18n.t)
+      ? i18n.t("toast_copied_tab", { name: newGroup.name })
+      : `已复制为新路线标签「${newGroup.name}」`;
+    if (window.showToast) window.showToast(msg);
+    return newGroup;
+  },
+
+  renameRouteGroup(groupId = this.activeGroupId) {
+    const grp = this.routeGroups.find(g => g.id === groupId) || this.getActiveRouteGroup();
+    if (!grp) return;
+
+    const promptText = (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_rename_prompt") : "请输入路线标签名称：") || "请输入路线标签名称：";
+    const newName = prompt(promptText, grp.name || "");
+    if (newName === null) return; // User cancelled
+    const trimmed = newName.trim();
+    if (!trimmed) {
+      alert((typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_rename_empty") : "标签名称不能为空") || "标签名称不能为空");
+      return;
+    }
+
+    grp.name = trimmed;
+    this.saveRouteWaypoints();
+    this.renderRouteTabs();
+
+    const msg = (typeof i18n !== "undefined" && i18n.t)
+      ? i18n.t("toast_renamed_tab", { name: grp.name })
+      : `已重命名路线标签为「${grp.name}」`;
+    if (window.showToast) window.showToast(msg);
+  },
+
+  deleteRouteGroup(groupId = this.activeGroupId) {
+    if (this.routeGroups.length <= 1) {
+      const minAlert = (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_min_alert") : "至少保留一个路线标签") || "至少保留一个路线标签";
+      alert(minAlert);
+      return;
+    }
+
+    const idx = this.routeGroups.findIndex(g => g.id === groupId);
+    if (idx < 0) return;
+    const grp = this.routeGroups[idx];
+    const deletedName = grp.name || "";
+
+    const confirmPattern = (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_delete_confirm") : "确定要删除标签「{name}」及其中的站点吗？") || "确定要删除标签「{name}」及其中的站点吗？";
+    const confirmMsg = confirmPattern.replace("{name}", grp.name || "");
+    if (!confirm(confirmMsg)) return;
+
+    this.routeGroups.splice(idx, 1);
+    const nextGroup = this.routeGroups[Math.min(idx, this.routeGroups.length - 1)];
+    this.activeGroupId = nextGroup.id;
+    this.selectedWaypointKeys.clear();
+
+    if (nextGroup.origin) {
+      this.originAddress = nextGroup.origin;
+      const originInput = document.getElementById("mapRouteOriginInput");
+      if (originInput) originInput.value = this.originAddress;
+    }
+
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+
+    const delMsg = (typeof i18n !== "undefined" && i18n.t)
+      ? i18n.t("toast_deleted_tab", { name: deletedName })
+      : `已删除路线标签「${deletedName}」`;
+    if (window.showToast) window.showToast(delMsg);
   },
 
   getEffectiveOrigin() {
@@ -674,7 +1100,7 @@ export const MapExplorer = {
     }
     this.routeWaypoints = [];
     this.selectedWaypointKeys.clear();
-    this.saveRouteWaypoints();
+    this.saveRouteWaypoints({ immediate: true });
     this.renderWaypoints();
     this.updateRoute();
     this.renderMarkers();
@@ -996,6 +1422,11 @@ export const MapExplorer = {
   // Right Column Waypoints UI & HTML5 Drag-and-Drop
   // -------------------------------------------------------------
   renderWaypoints() {
+    this.renderRouteTabs();
+
+    const badgeEl = document.getElementById("mapWaypointsBadge");
+    if (badgeEl) badgeEl.textContent = `${this.routeWaypoints.length} ${typeof i18n !== "undefined" && i18n.t ? i18n.t("map_waypoints_unit") : "个"}`;
+
     const container = document.getElementById("mapWaypointsCardsContainer");
     if (!container) return;
 
@@ -4436,11 +4867,13 @@ export const MapExplorer = {
     if (originInput) {
       originInput.addEventListener("change", e => {
         this.originAddress = e.target.value.trim();
+        this.saveRouteWaypoints();
         this.updateRoute();
       });
       originInput.addEventListener("keydown", e => {
         if (e.key === "Enter") {
           this.originAddress = e.target.value.trim();
+          this.saveRouteWaypoints();
           this.updateRoute();
         }
       });
@@ -4505,6 +4938,24 @@ export const MapExplorer = {
     const batchDeleteBtn = document.getElementById("mapBtnBatchDeleteWaypoints");
     if (batchDeleteBtn) {
       batchDeleteBtn.addEventListener("click", () => this.deleteSelectedWaypoints());
+    }
+
+    // Right column: Route Group Tabs Actions
+    const newTabBtn = document.getElementById("mapRouteBtnNewTab");
+    if (newTabBtn) {
+      newTabBtn.addEventListener("click", () => this.newRouteGroup());
+    }
+    const renameTabBtn = document.getElementById("mapRouteBtnRenameTab");
+    if (renameTabBtn) {
+      renameTabBtn.addEventListener("click", () => this.renameRouteGroup(this.activeGroupId));
+    }
+    const dupTabBtn = document.getElementById("mapRouteBtnDuplicateTab");
+    if (dupTabBtn) {
+      dupTabBtn.addEventListener("click", () => this.duplicateRouteGroup(this.activeGroupId));
+    }
+    const deleteTabBtn = document.getElementById("mapRouteBtnDeleteTab");
+    if (deleteTabBtn) {
+      deleteTabBtn.addEventListener("click", () => this.deleteRouteGroup(this.activeGroupId));
     }
 
     // Right column: Toggle Expand/Collapse Wide Overlay Mode
@@ -4584,6 +5035,17 @@ export const MapExplorer = {
     const navModalCancel = document.getElementById("fsRouteNavModalBtnCancel");
     if (navModalClose) navModalClose.addEventListener("click", () => this.closeRouteNavModal());
     if (navModalCancel) navModalCancel.addEventListener("click", () => this.closeRouteNavModal());
+
+    // Flush pending route save before page unloads
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => {
+        if (this._saveDebounceTimer) {
+          clearTimeout(this._saveDebounceTimer);
+          this._saveDebounceTimer = null;
+          this._pushRouteWaypointsToBackend();
+        }
+      });
+    }
   },
 
   escapeHtml(str) {

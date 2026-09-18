@@ -4237,6 +4237,141 @@ body {
   padding: 9px 12px;
 }
 
+/* Map Explorer Route Groups Tabs */
+.map-route-tabs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.map-route-tabs-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.map-route-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.map-route-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.map-route-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.22rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.map-route-tab-pill:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.map-route-tab-pill.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(59, 130, 246, 0.12);
+}
+
+.map-route-tab-pill .tab-count-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.map-route-tab-pill.active .tab-count-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.map-route-tabs-sub-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.btn-route-tab-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0.16rem 0.45rem;
+  font-size: 0.72rem;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-route-tab-action:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.btn-route-tab-action.btn-tab-new {
+  color: #0d9488;
+  background: #f0fdfa;
+  border-color: #99f6e4;
+  font-weight: 600;
+}
+
+.btn-route-tab-action.btn-tab-new:hover {
+  background: #ccfbf1;
+  border-color: #5eead4;
+}
+
+.btn-route-tab-action.btn-tab-delete {
+  color: #dc2626;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.btn-route-tab-action.btn-tab-delete:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.btn-route-tab-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .map-waypoints-header {
   padding: 0.7rem 0.85rem;
   background: #f8fafc;

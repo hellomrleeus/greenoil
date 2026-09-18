@@ -588,6 +588,30 @@
                 </button>
 
                 <div class="map-waypoints-header">
+                  <!-- Route Groups Tabs Bar (Multi-Route Group Management) -->
+                  <div class="map-route-tabs-container" id="mapRouteTabsContainer">
+                    <div class="map-route-tabs-top-row">
+                      <div class="map-route-tabs-bar custom-scrollbar" id="mapRouteTabsBar">
+                        <!-- Rendered dynamically -->
+                      </div>
+                      <button type="button" class="btn-route-tab-action btn-tab-new" id="mapRouteBtnNewTab" title="新建路线分组" data-i18n-title="fs_route_tab_new">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        <span data-i18n="fs_route_tab_new">+ 新建</span>
+                      </button>
+                    </div>
+                    <div class="map-route-tabs-sub-actions">
+                      <button type="button" class="btn-route-tab-action" id="mapRouteBtnRenameTab" title="重命名当前分组" data-i18n-title="fs_route_tab_rename">
+                        <span data-i18n="fs_route_tab_rename">重命名</span>
+                      </button>
+                      <button type="button" class="btn-route-tab-action" id="mapRouteBtnDuplicateTab" title="复制当前分组" data-i18n-title="fs_route_tab_duplicate">
+                        <span data-i18n="fs_route_tab_duplicate">复制</span>
+                      </button>
+                      <button type="button" class="btn-route-tab-action btn-tab-delete" id="mapRouteBtnDeleteTab" title="删除当前分组" data-i18n-title="fs_route_tab_delete">
+                        <span data-i18n="fs_route_tab_delete">删除</span>
+                      </button>
+                    </div>
+                  </div>
+
                   <div class="waypoints-header-top">
                     <div style="display: flex; align-items: center; gap: 6px;">
                       <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2563eb;"></span>
