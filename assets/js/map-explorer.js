@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v11";
+import { Api } from "./api.js?v=20260918_v12";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -103,7 +103,7 @@ export const MapExplorer = {
   googleMap: null,
   placesService: null,
   directionsService: null,
-  directionsRenderer: null,
+  routesApiEnabled: false,
   routesApiDisabled: false,
   routePolyline: null,
   originMarker: null,
@@ -523,8 +523,9 @@ export const MapExplorer = {
     let totalKm = null;
     let totalMins = null;
 
-    // 1. Attempt modern Google Routes API (v2:computeRoutes) if not disabled
-    if (!this.routesApiDisabled && window.google && window.google.maps) {
+    // 1. Attempt modern Google Routes API (v2:computeRoutes) only if explicitly enabled in project
+    // (Disabled by default because project 510154627987 does not have routes.googleapis.com activated)
+    if (this.routesApiEnabled && !this.routesApiDisabled && window.google && window.google.maps) {
       try {
         const apiKey = this.googleApiKey || await Api.getGoogleMapsApiKey();
         if (apiKey) {
@@ -1407,6 +1408,8 @@ export const MapExplorer = {
 
     if (searchGoogle) {
       try {
+        this.lastSearchQuery = areaQuery;
+        this.lastSearchBounds = bounds;
         const result = await Api.searchGooglePlaces(areaQuery, { bounds });
         if (requestId !== this.areaLoadId) return;
         if (searchId === this.googleSearchId) {
@@ -1446,16 +1449,8 @@ export const MapExplorer = {
     this.isLoadingMore = true;
     this.renderPlacesCards();
 
-    let bounds = null;
-    if (this.isViewportSearchMode && this.googleMap && this.googleMap.getBounds()) {
-      const b = this.googleMap.getBounds();
-      bounds = {
-        sw: { lat: b.getSouthWest().lat(), lng: b.getSouthWest().lng() },
-        ne: { lat: b.getNorthEast().lat(), lng: b.getNorthEast().lng() }
-      };
-    }
-
-    const query = this.searchKeyword || "restaurants";
+    const bounds = this.lastSearchBounds || null;
+    const query = this.lastSearchQuery || this.searchKeyword || "restaurants";
     try {
       const result = await Api.searchGooglePlaces(query, {
         bounds,

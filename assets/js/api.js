@@ -298,37 +298,51 @@ export const Api = {
       "nextPageToken"
     ].join(",");
 
-    const requestBody = {
-      textQuery: finalQuery,
-      maxResultCount: 20,
-      languageCode: "zh-CN",
-      regionCode: "CA"
-    };
-
-    if (pageToken) {
+    let requestBody;
+    if (pageToken && this.lastSearchRequestBody) {
+      // Re-use exact same base request body to satisfy Google Places API (New) requirement:
+      // "Request parameters for paging requests must match the initial SearchText request."
+      requestBody = JSON.parse(JSON.stringify(this.lastSearchRequestBody));
       requestBody.pageToken = pageToken;
-    }
-
-    if (bounds && bounds.sw && bounds.ne) {
-      requestBody.locationRestriction = {
-        rectangle: {
-          low: {
-            latitude: Math.min(bounds.sw.lat, bounds.ne.lat),
-            longitude: Math.min(bounds.sw.lng, bounds.ne.lng)
-          },
-          high: {
-            latitude: Math.max(bounds.sw.lat, bounds.ne.lat),
-            longitude: Math.max(bounds.sw.lng, bounds.ne.lng)
-          }
-        }
-      };
     } else {
-      requestBody.locationBias = {
-        circle: {
-          center: { latitude: 43.7282, longitude: -79.3832 },
-          radius: 45000
-        }
+      let finalQuery = (query || "").trim();
+      if (!finalQuery) finalQuery = "restaurants";
+      const qLower = finalQuery.toLowerCase();
+      if (!bounds && !qLower.includes("ontario") && !qLower.includes("canada")) {
+        finalQuery = `${finalQuery} Ontario Canada`;
+      }
+
+      requestBody = {
+        textQuery: finalQuery,
+        pageSize: 20,
+        languageCode: "zh-CN",
+        regionCode: "CA"
       };
+
+      if (bounds && bounds.sw && bounds.ne) {
+        requestBody.locationRestriction = {
+          rectangle: {
+            low: {
+              latitude: Math.min(bounds.sw.lat, bounds.ne.lat),
+              longitude: Math.min(bounds.sw.lng, bounds.ne.lng)
+            },
+            high: {
+              latitude: Math.max(bounds.sw.lat, bounds.ne.lat),
+              longitude: Math.max(bounds.sw.lng, bounds.ne.lng)
+            }
+          }
+        };
+      } else {
+        requestBody.locationBias = {
+          circle: {
+            center: { latitude: 43.7282, longitude: -79.3832 },
+            radius: 45000
+          }
+        };
+      }
+
+      // Cache the base request body for subsequent pagination requests
+      this.lastSearchRequestBody = JSON.parse(JSON.stringify(requestBody));
     }
 
     try {
@@ -343,7 +357,9 @@ export const Api = {
       });
 
       if (!resp.ok) {
-        throw new Error(`Google API returned ${resp.status}`);
+        const errorDetails = await resp.json().catch(() => null);
+        console.warn(`Google Places searchText returned ${resp.status}:`, errorDetails);
+        return { success: false, error: `Google API returned ${resp.status}`, places: [], nextPageToken: null };
       }
 
       const data = await resp.json();
