@@ -512,6 +512,43 @@ export const Api = {
   },
 
   /**
+   * Map Explorer: Get Persisted Grouped Routes from Cloudflare KV (New Dedicated Endpoint)
+   */
+  async getMapRoutes() {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/map-routes`, {
+        method: "GET",
+        headers: this.getAuthHeaders(),
+        credentials: "include"
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("getMapRoutes failed:", e);
+      return { success: false, error: e.message, data: { groups: [] } };
+    }
+  },
+
+  /**
+   * Map Explorer: Save Grouped Routes to Cloudflare KV (New Dedicated Endpoint)
+   */
+  async saveMapRoutes(groups = [], activeGroupId = null, origin = "Green Oil Inc, Toronto, ON") {
+    const workerUrl = this.getWorkerUrl();
+    try {
+      const resp = await fetch(`${workerUrl}/api/map-routes`, {
+        method: "POST",
+        headers: this.getAuthHeaders(),
+        credentials: "include",
+        body: JSON.stringify({ groups, activeGroupId, origin })
+      });
+      return await resp.json();
+    } catch (e) {
+      console.warn("saveMapRoutes failed:", e);
+      return { success: false, error: e.message };
+    }
+  },
+
+  /**
    * Remote login against Cloudflare Worker backend
    */
   async login(username, password) {
