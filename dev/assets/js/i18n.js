@@ -628,6 +628,41 @@ export const TRANSLATIONS = {
     map_route_status_active: "规划中",
     map_route_status_paused: "已暂停",
     cat_food: "餐饮美食",
+    // Price levels
+    price_free: "免费",
+    price_inexpensive: "$ (经济实惠)",
+    price_moderate: "$$ (适中消费)",
+    price_expensive: "$$$ (较高消费)",
+    price_very_expensive: "$$$$ (高档消费)",
+
+    // Batch Actions & Tooltips
+    btn_batch_delete: "批量删除",
+    tip_batch_delete: "批量移除选中的站点",
+    tip_lock_stops: "锁定选中的站点为整体组合（需>=2个）",
+    tip_unlock_stops: "解除选中站点的锁定",
+    tip_clear_search: "清空搜索",
+
+    // Cuisines & Categories
+    cat_japanese_cuisine: "日料",
+    cat_indian_cuisine: "印度菜",
+    cat_chinese_cuisine: "中餐",
+    cat_korean_cuisine: "韩餐",
+    cat_asian_cuisine: "亚洲菜",
+    cat_fast_food: "快餐",
+    cat_bakery: "烘焙",
+    cat_cafe: "咖啡",
+    cat_coffee_shop: "咖啡厅",
+    cat_bbq: "烧烤",
+    cat_hotpot: "火锅",
+    cat_seafood: "海鲜",
+    cat_vietnamese: "越南菜",
+    cat_thai: "泰国菜",
+    cat_italian: "意餐",
+    cat_mexican: "墨西哥菜",
+    cat_pizza: "披萨",
+    cat_dessert: "甜品",
+    cat_tea: "茶饮",
+    cat_bar: "酒吧",
     toast_created_tab: "已新建路线标签「{name}」",
     toast_copied_tab: "已复制为新路线标签「{name}」",
     toast_deleted_tab: "已删除路线标签「{name}」",
@@ -1265,6 +1300,41 @@ export const TRANSLATIONS = {
     map_route_status_active: "Planning",
     map_route_status_paused: "Paused",
     cat_food: "Food & Dining",
+    // Price levels
+    price_free: "Free",
+    price_inexpensive: "$ (Inexpensive)",
+    price_moderate: "$$ (Moderate)",
+    price_expensive: "$$$ (Expensive)",
+    price_very_expensive: "$$$$ (Very Expensive)",
+
+    // Batch Actions & Tooltips
+    btn_batch_delete: "Delete Selected",
+    tip_batch_delete: "Batch remove selected stops",
+    tip_lock_stops: "Lock selected stops as an indivisible group (requires >=2)",
+    tip_unlock_stops: "Unlock selected stops",
+    tip_clear_search: "Clear search",
+
+    // Cuisines & Categories
+    cat_japanese_cuisine: "Japanese",
+    cat_indian_cuisine: "Indian",
+    cat_chinese_cuisine: "Chinese",
+    cat_korean_cuisine: "Korean",
+    cat_asian_cuisine: "Asian",
+    cat_fast_food: "Fast Food",
+    cat_bakery: "Bakery",
+    cat_cafe: "Cafe",
+    cat_coffee_shop: "Coffee Shop",
+    cat_bbq: "Barbecue",
+    cat_hotpot: "Hot Pot",
+    cat_seafood: "Seafood",
+    cat_vietnamese: "Vietnamese",
+    cat_thai: "Thai",
+    cat_italian: "Italian",
+    cat_mexican: "Mexican",
+    cat_pizza: "Pizza",
+    cat_dessert: "Dessert",
+    cat_tea: "Tea House",
+    cat_bar: "Bar",
     toast_created_tab: "Created route tab \"{name}\"",
     toast_copied_tab: "Copied route tab \"{name}\"",
     toast_deleted_tab: "Deleted route tab \"{name}\"",
@@ -1902,6 +1972,41 @@ export const TRANSLATIONS = {
     map_route_status_active: "계획 중",
     map_route_status_paused: "일시중지",
     cat_food: "외식 및 요리",
+    // Price levels
+    price_free: "무료",
+    price_inexpensive: "$ (저렴한 가격)",
+    price_moderate: "$$ (보통 가격)",
+    price_expensive: "$$$ (고급)",
+    price_very_expensive: "$$$$ (최고급)",
+
+    // Batch Actions & Tooltips
+    btn_batch_delete: "일괄 삭제",
+    tip_batch_delete: "선택한 경유지 일괄 삭제",
+    tip_lock_stops: "선택한 경유지를 단일 그룹으로 잠금 (2개 이상 필요)",
+    tip_unlock_stops: "선택한 경유지 잠금 해제",
+    tip_clear_search: "검색 초기화",
+
+    // Cuisines & Categories
+    cat_japanese_cuisine: "일식",
+    cat_indian_cuisine: "인도 요리",
+    cat_chinese_cuisine: "중식",
+    cat_korean_cuisine: "한식",
+    cat_asian_cuisine: "아시안 요리",
+    cat_fast_food: "패스트푸드",
+    cat_bakery: "베이커리",
+    cat_cafe: "카페",
+    cat_coffee_shop: "커피숍",
+    cat_bbq: "바베큐",
+    cat_hotpot: "훠궈/샤브샤브",
+    cat_seafood: "해산물 요리",
+    cat_vietnamese: "베트남 요리",
+    cat_thai: "태국 요리",
+    cat_italian: "이탈리안",
+    cat_mexican: "멕시칸",
+    cat_pizza: "피자",
+    cat_dessert: "디저트",
+    cat_tea: "찻집/음료",
+    cat_bar: "바/주점",
     toast_created_tab: "새 경로 탭 \"{name}\" 생성됨",
     toast_copied_tab: "경로 탭 \"{name}\" 복사됨",
     toast_deleted_tab: "경로 탭 \"{name}\" 삭제됨",
@@ -1939,14 +2044,145 @@ class I18nManager {
     this.listeners = [];
   }
 
-  t(key, params = {}) {
-    const langDict = TRANSLATIONS[this.currentLang] || TRANSLATIONS.zh;
+  t(key, params = {}, lang = this.currentLang) {
+    const targetLang = lang || this.currentLang;
+    const langDict = TRANSLATIONS[targetLang] || TRANSLATIONS[this.currentLang] || TRANSLATIONS.zh;
     let text = langDict[key] || TRANSLATIONS.zh[key] || key;
 
     for (const [k, v] of Object.entries(params)) {
       text = text.replace(new RegExp(`\\{${k}\\}`, "g"), v);
     }
     return text;
+  }
+
+  formatPrice(price, lang = this.currentLang) {
+    if (!price || price === "-") return "-";
+    const s = String(price).trim();
+    if (!s || s === "未知") return "-";
+
+    const targetLang = lang || this.currentLang;
+
+    // 0 / Free
+    if (s === "0" || /free|免费|무료/i.test(s)) {
+      return this.t("price_free", {}, targetLang) || (targetLang === "en" ? "Free" : (targetLang === "ko" ? "무료" : "免费"));
+    }
+
+    // Level 4 ($$$$)
+    if (s === "4" || s === "$$$$" || /PRICE_LEVEL_VERY_EXPENSIVE|very_expensive|very expensive|高档|최고급/i.test(s) || s.startsWith("$$$$")) {
+      return this.t("price_very_expensive", {}, targetLang) || (targetLang === "en" ? "$$$$ (Very Expensive)" : (targetLang === "ko" ? "$$$$ (최고급)" : "$$$$ (高档消费)"));
+    }
+
+    // Level 1 ($) - check before expensive to avoid substring clash
+    if (s === "1" || s === "$" || /PRICE_LEVEL_INEXPENSIVE|inexpensive|经济实惠|저렴한/i.test(s) || (s.startsWith("$") && !s.startsWith("$$"))) {
+      return this.t("price_inexpensive", {}, targetLang) || (targetLang === "en" ? "$ (Inexpensive)" : (targetLang === "ko" ? "$ (저렴한 가격)" : "$ (经济实惠)"));
+    }
+
+    // Level 3 ($$$)
+    if (s === "3" || s === "$$$" || /PRICE_LEVEL_EXPENSIVE|expensive|较高消费|고급/i.test(s) || s.startsWith("$$$")) {
+      return this.t("price_expensive", {}, targetLang) || (targetLang === "en" ? "$$$ (Expensive)" : (targetLang === "ko" ? "$$$ (고급)" : "$$$ (较高消费)"));
+    }
+
+    // Level 2 ($$)
+    if (s === "2" || s === "$$" || /PRICE_LEVEL_MODERATE|moderate|适中|보통/i.test(s) || s.startsWith("$$")) {
+      return this.t("price_moderate", {}, targetLang) || (targetLang === "en" ? "$$ (Moderate)" : (targetLang === "ko" ? "$$ (보통 가격)" : "$$ (适中消费)"));
+    }
+
+    return s;
+  }
+
+  formatCategory(catInput, lang = this.currentLang) {
+    if (!catInput) return "-";
+    if (Array.isArray(catInput)) {
+      catInput = catInput.join(" · ");
+    }
+    const raw = String(catInput).trim();
+    if (!raw || raw === "-" || raw === "未知") return "-";
+
+    const targetLang = lang || this.currentLang;
+    const s = raw.toLowerCase();
+
+    // 1. Japanese
+    if (/日料|日式|日本|猪排|天妇罗|japanese|sushi|ramen|돈까스|라멘|일식/i.test(s)) {
+      return this.t("cat_japanese_cuisine", {}, targetLang) || (targetLang === "en" ? "Japanese" : (targetLang === "ko" ? "일식" : "日料"));
+    }
+    // 2. Indian
+    if (/印度|indian|curry|인도/i.test(s)) {
+      return this.t("cat_indian_cuisine", {}, targetLang) || (targetLang === "en" ? "Indian" : (targetLang === "ko" ? "인도 요리" : "印度菜"));
+    }
+    // 3. Korean
+    if (/韩餐|韩式|韩国|korean|한식|치킨/i.test(s)) {
+      return this.t("cat_korean_cuisine", {}, targetLang) || (targetLang === "en" ? "Korean" : (targetLang === "ko" ? "한식" : "韩餐"));
+    }
+    // 4. Chinese
+    if (/中餐|中式|台式|点心|川菜|粤菜|炒菜|chinese|dim sum|중식/i.test(s)) {
+      return this.t("cat_chinese_cuisine", {}, targetLang) || (targetLang === "en" ? "Chinese" : (targetLang === "ko" ? "중식" : "中餐"));
+    }
+    // 5. Hot Pot
+    if (/火锅|hot_pot|hot pot|훠궈|샤브샤브/i.test(s)) {
+      return this.t("cat_hotpot", {}, targetLang) || (targetLang === "en" ? "Hot Pot" : (targetLang === "ko" ? "훠궈/샤브샤브" : "火锅"));
+    }
+    // 6. Barbecue
+    if (/烧烤|烤肉|barbecue|bbq|바베큐/i.test(s)) {
+      return this.t("cat_bbq", {}, targetLang) || (targetLang === "en" ? "Barbecue" : (targetLang === "ko" ? "바베큐" : "烧烤"));
+    }
+    // 7. Asian
+    if (/亚洲|asian|아시안/i.test(s)) {
+      return this.t("cat_asian_cuisine", {}, targetLang) || (targetLang === "en" ? "Asian" : (targetLang === "ko" ? "아시안 요리" : "亚洲菜"));
+    }
+    // 8. Fast Food / Western
+    if (/快餐|西式快餐|汉堡|炸鸡|fast_food|fast food|burger|패스트푸드|버거/i.test(s)) {
+      return this.t("cat_fast_food", {}, targetLang) || (targetLang === "en" ? "Fast Food" : (targetLang === "ko" ? "패스트푸드" : "快餐"));
+    }
+    // 9. Seafood / Fish & Chips
+    if (/炸鱼|薯条|海鲜|seafood|fish and chips|fish & chips|해산물|피쉬앤칩스/i.test(s)) {
+      return this.t("cat_seafood", {}, targetLang) || (targetLang === "en" ? "Seafood" : (targetLang === "ko" ? "해산물 요리" : "海鲜"));
+    }
+    // 10. Vietnamese
+    if (/越南|vietnamese|pho|베트남/i.test(s)) {
+      return this.t("cat_vietnamese", {}, targetLang) || (targetLang === "en" ? "Vietnamese" : (targetLang === "ko" ? "베트남 요리" : "越南菜"));
+    }
+    // 11. Thai
+    if (/泰国|thai|태국/i.test(s)) {
+      return this.t("cat_thai", {}, targetLang) || (targetLang === "en" ? "Thai" : (targetLang === "ko" ? "태국 요리" : "泰国菜"));
+    }
+    // 12. Italian
+    if (/意餐|意大利|italian|pasta|이탈리안/i.test(s)) {
+      return this.t("cat_italian", {}, targetLang) || (targetLang === "en" ? "Italian" : (targetLang === "ko" ? "이탈리안" : "意餐"));
+    }
+    // 13. Pizza
+    if (/披萨|pizza|피자/i.test(s)) {
+      return this.t("cat_pizza", {}, targetLang) || (targetLang === "en" ? "Pizza" : (targetLang === "ko" ? "피자" : "披萨"));
+    }
+    // 14. Mexican
+    if (/墨西哥|mexican|taco|tacos|멕시칸|타코/i.test(s)) {
+      return this.t("cat_mexican", {}, targetLang) || (targetLang === "en" ? "Mexican" : (targetLang === "ko" ? "멕시칸" : "墨西哥菜"));
+    }
+    // 15. Cafe / Coffee
+    if (/咖啡|cafe|coffee|카페|커피/i.test(s)) {
+      return this.t("cat_cafe", {}, targetLang) || (targetLang === "en" ? "Cafe" : (targetLang === "ko" ? "카페" : "咖啡"));
+    }
+    // 16. Bakery
+    if (/烘焙|面包|bakery|bread|베이커리/i.test(s)) {
+      return this.t("cat_bakery", {}, targetLang) || (targetLang === "en" ? "Bakery" : (targetLang === "ko" ? "베이커리" : "烘焙"));
+    }
+    // 17. Dessert / Sweets
+    if (/甜品|甜点|蛋糕|热狗|甜甜圈|吉事果|dessert|sweets|cake|donut|디저트/i.test(s)) {
+      return this.t("cat_dessert", {}, targetLang) || (targetLang === "en" ? "Dessert" : (targetLang === "ko" ? "디저트" : "甜品"));
+    }
+    // 18. Tea House
+    if (/茶饮|奶茶|茶馆|tea_house|tea|bubble tea|찻집|밀크티/i.test(s)) {
+      return this.t("cat_tea", {}, targetLang) || (targetLang === "en" ? "Tea House" : (targetLang === "ko" ? "찻집/음료" : "茶饮"));
+    }
+    // 19. Bar
+    if (/酒吧|bar|pub|바|주점/i.test(s)) {
+      return this.t("cat_bar", {}, targetLang) || (targetLang === "en" ? "Bar" : (targetLang === "ko" ? "바/주점" : "酒吧"));
+    }
+    // 20. General Food & Dining
+    if (/餐饮美食|餐饮|美食|food|restaurant|식당|요식업/i.test(s)) {
+      return this.t("cat_food", {}, targetLang) || (targetLang === "en" ? "Food & Dining" : (targetLang === "ko" ? "외식 및 요리" : "餐饮美食"));
+    }
+
+    return raw;
   }
 
   getLanguage() {

@@ -311,6 +311,7 @@ export const MapExplorer = {
       this.updateFilterDropdownsLanguage();
       this.renderPlacesCards();
       this.renderWaypoints();
+      this.renderMarkers();
       this.renderPagination();
       const badgeEl = document.getElementById("mapWaypointsBadge");
       if (badgeEl) badgeEl.textContent = `${this.routeWaypoints.length} ${i18n.t("map_waypoints_unit")}`;
@@ -1084,12 +1085,16 @@ export const MapExplorer = {
 
     if (lockBtn) {
       lockBtn.disabled = selectedCount < 2;
+      lockBtn.title = i18n.t("tip_lock_stops") || "锁定选中的站点为整体组合（需>=2个）";
     }
     if (unlockBtn) {
       unlockBtn.style.display = anyLocked ? "inline-flex" : "none";
+      unlockBtn.title = i18n.t("tip_unlock_stops") || "解除选中站点的锁定";
     }
     if (deleteBtn) {
       deleteBtn.disabled = selectedCount === 0;
+      deleteBtn.title = i18n.t("tip_batch_delete") || "批量移除选中的站点";
+      deleteBtn.innerHTML = `<span data-i18n="btn_batch_delete">${this.escapeHtml(i18n.t("btn_batch_delete") || "批量删除")}</span>${selectedCount > 0 ? ` (${selectedCount})` : ""}`;
     }
   },
 
@@ -1466,7 +1471,15 @@ export const MapExplorer = {
         (w.name && w.name.toLowerCase().includes(kw)) || 
         (w.address && w.address.toLowerCase().includes(kw));
 
-      const statusObj = w.openingHours ? BusinessHours.getBusinessStatus(w.openingHours) : null;
+      let statusObj = w.openingHours ? BusinessHours.getBusinessStatus(w.openingHours) : null;
+      if (!statusObj && w.status) {
+        const sLower = String(w.status).toLowerCase();
+        if (w.status === "营业中" || sLower === "open") {
+          statusObj = { cls: "open", label: i18n.t("status_open") || "营业中" };
+        } else if (w.status === "已打烊" || sLower === "closed") {
+          statusObj = { cls: "closed", label: i18n.t("status_closed") || "已打烊" };
+        }
+      }
       const hoursBadge = statusObj
         ? `<span class="status-badge ${statusObj.cls}" style="font-size:0.68rem; padding:1px 5px; border-radius:3px;">${statusObj.label}</span>`
         : "";
@@ -2997,14 +3010,23 @@ export const MapExplorer = {
       const inRouteIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
       const isInRoute = inRouteIdx !== -1;
 
-      const statusObj = r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null;
+      let statusObj = r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null;
+      if (!statusObj && r.status) {
+        const sLower = String(r.status).toLowerCase();
+        if (r.status === "营业中" || sLower === "open") {
+          statusObj = { cls: "open", label: i18n.t("status_open") || "营业中" };
+        } else if (r.status === "已打烊" || sLower === "closed") {
+          statusObj = { cls: "closed", label: i18n.t("status_closed") || "已打烊" };
+        }
+      }
       const hoursBadge = statusObj
         ? `<span class="status-badge ${statusObj.cls}" style="font-size:0.7rem; padding:2px 6px; border-radius:4px; line-height:1.2;">${statusObj.label}</span>`
         : "";
 
       const ratingStr = `<svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"}`;
       const reviewsStr = r.reviews ? `(${r.reviews})` : "(15+)";
-      const categoryStr = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : (i18n.t("cat_food") || "Food & Dining"));
+      const rawCategory = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : (i18n.t("cat_food") || "Food & Dining"));
+      const categoryStr = this.formatCategory(rawCategory);
 
       const routeBtn = !isInRoute ? `
         <button class="btn btn-primary btn-sm btn-card-add-route" onclick="event.stopPropagation(); window.mapExplorerAddSingleToRoute('${this.escapeQuotes(key)}');" style="background:#2563eb; border-color:#2563eb; font-size:0.75rem; padding:0.25rem 0.55rem; font-weight:600;" title="${this.escapeHtml(i18n.t('map_card_add_stop'))}">
@@ -3024,7 +3046,7 @@ export const MapExplorer = {
           <div class="card-main">
             <div class="card-title-row" style="display: flex; align-items: center; gap: 0.5rem;">
               <h4 class="card-title" title="${this.escapeHtml(r.name)}" style="flex: 1; margin: 0;">${this.escapeHtml(r.name)}</h4>
-              <span style="font-size: 0.78rem; font-weight: 700; color: #475569; flex-shrink: 0;">${this.escapeHtml(r.price || "$$")}</span>
+              <span style="font-size: 0.78rem; font-weight: 700; color: #475569; flex-shrink: 0;">${this.escapeHtml(this.formatPrice(r.price || "$$"))}</span>
             </div>
 
             <div class="card-meta-row">
@@ -3498,7 +3520,15 @@ export const MapExplorer = {
     const inRouteIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
     const isInRoute = inRouteIdx !== -1;
 
-    const statusObj = r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null;
+    let statusObj = r.openingHours ? BusinessHours.getBusinessStatus(r.openingHours) : null;
+    if (!statusObj && r.status) {
+      const sLower = String(r.status).toLowerCase();
+      if (r.status === "营业中" || sLower === "open") {
+        statusObj = { cls: "open", label: i18n.t("status_open") || "营业中" };
+      } else if (r.status === "已打烊" || sLower === "closed") {
+        statusObj = { cls: "closed", label: i18n.t("status_closed") || "已打烊" };
+      }
+    }
     const hoursBadge = statusObj
       ? `<span class="status-badge ${statusObj.cls}" style="font-size:10px; padding:1px 5px; border-radius:4px;">${statusObj.label}</span>`
       : "";
@@ -3513,6 +3543,9 @@ export const MapExplorer = {
       </button>
     `;
 
+    const rawCategory = r.categoriesRaw || (r.categories ? r.categories.slice(0, 2).join(" · ") : (i18n.t("cat_food") || "Food & Dining"));
+    const categoryStr = this.formatCategory(rawCategory);
+
     return `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2px; max-width: 260px;">
         <div style="display:flex; gap: 8px; align-items: center; margin-bottom: 6px;">
@@ -3525,7 +3558,7 @@ export const MapExplorer = {
           </div>
         </div>
         <div style="font-size: 11px; color: #64748b; margin-bottom: 3px;">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"} (${r.reviews || 10}) · <b>${this.escapeHtml(r.price || "$$")}</b>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${r.rating ? parseFloat(r.rating).toFixed(1) : "4.2"} (${r.reviews || 10}) · <b>${this.escapeHtml(this.formatPrice(r.price || "$$"))}</b> · <span>${this.escapeHtml(categoryStr)}</span>
         </div>
         <div style="font-size: 11px; color: #334155; margin-bottom: 6px; line-height: 1.3;">
           ${this.escapeHtml(r.address || "Ontario, GTA")}
@@ -5062,6 +5095,20 @@ export const MapExplorer = {
   escapeQuotes(str) {
     if (!str) return "";
     return String(str).replace(/'/g, "\'").replace(/"/g, "&quot;");
+  },
+
+  formatPrice(price) {
+    if (i18n && typeof i18n.formatPrice === "function") {
+      return i18n.formatPrice(price);
+    }
+    return price || "$$";
+  },
+
+  formatCategory(cat) {
+    if (i18n && typeof i18n.formatCategory === "function") {
+      return i18n.formatCategory(cat);
+    }
+    return cat || "-";
   }
 };
 

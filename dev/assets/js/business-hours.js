@@ -16,6 +16,10 @@
  * - Local Timezone: America/Toronto (Eastern Time with automatic DST handling)
  */
 
+import { i18n } from "./i18n.js";
+
+const getI18n = () => (typeof i18n !== "undefined" && i18n ? i18n : (typeof window !== "undefined" && window.i18n ? window.i18n : null));
+
 const SINGLE_DAYS = [
   { days: [1], pattern: /^(?:monday|mon\.?|星期一|周一)$/i },
   { days: [2], pattern: /^(?:tuesday|tue\.?|tues\.?|星期二|周二)$/i },
@@ -265,11 +269,12 @@ export const BusinessHours = {
    */
   getBusinessStatus(openingHours, customDate = null, options = {}) {
     const schedule = this.parseOpeningHours(openingHours);
-    const lang = options.lang || (typeof window !== "undefined" && window.i18n ? window.i18n.currentLang : "zh");
+    const activeI18n = getI18n();
+    const lang = options.lang || (activeI18n ? activeI18n.currentLang : "zh");
 
     if (!schedule) {
-      const label = (typeof window !== "undefined" && window.i18n)
-        ? window.i18n.t("status_unknown")
+      const label = activeI18n
+        ? activeI18n.t("status_unknown", {}, lang)
         : (lang === "en" ? "Unknown" : (lang === "ko" ? "정보 없음" : "未知"));
       return {
         status: "未知",
@@ -349,8 +354,8 @@ export const BusinessHours = {
     }
 
     // Otherwise standard closed status
-    const closedLabel = (typeof window !== "undefined" && window.i18n)
-      ? window.i18n.t("status_closed")
+    const closedLabel = activeI18n
+      ? activeI18n.t("status_closed", {}, lang)
       : (lang === "en" ? "Closed" : (lang === "ko" ? "영업 종료" : "已打烊"));
     return {
       status: "已打烊",
@@ -369,7 +374,8 @@ export const BusinessHours = {
    * Format opening soon status details and countdown text.
    */
   formatOpeningSoonStatus(remMinutes, openStr, options = {}) {
-    const lang = options.lang || (typeof window !== "undefined" && window.i18n ? window.i18n.currentLang : "zh");
+    const activeI18n = typeof i18n !== "undefined" && i18n ? i18n : (typeof window !== "undefined" && window.i18n ? window.i18n : null);
+    const lang = options.lang || (activeI18n ? activeI18n.currentLang : "zh");
 
     const hours = Math.floor(remMinutes / 60);
     const mins = remMinutes % 60;
@@ -378,14 +384,14 @@ export const BusinessHours = {
     let label = "";
     let compactLabel = "";
 
-    if (typeof window !== "undefined" && window.i18n && window.i18n.t) {
+    if (activeI18n && activeI18n.t) {
       if (hours >= 1) {
         label = mins > 0
-          ? window.i18n.t("status_opening_hours_mins", { hours, mins })
-          : window.i18n.t("status_opening_hours", { hours });
-        compactLabel = window.i18n.t("status_opening_hours", { hours: roundedHours });
+          ? activeI18n.t("status_opening_hours_mins", { hours, mins }, lang)
+          : activeI18n.t("status_opening_hours", { hours }, lang);
+        compactLabel = activeI18n.t("status_opening_hours", { hours: roundedHours }, lang);
       } else {
-        label = window.i18n.t("status_opening_mins", { mins });
+        label = activeI18n.t("status_opening_mins", { mins }, lang);
         compactLabel = label;
       }
     } else {
@@ -436,11 +442,12 @@ export const BusinessHours = {
    * Format open status details and countdown text.
    */
   formatOpenStatus(remMinutes, is24h, closeStr, options = {}) {
-    const lang = options.lang || (typeof window !== "undefined" && window.i18n ? window.i18n.currentLang : "zh");
+    const activeI18n = typeof i18n !== "undefined" && i18n ? i18n : (typeof window !== "undefined" && window.i18n ? window.i18n : null);
+    const lang = options.lang || (activeI18n ? activeI18n.currentLang : "zh");
 
     if (is24h) {
-      const label = (typeof window !== "undefined" && window.i18n)
-        ? window.i18n.t("status_24h")
+      const label = activeI18n
+        ? activeI18n.t("status_24h", {}, lang)
         : (lang === "en" ? "Open 24 hours" : (lang === "ko" ? "24시간 영업" : "24小时营业"));
       return {
         status: "营业中",
@@ -462,14 +469,14 @@ export const BusinessHours = {
     let label = "";
     let compactLabel = "";
 
-    if (typeof window !== "undefined" && window.i18n) {
+    if (activeI18n && activeI18n.t) {
       if (hours >= 1) {
         label = mins > 0
-          ? window.i18n.t("status_remaining_hours_mins", { hours, mins })
-          : window.i18n.t("status_remaining_hours", { hours });
-        compactLabel = window.i18n.t("status_remaining_hours", { hours: roundedHours });
+          ? activeI18n.t("status_remaining_hours_mins", { hours, mins }, lang)
+          : activeI18n.t("status_remaining_hours", { hours }, lang);
+        compactLabel = activeI18n.t("status_remaining_hours", { hours: roundedHours }, lang);
       } else {
-        label = window.i18n.t("status_remaining_mins", { mins });
+        label = activeI18n.t("status_remaining_mins", { mins }, lang);
         compactLabel = label;
       }
     } else {
