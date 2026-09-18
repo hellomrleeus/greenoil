@@ -128,6 +128,8 @@ export const MapExplorer = {
 
   // Route Planning State
   routeWaypoints: [],
+  selectedWaypointKeys: new Set(),
+  waypointSearchKeyword: "",
   isRouteMode: true,
   originAddress: DEFAULT_ORIGIN_ADDRESS,
   originCoords: { ...DEFAULT_ORIGIN_COORDS },
@@ -389,7 +391,14 @@ export const MapExplorer = {
     }
 
     if (index >= 0 && index < this.routeWaypoints.length) {
+      const target = this.routeWaypoints[index];
+      if (target && target.lockGroupId) {
+        alert(i18n.t("alert_single_locked_delete") || "该站点处于锁定组合中，请先解锁后再删除。");
+        return;
+      }
       this.routeWaypoints.splice(index, 1);
+      const key = target ? (target.placeId || target.name) : null;
+      if (key) this.selectedWaypointKeys.delete(key);
       this.saveRouteWaypoints();
       this.renderWaypoints();
       this.updateRoute();
@@ -399,15 +408,238 @@ export const MapExplorer = {
   },
 
   moveWaypoint(index, delta) {
-    const newIdx = index + delta;
-    if (newIdx < 0 || newIdx >= this.routeWaypoints.length) return;
-    const item = this.routeWaypoints.splice(index, 1)[0];
-    this.routeWaypoints.splice(newIdx, 0, item);
+    if (index < 0 || index >= this.routeWaypoints.length) return;
+    const cur = this.routeWaypoints[index];
+    if (!cur) return;
+
+    // Case 1: Waypoint belongs to a locked group -> move whole group together as a block
+    if (cur.lockGroupId) {
+      const grpId = cur.lockGroupId;
+      let grpStart = index;
+      while (grpStart > 0 && this.routeWaypoints[grpStart - 1].lockGroupId === grpId) {
+        grpStart--;
+      }
+      let grpEnd = index;
+      while (grpEnd < this.routeWaypoints.length - 1 && this.routeWaypoints[grpEnd + 1].lockGroupId === grpId) {
+        grpEnd++;
+      }
+      const grpLen = grpEnd - grpStart + 1;
+
+      if (delta < 0) {
+        // Move UP
+        if (grpStart === 0) return;
+        const prevIdx = grpStart - 1;
+        const prevItem = this.routeWaypoints[prevIdx];
+        let targetInsertIndex = prevIdx;
+        if (prevItem.lockGroupId) {
+          const prevGrpId = prevItem.lockGroupId;
+          while (targetInsertIndex > 0 && this.routeWaypoints[targetInsertIndex - 1].lockGroupId === prevGrpId) {
+            targetInsertIndex--;
+          }
+        }
+        const groupItems = this.routeWaypoints.splice(grpStart, grpLen);
+        this.routeWaypoints.splice(targetInsertIndex, 0, ...groupItems);
+      } else if (delta > 0) {
+        // Move DOWN
+        if (grpEnd === this.routeWaypoints.length - 1) return;
+        const nextIdx = grpEnd + 1;
+        const nextItem = this.routeWaypoints[nextIdx];
+        let nextBlockEnd = nextIdx;
+        if (nextItem.lockGroupId) {
+          const nextGrpId = nextItem.lockGroupId;
+          while (nextBlockEnd < this.routeWaypoints.length - 1 && this.routeWaypoints[nextBlockEnd + 1].lockGroupId === nextGrpId) {
+            nextBlockEnd++;
+          }
+        }
+        const groupItems = this.routeWaypoints.splice(grpStart, grpLen);
+        const insertPos = nextBlockEnd - grpLen + 1;
+        this.routeWaypoints.splice(insertPos, 0, ...groupItems);
+      }
+    } else {
+      // Case 2: Standalone waypoint -> jump over any adjacent locked group without splitting it
+      if (delta < 0) {
+        if (index === 0) return;
+        const prevItem = this.routeWaypoints[index - 1];
+        let targetPos = index - 1;
+        if (prevItem.lockGroupId) {
+          const prevGrpId = prevItem.lockGroupId;
+          while (targetPos > 0 && this.routeWaypoints[targetPos - 1].lockGroupId === prevGrpId) {
+            targetPos--;
+          }
+        }
+        const item = this.routeWaypoints.splice(index, 1)[0];
+        this.routeWaypoints.splice(targetPos, 0, item);
+      } else if (delta > 0) {
+        if (index === this.routeWaypoints.length - 1) return;
+        const nextItem = this.routeWaypoints[index + 1];
+        let targetBlockEnd = index + 1;
+        if (nextItem.lockGroupId) {
+          const nextGrpId = nextItem.lockGroupId;
+          while (targetBlockEnd < this.routeWaypoints.length - 1 && this.routeWaypoints[targetBlockEnd + 1].lockGroupId === nextGrpId) {
+            targetBlockEnd++;
+          }
+        }
+        const item = this.routeWaypoints.splice(index, 1)[0];
+        this.routeWaypoints.splice(targetBlockEnd, 0, item);
+      }
+    }
+
     this.saveRouteWaypoints();
     this.renderWaypoints();
     this.updateRoute();
     this.renderMarkers();
     this.renderPlacesCards();
+  },
+
+  lockSelectedWaypoints() {
+    const selectedIndices = [];
+    this.routeWaypoints.forEach((w, idx) => {
+      const key = w.placeId || w.name;
+      if (this.selectedWaypointKeys.has(key)) {
+        selectedIndices.push(idx);
+      }
+    });
+
+    if (selectedIndices.length < 2) {
+      alert(i18n.t("alert_lock_min_two") || "至少需要选择 2 个站点才能锁定为组合。");
+      return;
+    }
+
+    const lockGroupId = "lock_" + Date.now();
+    const anchorIndex = Math.min(...selectedIndices);
+    const selectedItems = [];
+    const remainingItems = [];
+
+    this.routeWaypoints.forEach((w, idx) => {
+      if (selectedIndices.includes(idx)) {
+        w.lockGroupId = lockGroupId;
+        selectedItems.push(w);
+      } else {
+        remainingItems.push(w);
+      }
+    });
+
+    // Reinsert grouped items contiguously at anchorIndex
+    let insertIdx = 0;
+    let counted = 0;
+    for (let i = 0; i < this.routeWaypoints.length; i++) {
+      if (i === anchorIndex) {
+        insertIdx = counted;
+        break;
+      }
+      if (!selectedIndices.includes(i)) counted++;
+    }
+    remainingItems.splice(insertIdx, 0, ...selectedItems);
+    this.routeWaypoints = remainingItems;
+
+    this.selectedWaypointKeys.clear();
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+
+    const toastMsg = i18n.t("toast_locked_group_success", { count: selectedItems.length }) || `已将 ${selectedItems.length} 个站点锁定为组合`;
+    if (window.showToast) window.showToast(toastMsg);
+    else alert(toastMsg);
+  },
+
+  unlockSelectedWaypoints() {
+    const selectedItems = this.routeWaypoints.filter(w => this.selectedWaypointKeys.has(w.placeId || w.name));
+    if (selectedItems.length === 0) return;
+
+    let unlockedCount = 0;
+    selectedItems.forEach(w => {
+      if (w.lockGroupId) {
+        w.lockGroupId = null;
+        unlockedCount++;
+      }
+    });
+
+    this.selectedWaypointKeys.clear();
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+
+    const toastMsg = i18n.t("toast_unlocked_group_success") || "已解除站点的锁定组合";
+    if (window.showToast) window.showToast(toastMsg);
+    else alert(toastMsg);
+  },
+
+  deleteSelectedWaypoints() {
+    if (this.selectedWaypointKeys.size === 0) return;
+
+    const selectedWaypoints = this.routeWaypoints.filter(w => this.selectedWaypointKeys.has(w.placeId || w.name));
+    const hasLocked = selectedWaypoints.some(w => !!w.lockGroupId);
+    if (hasLocked) {
+      alert(i18n.t("alert_locked_delete_forbidden") || "所选站点包含已被锁定的站点，必须先解锁后再删除！");
+      return;
+    }
+
+    if (!confirm(`确定删除选中的 ${selectedWaypoints.length} 个途经站点？`)) return;
+
+    this.routeWaypoints = this.routeWaypoints.filter(w => !this.selectedWaypointKeys.has(w.placeId || w.name));
+    this.selectedWaypointKeys.clear();
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+  },
+
+  toggleSelectWaypoint(key, checked) {
+    if (checked) {
+      this.selectedWaypointKeys.add(key);
+    } else {
+      this.selectedWaypointKeys.delete(key);
+    }
+    this.updateBatchBar();
+  },
+
+  toggleSelectAllWaypoints(checked) {
+    if (checked) {
+      this.routeWaypoints.forEach(w => {
+        const key = w.placeId || w.name;
+        this.selectedWaypointKeys.add(key);
+      });
+    } else {
+      this.selectedWaypointKeys.clear();
+    }
+    this.renderWaypoints();
+  },
+
+  updateBatchBar() {
+    const selectAllCb = document.getElementById("mapWaypointsSelectAll");
+    const labelEl = document.getElementById("mapWaypointsSelectAllLabel");
+    const lockBtn = document.getElementById("mapBtnLockWaypoints");
+    const unlockBtn = document.getElementById("mapBtnUnlockWaypoints");
+    const deleteBtn = document.getElementById("mapBtnBatchDeleteWaypoints");
+
+    const total = this.routeWaypoints.length;
+    const selectedCount = this.selectedWaypointKeys.size;
+
+    if (selectAllCb) {
+      selectAllCb.checked = total > 0 && selectedCount === total;
+      selectAllCb.indeterminate = selectedCount > 0 && selectedCount < total;
+    }
+    if (labelEl) {
+      labelEl.textContent = selectedCount > 0
+        ? (i18n.t("batch_selected_count", { count: selectedCount }) || `已选 ${selectedCount} 项`)
+        : (i18n.t("batch_select_all") || "全选");
+    }
+
+    const selectedList = this.routeWaypoints.filter(w => this.selectedWaypointKeys.has(w.placeId || w.name));
+    const anyLocked = selectedList.some(w => !!w.lockGroupId);
+
+    if (lockBtn) {
+      lockBtn.disabled = selectedCount < 2;
+    }
+    if (unlockBtn) {
+      unlockBtn.style.display = anyLocked ? "inline-flex" : "none";
+    }
+    if (deleteBtn) {
+      deleteBtn.disabled = selectedCount === 0;
+    }
   },
 
   clearRoute() {
@@ -416,6 +648,7 @@ export const MapExplorer = {
       return;
     }
     this.routeWaypoints = [];
+    this.selectedWaypointKeys.clear();
     this.saveRouteWaypoints();
     this.renderWaypoints();
     this.updateRoute();
@@ -754,24 +987,58 @@ export const MapExplorer = {
           </div>
         </div>
       `;
+      this.updateBatchBar();
       return;
     }
 
+    const kw = (this.waypointSearchKeyword || "").trim().toLowerCase();
+    const groupNumberMap = new Map();
+    let nextGroupNum = 1;
+    list.forEach(w => {
+      if (w.lockGroupId && !groupNumberMap.has(w.lockGroupId)) {
+        groupNumberMap.set(w.lockGroupId, nextGroupNum++);
+      }
+    });
+
     container.innerHTML = list.map((w, index) => {
       const key = w.placeId || w.name;
+      const isSelected = this.selectedWaypointKeys.has(key);
+      const isLocked = !!w.lockGroupId;
+      const groupNum = isLocked ? groupNumberMap.get(w.lockGroupId) : null;
+
+      const isMatch = !kw || 
+        (w.name && w.name.toLowerCase().includes(kw)) || 
+        (w.address && w.address.toLowerCase().includes(kw));
+
       const statusObj = w.openingHours ? BusinessHours.getBusinessStatus(w.openingHours) : null;
       const hoursBadge = statusObj
         ? `<span class="status-badge ${statusObj.cls}" style="font-size:0.68rem; padding:1px 5px; border-radius:3px;">${statusObj.label}</span>`
         : "";
 
+      const lockBadgeHtml = isLocked 
+        ? `<span class="waypoint-lock-badge" title="已锁定为不可分割整体">🔒 组${groupNum}</span>` 
+        : "";
+
       return `
-        <div class="map-waypoint-card" draggable="true" data-index="${index}" data-key="${this.escapeHtml(key)}" onclick="window.mapExplorerWaypointClick('${this.escapeQuotes(key)}', ${index});">
+        <div class="map-waypoint-card ${isLocked ? 'is-locked' : ''}" 
+             draggable="true" 
+             data-index="${index}" 
+             data-key="${this.escapeHtml(key)}" 
+             data-lock-group="${w.lockGroupId || ''}"
+             style="${isMatch ? '' : 'display: none;'}"
+             onclick="window.mapExplorerWaypointClick('${this.escapeQuotes(key)}', ${index});">
+          
+          <input type="checkbox" class="waypoint-checkbox" data-key="${this.escapeHtml(key)}" ${isSelected ? "checked" : ""} onclick="event.stopPropagation(); window.mapExplorerToggleSelectWaypoint('${this.escapeQuotes(key)}', this.checked);" />
+
           <div class="waypoint-drag-handle" title="${this.escapeHtml(i18n.t("waypoints_drag_handle_tip") || "拖拽排序")}">
             <svg width="10" height="14" viewBox="0 0 10 14" fill="#94a3b8"><circle cx="3" cy="2.5" r="1.3"/><circle cx="7" cy="2.5" r="1.3"/><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="3" cy="11.5" r="1.3"/><circle cx="7" cy="11.5" r="1.3"/></svg>
           </div>
           <div class="waypoint-seq-badge">${index + 1}</div>
           <div class="waypoint-card-body">
-            <div class="waypoint-title" title="${this.escapeHtml(w.name)}">${this.escapeHtml(w.name)}</div>
+            <div class="waypoint-title" title="${this.escapeHtml(w.name)}">
+              ${this.escapeHtml(w.name)}
+              ${lockBadgeHtml}
+            </div>
             ${hoursBadge ? `<div class="waypoint-tag-row">${hoursBadge}</div>` : ""}
             <div class="waypoint-meta">
               <span class="waypoint-rating"><svg width="11" height="11" viewBox="0 0 24 24" fill="#f59e0b" stroke="none" style="vertical-align: -1px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> ${w.rating ? parseFloat(w.rating).toFixed(1) : "4.2"}</span>
@@ -783,12 +1050,13 @@ export const MapExplorer = {
             <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, -1);" ${index === 0 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_up"))}">↑</button>
             <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, 1);" ${index === list.length - 1 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_down"))}">↓</button>
             <button type="button" class="btn-wp-action btn-wp-nav" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(w.name)}', '${this.escapeQuotes(w.address)}');" title="${this.escapeHtml(i18n.t("fs_btn_nav_title"))}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg></button>
-            <button type="button" class="btn-wp-action btn-wp-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveWaypoint(${index});" title="${this.escapeHtml(i18n.t("btn_remove_stop"))}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            <button type="button" class="btn-wp-action btn-wp-remove ${isLocked ? 'is-locked-action' : ''}" onclick="event.stopPropagation(); window.mapExplorerRemoveWaypoint(${index});" title="${isLocked ? this.escapeHtml(i18n.t("alert_single_locked_delete")) : this.escapeHtml(i18n.t("btn_remove_stop"))}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
           </div>
         </div>
       `;
     }).join("");
 
+    this.updateBatchBar();
     this.setupWaypointsDragAndDrop();
   },
 
@@ -836,15 +1104,66 @@ export const MapExplorer = {
         targetCard.classList.remove("drag-over");
         const toIndex = parseInt(targetCard.dataset.index, 10);
         const fromIndex = draggedIndex !== null ? draggedIndex : parseInt(e.dataTransfer.getData("text/plain"), 10);
-        if (!isNaN(fromIndex) && !isNaN(toIndex) && fromIndex !== toIndex) {
+        if (isNaN(fromIndex) || isNaN(toIndex) || fromIndex === toIndex) return;
+
+        const fromItem = this.routeWaypoints[fromIndex];
+        if (!fromItem) return;
+
+        // If dragging a locked group: move entire locked group as a contiguous block
+        if (fromItem.lockGroupId) {
+          const grpId = fromItem.lockGroupId;
+          const groupItems = this.routeWaypoints.filter(w => w.lockGroupId === grpId);
+          const targetItem = this.routeWaypoints[toIndex];
+          const targetGrpId = targetItem ? targetItem.lockGroupId : null;
+
+          // Filter out the moving group
+          this.routeWaypoints = this.routeWaypoints.filter(w => w.lockGroupId !== grpId);
+
+          // Find where targetItem is in the updated array
+          let newTargetPos = this.routeWaypoints.findIndex(w => (w.placeId || w.name) === (targetItem.placeId || targetItem.name));
+          if (newTargetPos === -1) newTargetPos = Math.min(toIndex, this.routeWaypoints.length);
+
+          if (targetGrpId && targetGrpId !== grpId) {
+            if (fromIndex < toIndex) {
+              while (newTargetPos < this.routeWaypoints.length - 1 && this.routeWaypoints[newTargetPos + 1].lockGroupId === targetGrpId) {
+                newTargetPos++;
+              }
+              newTargetPos++;
+            } else {
+              while (newTargetPos > 0 && this.routeWaypoints[newTargetPos - 1].lockGroupId === targetGrpId) {
+                newTargetPos--;
+              }
+            }
+          }
+
+          this.routeWaypoints.splice(newTargetPos, 0, ...groupItems);
+        } else {
+          // Dragging standalone item: cannot insert into middle of another locked group
+          const targetItem = this.routeWaypoints[toIndex];
+          const targetGrpId = targetItem ? targetItem.lockGroupId : null;
+          let insertPos = toIndex;
+
+          if (targetGrpId) {
+            if (fromIndex < toIndex) {
+              while (insertPos < this.routeWaypoints.length - 1 && this.routeWaypoints[insertPos + 1].lockGroupId === targetGrpId) {
+                insertPos++;
+              }
+            } else {
+              while (insertPos > 0 && this.routeWaypoints[insertPos - 1].lockGroupId === targetGrpId) {
+                insertPos--;
+              }
+            }
+          }
+
           const item = this.routeWaypoints.splice(fromIndex, 1)[0];
-          this.routeWaypoints.splice(toIndex, 0, item);
-          this.saveRouteWaypoints();
-          this.renderWaypoints();
-          this.updateRoute();
-          this.renderMarkers();
-          this.renderPlacesCards();
+          this.routeWaypoints.splice(insertPos, 0, item);
         }
+
+        this.saveRouteWaypoints();
+        this.renderWaypoints();
+        this.updateRoute();
+        this.renderMarkers();
+        this.renderPlacesCards();
       });
     });
   },
@@ -996,6 +1315,28 @@ export const MapExplorer = {
       curTime = new Date(arrival.getTime() + VISIT_DURATION_MINS * 60000);
       curLat = rLat;
       curLng = rLng;
+
+      // If bestItem belongs to a locked group, immediately pull in all other members of this group in their original relative order!
+      if (bestItem.lockGroupId) {
+        const grpId = bestItem.lockGroupId;
+        for (let ri = 0; ri < remaining.length; ) {
+          if (remaining[ri].lockGroupId === grpId) {
+            const sibling = remaining.splice(ri, 1)[0];
+            const sLat = parseFloat(sibling.latitude) || curLat;
+            const sLng = parseFloat(sibling.longitude) || curLng;
+            const sDist = this.getHaversineDistance(curLat, curLng, sLat, sLng);
+            const sMins = Math.max(3, Math.round((sDist / 35) * 60));
+            const sArrival = new Date(curTime.getTime() + sMins * 60000);
+
+            initialRoute.push(sibling);
+            curTime = new Date(sArrival.getTime() + VISIT_DURATION_MINS * 60000);
+            curLat = sLat;
+            curLng = sLng;
+          } else {
+            ri++;
+          }
+        }
+      }
     }
 
     const refined = this.twoOptOptimization(initialRoute, { lat: oLat, lng: oLng }, depDate);
@@ -1126,6 +1467,23 @@ export const MapExplorer = {
     let iterations = 0;
     const MAX_ITERATIONS = 40;
 
+    const isTourGroupIntact = tour => {
+      const seenGroups = new Set();
+      let currentGrp = null;
+      for (const item of tour) {
+        if (item.lockGroupId) {
+          if (item.lockGroupId !== currentGrp) {
+            if (seenGroups.has(item.lockGroupId)) return false;
+            seenGroups.add(item.lockGroupId);
+            currentGrp = item.lockGroupId;
+          }
+        } else {
+          currentGrp = null;
+        }
+      }
+      return true;
+    };
+
     while (improved && iterations < MAX_ITERATIONS) {
       improved = false;
       iterations++;
@@ -1137,6 +1495,7 @@ export const MapExplorer = {
             ...bestTour.slice(i, k + 1).reverse(),
             ...bestTour.slice(k + 1)
           ];
+          if (!isTourGroupIntact(candidate)) continue;
           const candDist = calcTotalDist(candidate);
           if (candDist < bestDist - 0.005) {
             if (this.isTourScheduleFeasible(candidate, originCoords, depDate)) {
@@ -1168,28 +1527,31 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
-  // Export Waypoints (Preserves User Dragged / Adjusted Order)
+  // Export Waypoints (English Headers for Excel, regardless of user language)
   // -------------------------------------------------------------
   exportWaypoints() {
     const targets = this.routeWaypoints;
     if (targets.length === 0) {
-      alert(i18n.t("alert_no_waypoints_export"));
+      alert(i18n.t("alert_no_waypoints_export") || "当前路线清单中暂无经停点可导出。");
       return;
     }
 
     const exportRows = targets.map((w, idx) => {
-      const rawHours = w.openingHours || "未提供";
-      const openHours = this.formatWeekdayOpeningHours(rawHours);
-      const phone = w.phone && w.phone !== "无" ? w.phone : "";
+      const rawHours = w.openingHours || "N/A";
+      let openHours = this.formatWeekdayOpeningHours(rawHours);
+      if (!openHours || openHours === "未提供" || openHours === "无") {
+        openHours = "N/A";
+      }
+      const phone = (w.phone && w.phone !== "无" && w.phone !== "未提供") ? w.phone : "N/A";
       const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` (${w.nameEn})` : "");
 
       return {
-        [i18n.t("excel_col_index") || "序号"]: idx + 1,
-        [i18n.t("excel_col_name") || "餐厅名称"]: displayName,
-        [i18n.t("excel_col_address") || "地址"]: w.address || "",
-        [i18n.t("excel_col_phone") || "电话"]: phone,
-        [i18n.t("excel_col_hours") || "营业时间"]: openHours,
-        [i18n.t("excel_col_eta") || "预计抵达"]: w._estArrivalStr || "-"
+        "Stop #": idx + 1,
+        "Restaurant Name": displayName,
+        "Address": w.address || "N/A",
+        "Phone": phone,
+        "Opening Hours": openHours,
+        "Estimated Arrival (ETA)": w._estArrivalStr || "N/A"
       };
     });
 
@@ -1222,6 +1584,193 @@ export const MapExplorer = {
       link.href = URL.createObjectURL(blob);
       link.download = `GreenOil_Route_Stops_${dateStr}.csv`;
       link.click();
+    }
+  },
+
+  // -------------------------------------------------------------
+  // Waypoint Import Modal & Parsing Logic
+  // -------------------------------------------------------------
+  openImportModal() {
+    const modal = document.getElementById("mapWaypointImportModalOverlay");
+    const input = document.getElementById("mapImportTextInput");
+    const fileStatus = document.getElementById("mapImportFileStatus");
+    const fileInput = document.getElementById("mapImportFileInput");
+    if (!modal) return;
+    if (input) input.value = "";
+    if (fileStatus) fileStatus.style.display = "none";
+    if (fileInput) fileInput.value = "";
+    this.switchImportTab("text");
+    modal.classList.add("active");
+    if (input) setTimeout(() => input.focus(), 50);
+  },
+
+  closeImportModal() {
+    const modal = document.getElementById("mapWaypointImportModalOverlay");
+    if (modal) modal.classList.remove("active");
+  },
+
+  switchImportTab(tab) {
+    const btnText = document.getElementById("mapImportTabBtnText");
+    const btnFile = document.getElementById("mapImportTabBtnFile");
+    const modeText = document.getElementById("mapImportModeText");
+    const modeFile = document.getElementById("mapImportModeFile");
+    if (tab === "text") {
+      if (btnText) btnText.className = "btn btn-sm btn-primary";
+      if (btnFile) btnFile.className = "btn btn-sm btn-outline";
+      if (modeText) modeText.style.display = "block";
+      if (modeFile) modeFile.style.display = "none";
+    } else {
+      if (btnText) btnText.className = "btn btn-sm btn-outline";
+      if (btnFile) btnFile.className = "btn btn-sm btn-primary";
+      if (modeText) modeText.style.display = "none";
+      if (modeFile) modeFile.style.display = "block";
+    }
+  },
+
+  async handleImportSubmit() {
+    const modeText = document.getElementById("mapImportModeText");
+    const isTextMode = modeText && modeText.style.display !== "none";
+
+    if (isTextMode) {
+      const input = document.getElementById("mapImportTextInput");
+      const text = input ? input.value.trim() : "";
+      if (!text) {
+        alert("请输入至少一行地址或餐馆名称");
+        return;
+      }
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      await this.importStopsFromLines(lines);
+    } else {
+      const fileInput = document.getElementById("mapImportFileInput");
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert("请选择要导入的 Excel 或 CSV 文件");
+        return;
+      }
+      const file = fileInput.files[0];
+      await this.importStopsFromFile(file);
+    }
+  },
+
+  async importStopsFromLines(lines) {
+    if (!lines || lines.length === 0) return;
+
+    let pool = this.googleAreaPlaces || [];
+    if (window.Restaurants && Array.isArray(window.Restaurants.fullDataset) && window.Restaurants.fullDataset.length > 0) {
+      pool = window.Restaurants.fullDataset;
+    }
+
+    let addedCount = 0;
+    for (const line of lines) {
+      const matched = this.matchAddressToPlace(line, pool);
+      let stopItem;
+      if (matched) {
+        stopItem = {
+          ...matched,
+          _uid: matched.placeId ? `wp_${matched.placeId}` : `wp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          _matched: true,
+          _sourceAddress: line
+        };
+      } else {
+        stopItem = {
+          _uid: `wp_custom_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: line,
+          address: line,
+          region: "GTA",
+          latitude: DEFAULT_ORIGIN_COORDS.lat + (Math.random() - 0.5) * 0.05,
+          longitude: DEFAULT_ORIGIN_COORDS.lng + (Math.random() - 0.5) * 0.05,
+          placeId: `addr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          isCustomAddress: true,
+          _matched: false,
+          _sourceAddress: line
+        };
+      }
+
+      const exists = this.routeWaypoints.some(w => 
+        (stopItem.placeId && !stopItem.isCustomAddress && w.placeId === stopItem.placeId) ||
+        (w.name === stopItem.name && w.address === stopItem.address)
+      );
+
+      if (!exists) {
+        this.routeWaypoints.push(stopItem);
+        addedCount++;
+      }
+    }
+
+    this.closeImportModal();
+    this.saveRouteWaypoints();
+    this.renderWaypoints();
+    this.updateRoute();
+    this.renderMarkers();
+    this.renderPlacesCards();
+
+    const toastMsg = i18n.t("import_success_toast", { count: addedCount }) || `成功导入 ${addedCount} 个途经站点`;
+    if (window.showToast) window.showToast(toastMsg);
+    else alert(toastMsg);
+  },
+
+  matchAddressToPlace(inputLine, pool) {
+    if (!inputLine || !Array.isArray(pool) || pool.length === 0) return null;
+    const lower = inputLine.toLowerCase().trim();
+
+    // 1. Direct name match
+    const nameMatch = pool.find(p => p.name && (p.name.toLowerCase() === lower || lower.includes(p.name.toLowerCase())));
+    if (nameMatch) return nameMatch;
+
+    // 2. Postal code match
+    const postalMatch = inputLine.match(/\b([A-Za-z]\d[A-Za-z])[\s-]?(\d[A-Za-z]\d)\b/);
+    if (postalMatch) {
+      const code = (postalMatch[1] + postalMatch[2]).toUpperCase();
+      const pMatch = pool.find(p => {
+        if (!p.address) return false;
+        const m = p.address.match(/\b([A-Za-z]\d[A-Za-z])[\s-]?(\d[A-Za-z]\d)\b/);
+        return m && (m[1] + m[2]).toUpperCase() === code;
+      });
+      if (pMatch) return pMatch;
+    }
+
+    // 3. Street address substring match
+    const addrMatch = pool.find(p => p.address && (lower.includes(p.address.toLowerCase()) || p.address.toLowerCase().includes(lower)));
+    if (addrMatch) return addrMatch;
+
+    return null;
+  },
+
+  async importStopsFromFile(file) {
+    if (!file) return;
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const xlsxLib = typeof window !== "undefined" && window.XLSX ? window.XLSX : null;
+      if (!xlsxLib) {
+        alert("Excel 解析库尚未加载，请稍候重试");
+        return;
+      }
+      const workbook = xlsxLib.read(new Uint8Array(arrayBuffer), { type: "array" });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows = xlsxLib.utils.sheet_to_json(worksheet, { defval: "" });
+
+      if (!rows || rows.length === 0) {
+        alert("所选文件中未找到有效数据行");
+        return;
+      }
+
+      const lines = [];
+      rows.forEach(row => {
+        const addr = row["Address"] || row["address"] || row["地址"] || row["详细地址"] || "";
+        const name = row["Restaurant Name"] || row["Name"] || row["name"] || row["餐厅名称"] || row["店名"] || row["餐馆名称"] || "";
+        const line = addr ? (name ? `${name}, ${addr}` : addr) : name;
+        if (line && line.trim()) lines.push(line.trim());
+      });
+
+      if (lines.length === 0) {
+        alert("未能从表格中提取出有效地址或餐馆名称");
+        return;
+      }
+
+      await this.importStopsFromLines(lines);
+    } catch (e) {
+      console.error("Failed to parse file:", e);
+      alert("文件解析失败: " + e.message);
     }
   },
 
@@ -3253,6 +3802,12 @@ export const MapExplorer = {
       optBtn.addEventListener("click", () => this.optimizeRoute());
     }
 
+    // Right column: Import waypoints
+    const importBtn = document.getElementById("mapBtnImportWaypoints");
+    if (importBtn) {
+      importBtn.addEventListener("click", () => this.openImportModal());
+    }
+
     // Right column: Export waypoints
     const exportBtn = document.getElementById("mapBtnExportWaypoints");
     if (exportBtn) {
@@ -3263,6 +3818,90 @@ export const MapExplorer = {
     const clearRouteBtn = document.getElementById("mapBtnClearRoute");
     if (clearRouteBtn) {
       clearRouteBtn.addEventListener("click", () => this.clearRoute());
+    }
+
+    // Right column: Search waypoints
+    const wpSearchInput = document.getElementById("mapWaypointsSearchInput");
+    const wpSearchClear = document.getElementById("mapWaypointsSearchClear");
+    if (wpSearchInput) {
+      wpSearchInput.addEventListener("input", e => {
+        this.waypointSearchKeyword = e.target.value;
+        if (wpSearchClear) wpSearchClear.style.display = e.target.value ? "block" : "none";
+        this.renderWaypoints();
+      });
+    }
+    if (wpSearchClear) {
+      wpSearchClear.addEventListener("click", () => {
+        if (wpSearchInput) wpSearchInput.value = "";
+        this.waypointSearchKeyword = "";
+        wpSearchClear.style.display = "none";
+        this.renderWaypoints();
+      });
+    }
+
+    // Right column: Batch actions
+    const selectAllCb = document.getElementById("mapWaypointsSelectAll");
+    if (selectAllCb) {
+      selectAllCb.addEventListener("change", e => this.toggleSelectAllWaypoints(e.target.checked));
+    }
+    const lockBtn = document.getElementById("mapBtnLockWaypoints");
+    if (lockBtn) {
+      lockBtn.addEventListener("click", () => this.lockSelectedWaypoints());
+    }
+    const unlockBtn = document.getElementById("mapBtnUnlockWaypoints");
+    if (unlockBtn) {
+      unlockBtn.addEventListener("click", () => this.unlockSelectedWaypoints());
+    }
+    const batchDeleteBtn = document.getElementById("mapBtnBatchDeleteWaypoints");
+    if (batchDeleteBtn) {
+      batchDeleteBtn.addEventListener("click", () => this.deleteSelectedWaypoints());
+    }
+
+    // Import modal event bindings
+    const importModalClose = document.getElementById("mapWaypointImportModalClose");
+    const importModalCancel = document.getElementById("mapWaypointImportModalCancel");
+    const importModalSubmit = document.getElementById("mapWaypointImportModalSubmit");
+    const importTabBtnText = document.getElementById("mapImportTabBtnText");
+    const importTabBtnFile = document.getElementById("mapImportTabBtnFile");
+    const importDropZone = document.getElementById("mapImportDropZone");
+    const importFileInput = document.getElementById("mapImportFileInput");
+    const importFileStatus = document.getElementById("mapImportFileStatus");
+
+    if (importModalClose) importModalClose.addEventListener("click", () => this.closeImportModal());
+    if (importModalCancel) importModalCancel.addEventListener("click", () => this.closeImportModal());
+    if (importTabBtnText) importTabBtnText.addEventListener("click", () => this.switchImportTab("text"));
+    if (importTabBtnFile) importTabBtnFile.addEventListener("click", () => this.switchImportTab("file"));
+    if (importModalSubmit) importModalSubmit.addEventListener("click", () => this.handleImportSubmit());
+
+    if (importDropZone && importFileInput) {
+      importDropZone.addEventListener("click", () => importFileInput.click());
+      importDropZone.addEventListener("dragover", e => {
+        e.preventDefault();
+        importDropZone.style.borderColor = "#0f766e";
+        importDropZone.style.background = "#f0fdfa";
+      });
+      importDropZone.addEventListener("dragleave", () => {
+        importDropZone.style.borderColor = "#cbd5e1";
+        importDropZone.style.background = "#f8fafc";
+      });
+      importDropZone.addEventListener("drop", e => {
+        e.preventDefault();
+        importDropZone.style.borderColor = "#cbd5e1";
+        importDropZone.style.background = "#f8fafc";
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          importFileInput.files = e.dataTransfer.files;
+          if (importFileStatus) {
+            importFileStatus.textContent = `已选择文件: ${e.dataTransfer.files[0].name}`;
+            importFileStatus.style.display = "block";
+          }
+        }
+      });
+      importFileInput.addEventListener("change", () => {
+        if (importFileInput.files && importFileInput.files.length > 0 && importFileStatus) {
+          importFileStatus.textContent = `已选择文件: ${importFileInput.files[0].name}`;
+          importFileStatus.style.display = "block";
+        }
+      });
     }
 
     // Right column: External navigation
@@ -3339,6 +3978,10 @@ if (typeof window !== "undefined") {
     MapExplorer.scrollCardIntoView(key);
   };
 
+  window.mapExplorerToggleSelectWaypoint = function(key, checked) {
+    MapExplorer.toggleSelectWaypoint(key, checked);
+  };
+
   window.mapExplorerAddSingleToRoute = function(key) {
     const r = MapExplorer.findPlace(key);
     if (!r) return;
@@ -3355,6 +3998,14 @@ if (typeof window !== "undefined") {
 
   window.mapExplorerMoveWaypoint = function(index, delta) {
     MapExplorer.moveWaypoint(index, delta);
+  };
+
+  window.mapExplorerLockWaypoints = function() {
+    MapExplorer.lockSelectedWaypoints();
+  };
+
+  window.mapExplorerUnlockWaypoints = function() {
+    MapExplorer.unlockSelectedWaypoints();
   };
 
   window.mapExplorerOpenNav = function(name, address) {
