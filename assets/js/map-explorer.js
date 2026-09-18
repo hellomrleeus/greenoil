@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v12";
+import { Api } from "./api.js?v=20260918_v13";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -1441,7 +1441,7 @@ export const MapExplorer = {
       this.lastSearchedCenter = { lat: center.lat(), lng: center.lng() };
       this.lastSearchedZoom = this.googleMap.getZoom();
     }
-    this.loadCommunityPlaces(true);
+    this.loadPlacesForCurrentArea(true);
   },
 
   async loadMoreGooglePlaces() {
