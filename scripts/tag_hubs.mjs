@@ -69,7 +69,7 @@ export const GTA_HUBS = [
     radius: 500,
     addressKeywords: ["3235 hwy 7", "first markham"],
     category: "shopping_mall",
-    icon: "🏬"
+    icon: ""
   },
   {
     id: "pacific_mall",
@@ -82,7 +82,7 @@ export const GTA_HUBS = [
     radius: 500,
     addressKeywords: ["4300 steeles", "4390 steeles", "pacific mall", "太古"],
     category: "shopping_mall",
-    icon: "🏬"
+    icon: ""
   },
   {
     id: "markville",
@@ -95,7 +95,7 @@ export const GTA_HUBS = [
     radius: 550,
     addressKeywords: ["5000 hwy 7", "markville"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "langham_square",
@@ -108,7 +108,7 @@ export const GTA_HUBS = [
     radius: 450,
     addressKeywords: ["8339 kennedy", "28 south unionville", "langham"],
     category: "commercial_plaza",
-    icon: "🏢"
+    icon: ""
   },
   {
     id: "peachtree",
@@ -121,7 +121,7 @@ export const GTA_HUBS = [
     radius: 500,
     addressKeywords: ["8360 kennedy", "8362 kennedy", "peachtree", "新旺角"],
     category: "commercial_plaza",
-    icon: "🏢"
+    icon: ""
   },
   {
     id: "downtown_markham",
@@ -134,7 +134,7 @@ export const GTA_HUBS = [
     radius: 700,
     addressKeywords: ["enterprise blvd", "8110 birchmount", "downtown markham"],
     category: "commercial_plaza",
-    icon: "🏙️"
+    icon: ""
   },
   {
     id: "woodbine_hwy7",
@@ -147,7 +147,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["8500 woodbine", "8505 woodbine", "8400 woodbine", "woodbine & hwy 7", "woodbine hwy 7"],
     category: "commercial_plaza",
-    icon: "🏢"
+    icon: ""
   },
 
   // --- RICHMOND HILL ---
@@ -162,7 +162,7 @@ export const GTA_HUBS = [
     radius: 550,
     addressKeywords: ["550 hwy 7", "328 hwy 7", "times square", "时代广场", "百利广场"],
     category: "commercial_plaza",
-    icon: "🏬"
+    icon: ""
   },
   {
     id: "west_beaver_creek",
@@ -175,7 +175,7 @@ export const GTA_HUBS = [
     radius: 700,
     addressKeywords: ["280 west beaver", "west beaver creek"],
     category: "commercial_plaza",
-    icon: "🏢"
+    icon: ""
   },
   {
     id: "hillcrest_mall",
@@ -188,7 +188,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["9350 yonge", "hillcrest"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "high_tech_silvercity",
@@ -201,7 +201,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["high tech rd", "silvercity"],
     category: "commercial_plaza",
-    icon: "🏢"
+    icon: ""
   },
 
   // --- SCARBOROUGH ---
@@ -216,7 +216,7 @@ export const GTA_HUBS = [
     radius: 600,
     addressKeywords: ["3272 midland", "3280 midland", "3290 midland", "4186 finch"],
     category: "commercial_plaza",
-    icon: "🏬"
+    icon: ""
   },
   {
     id: "silver_star",
@@ -229,7 +229,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["silver star", "redlea"],
     category: "commercial_plaza",
-    icon: "🏢"
+    icon: ""
   },
   {
     id: "stc",
@@ -242,7 +242,7 @@ export const GTA_HUBS = [
     radius: 700,
     addressKeywords: ["300 borough", "scarborough town centre"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "woodside_square",
@@ -255,7 +255,7 @@ export const GTA_HUBS = [
     radius: 550,
     addressKeywords: ["1571 sandhurst", "woodside"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "bamburgh",
@@ -268,7 +268,7 @@ export const GTA_HUBS = [
     radius: 550,
     addressKeywords: ["375 bamburgh", "bamburgh"],
     category: "commercial_plaza",
-    icon: "🏢"
+    icon: ""
   },
   {
     id: "dragon_centre",
@@ -281,7 +281,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["23 glen watford", "4438 sheppard", "dragon centre"],
     category: "commercial_plaza",
-    icon: "🏬"
+    icon: ""
   },
   {
     id: "bridlewood_warden",
@@ -294,7 +294,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["2900 warden", "bridlewood"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
 
   // --- NORTH YORK ---
@@ -309,7 +309,7 @@ export const GTA_HUBS = [
     radius: 800,
     addressKeywords: ["5300 yonge", "5400 yonge", "5500 yonge", "5600 yonge", "5700 yonge", "yonge & finch", "finch station"],
     category: "commercial_plaza",
-    icon: "🍜"
+    icon: ""
   },
   {
     id: "yonge_sheppard",
@@ -322,7 +322,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["4841 yonge", "4900 yonge", "5000 yonge", "5095 yonge", "empress walk", "yonge & sheppard"],
     category: "commercial_plaza",
-    icon: "🏙️"
+    icon: ""
   },
   {
     id: "fairview_mall",
@@ -335,7 +335,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["1800 sheppard", "fairview"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "yorkdale",
@@ -348,7 +348,7 @@ export const GTA_HUBS = [
     radius: 700,
     addressKeywords: ["3401 dufferin", "yorkdale"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "centerpoint_mall",
@@ -361,7 +361,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["6464 yonge", "centerpoint"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "shops_don_mills",
@@ -374,7 +374,7 @@ export const GTA_HUBS = [
     radius: 600,
     addressKeywords: ["shops at don mills", "karl fraser", "1090 don mills", "1066 don mills", "o'neill rd"],
     category: "commercial_plaza",
-    icon: "⛲"
+    icon: ""
   },
 
   // --- DOWNTOWN TORONTO ---
@@ -389,7 +389,7 @@ export const GTA_HUBS = [
     radius: 700,
     addressKeywords: ["chinatown", "dragon city", "280 spadina", "spadina & dundas"],
     category: "commercial_plaza",
-    icon: "🏮"
+    icon: ""
   },
   {
     id: "eaton_centre",
@@ -402,7 +402,7 @@ export const GTA_HUBS = [
     radius: 600,
     addressKeywords: ["220 yonge", "eaton centre", "dundas square"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "koreatown_bloor",
@@ -415,7 +415,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["koreatown", "christie pits", "650 bloor", "700 bloor"],
     category: "commercial_plaza",
-    icon: "🇰🇷"
+    icon: ""
   },
   {
     id: "kensington_queen_w",
@@ -428,7 +428,7 @@ export const GTA_HUBS = [
     radius: 750,
     addressKeywords: ["kensington", "augusta ave", "baldwin st"],
     category: "commercial_plaza",
-    icon: "🎨"
+    icon: ""
   },
   {
     id: "bloor_yorkville",
@@ -441,7 +441,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["yorkville", "cumberland", "hazelton"],
     category: "commercial_plaza",
-    icon: "💎"
+    icon: ""
   },
 
   // --- MISSISSAUGA ---
@@ -456,7 +456,7 @@ export const GTA_HUBS = [
     radius: 800,
     addressKeywords: ["100 city centre", "square one", "rathburn"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "heartland",
@@ -469,7 +469,7 @@ export const GTA_HUBS = [
     radius: 900,
     addressKeywords: ["heartland town", "heartland centre", "5900 mavis", "6000 mavis"],
     category: "shopping_mall",
-    icon: "🏬"
+    icon: ""
   },
   {
     id: "dixie_outlet",
@@ -482,7 +482,7 @@ export const GTA_HUBS = [
     radius: 700,
     addressKeywords: ["1250 s service", "dixie outlet"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "streetsville",
@@ -495,7 +495,7 @@ export const GTA_HUBS = [
     radius: 650,
     addressKeywords: ["streetsville"],
     category: "commercial_plaza",
-    icon: "🏡"
+    icon: ""
   },
 
   // --- VAUGHAN ---
@@ -510,7 +510,7 @@ export const GTA_HUBS = [
     radius: 800,
     addressKeywords: ["1 bass pro mills", "vaughan mills"],
     category: "shopping_mall",
-    icon: "🛍️"
+    icon: ""
   },
   {
     id: "vmc_hwy7",
@@ -523,7 +523,7 @@ export const GTA_HUBS = [
     radius: 750,
     addressKeywords: ["millway ave", "vmc", "applewood cres"],
     category: "commercial_plaza",
-    icon: "🏙️"
+    icon: ""
   }
 ];
 
@@ -620,7 +620,7 @@ export function tagAllRestaurants() {
       r.hubNameEn = "Street Retail & Community Plazas";
       r.hubNameKo = "일반 거리 및 상가";
       r.hubCategory = "street";
-      r.hubIcon = "🏪";
+      r.hubIcon = "";
     }
   });
 

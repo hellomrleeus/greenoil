@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 if (!API_KEY) {
-  console.error("❌ Please provide GOOGLE_MAPS_API_KEY environment variable.");
+  console.error(" Please provide GOOGLE_MAPS_API_KEY environment variable.");
   console.error("Usage: GOOGLE_MAPS_API_KEY=your_key node scripts/crawl_places.mjs");
   process.exit(1);
 }
@@ -282,7 +282,7 @@ async function searchGooglePlaces(textQuery, regionInfo, pageToken = "") {
 
 async function main() {
   console.log("=================================================");
-  console.log("🚀 Green Oil Local Deep Crawler Starting...");
+  console.log(" Green Oil Local Deep Crawler Starting...");
   console.log(`Regions: ${Object.keys(GTA_REGIONS).length}`);
   console.log(`Keywords: ${KEYWORDS.length}`);
   console.log("=================================================\n");
@@ -291,7 +291,7 @@ async function main() {
   let totalApiRequests = 0;
 
   for (const [regionName, regionInfo] of Object.entries(GTA_REGIONS)) {
-    console.log(`\n📍 [${regionName}] Starting retrieval across ${KEYWORDS.length} keywords...`);
+    console.log(`\n [${regionName}] Starting retrieval across ${KEYWORDS.length} keywords...`);
     let regionNewPlaces = 0;
 
     for (const kw of KEYWORDS) {
@@ -335,7 +335,7 @@ async function main() {
             break;
           }
         } catch (err) {
-          console.warn(`⚠️ Error fetching '${textQuery}' (page ${page}): ${err.message}`);
+          console.warn(` Error fetching '${textQuery}' (page ${page}): ${err.message}`);
           break;
         }
 
@@ -343,13 +343,13 @@ async function main() {
       }
     }
 
-    console.log(`✅ [${regionName}] Completed. Cumulative Total: ${placesMap.size} unique places (+${regionNewPlaces} this region)`);
+    console.log(` [${regionName}] Completed. Cumulative Total: ${placesMap.size} unique places (+${regionNewPlaces} this region)`);
   }
 
   const allPlaces = Array.from(placesMap.values());
 
   console.log("\n=================================================");
-  console.log(`🎉 Finished crawling!`);
+  console.log(` Finished crawling!`);
   console.log(`Total API requests: ${totalApiRequests}`);
   console.log(`Total unique restaurants captured: ${allPlaces.length}`);
 
@@ -368,7 +368,7 @@ async function main() {
 
   const outFile = path.join(outDir, "restaurants_full.json");
   fs.writeFileSync(outFile, JSON.stringify(allPlaces, null, 2), "utf-8");
-  console.log(`💾 Saved ${allPlaces.length} records to ${outFile} (${(fs.statSync(outFile).size / 1024 / 1024).toFixed(2)} MB)`);
+  console.log(` Saved ${allPlaces.length} records to ${outFile} (${(fs.statSync(outFile).size / 1024 / 1024).toFixed(2)} MB)`);
   console.log("=================================================");
 }
 

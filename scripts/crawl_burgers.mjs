@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 
 const API_KEY = process.env.GOOGLE_MAPS_SERVER_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
 if (!API_KEY) {
-  console.error("❌ Please provide GOOGLE_MAPS_SERVER_KEY or GOOGLE_MAPS_API_KEY environment variable.");
+  console.error(" Please provide GOOGLE_MAPS_SERVER_KEY or GOOGLE_MAPS_API_KEY environment variable.");
 }
 
 const GTA_REGIONS = {
@@ -234,7 +234,7 @@ async function searchGooglePlaces(textQuery, regionInfo, pageToken = "") {
 
 async function main() {
   console.log("=================================================");
-  console.log("🍔 Green Oil Incremental Burger & Fast Food Crawler Starting...");
+  console.log(" Green Oil Incremental Burger & Fast Food Crawler Starting...");
   console.log("=================================================");
 
   const fullJsonPath = path.join(__dirname, "output/restaurants_full.json");
@@ -250,7 +250,7 @@ async function main() {
   let updatedCount = 0;
 
   for (const [regionName, regionInfo] of Object.entries(GTA_REGIONS)) {
-    console.log(`\n📍 [${regionName}] Searching for Smash Burger & Fast Food...`);
+    console.log(`\n [${regionName}] Searching for Smash Burger & Fast Food...`);
 
     for (const kw of BURGER_KEYWORDS) {
       const textQuery = `${kw} in ${regionInfo.name}, Ontario, Canada`;
@@ -278,7 +278,7 @@ async function main() {
             } else {
               placesMap.set(transformed.placeId, transformed);
               newlyAdded++;
-              console.log(`  ➕ Found new place: ${transformed.name} (${transformed.address})`);
+              console.log(`   Found new place: ${transformed.name} (${transformed.address})`);
             }
           }
 
@@ -290,7 +290,7 @@ async function main() {
             break;
           }
         } catch (err) {
-          console.warn(`  ⚠️ Error fetching '${textQuery}': ${err.message}`);
+          console.warn(`   Error fetching '${textQuery}': ${err.message}`);
           break;
         }
 
@@ -301,7 +301,7 @@ async function main() {
 
   const allPlaces = Array.from(placesMap.values());
   console.log("\n=================================================");
-  console.log(`🎉 Ingestion Complete!`);
+  console.log(` Ingestion Complete!`);
   console.log(`Total restaurants in database: ${allPlaces.length}`);
   console.log(`Newly captured restaurants: +${newlyAdded}`);
   console.log(`Updated keywords on existing: ${updatedCount}`);
@@ -310,15 +310,15 @@ async function main() {
   // Check if SMSHBRGR was captured
   const smsh = allPlaces.find(r => r.name.toLowerCase().includes("smsh") || (r.address && r.address.includes("227 Main Street Markham")));
   if (smsh) {
-    console.log(`✅ Verified SMSHBRGR is now in database: ${smsh.name} (${smsh.address})`);
+    console.log(` Verified SMSHBRGR is now in database: ${smsh.name} (${smsh.address})`);
   } else {
-    console.log("⚠️ Specifically querying SMSHBRGR to ensure inclusion...");
+    console.log(" Specifically querying SMSHBRGR to ensure inclusion...");
     try {
       const specificData = await searchGooglePlaces("SMSHBRGR - Main St Markham", GTA_REGIONS["万锦 (Markham)"]);
       if (specificData.places && specificData.places[0]) {
         const trans = transformGooglePlace(specificData.places[0], "万锦 (Markham)", "smash burger");
         allPlaces.unshift(trans);
-        console.log(`✅ Specifically added SMSHBRGR: ${trans.name}`);
+        console.log(` Specifically added SMSHBRGR: ${trans.name}`);
       }
     } catch (e) {
       console.error("Failed specific query:", e);
@@ -327,13 +327,13 @@ async function main() {
 
   // Save intermediate file
   fs.writeFileSync(fullJsonPath, JSON.stringify(allPlaces, null, 2), "utf8");
-  console.log(`💾 Saved updated ${allPlaces.length} records to ${fullJsonPath}`);
+  console.log(` Saved updated ${allPlaces.length} records to ${fullJsonPath}`);
 
   // Now trigger tag_hubs.mjs to cluster malls and upload to Cloudflare KV
-  console.log("\n🚀 Running tag_hubs.mjs to cluster shopping malls and upload to Cloudflare KV...");
+  console.log("\n Running tag_hubs.mjs to cluster shopping malls and upload to Cloudflare KV...");
   execSync("node scripts/tag_hubs.mjs", { stdio: "inherit", cwd: path.join(__dirname, "..") });
 
-  console.log("\n✨ All done! Database expanded and Cloudflare KV updated!");
+  console.log("\n All done! Database expanded and Cloudflare KV updated!");
 }
 
 main().catch(console.error);

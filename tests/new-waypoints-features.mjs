@@ -265,6 +265,12 @@ const cssContent = fs.readFileSync(new URL('../assets/css/app.css', import.meta.
 assert.ok(!cssContent.includes('.map-explorer-right-column.is-expanded .map-waypoints-container {\n  display: grid;'), 'Expanded waypoints must not be a grid');
 assert.ok(cssContent.includes('.map-explorer-right-column.is-expanded .map-waypoints-container {\n  display: flex;\n  flex-direction: column;'), 'Expanded waypoints must be a list');
 
-console.log('🎉 ALL 7 FEATURE TESTS PASSED SUCCESSFULLY!');
+// 5. Verify NO emojis in index.html and map-explorer.js and badge strings
+const emojiCheckRegex = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
+assert.ok(!emojiCheckRegex.test(htmlContent), 'index.html must not contain emojis');
+const mapExplorerContent = fs.readFileSync(new URL('../assets/js/map-explorer.js', import.meta.url), 'utf8');
+assert.ok(!emojiCheckRegex.test(mapExplorerContent), 'map-explorer.js must not contain emojis');
+
+console.log('ALL 7 FEATURE TESTS PASSED SUCCESSFULLY (EMOJI-FREE)!');
 
 

@@ -7,7 +7,7 @@ import { BusinessHours } from "../assets/js/business-hours.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log("▶ Starting Business Hours test suite...");
+console.log("Starting Business Hours test suite...");
 
 // 1. Test missing / unprovided hours
 console.log("  1. Testing missing/unprovided hours...");
@@ -161,7 +161,8 @@ if (fs.existsSync(jsonPath)) {
   }
   assert.equal(unknownCount, 42);
   assert.equal(parsedCount, 2913);
-  console.log(`  ✓ Successfully verified all 2955 restaurants (2913 parsed, 42 unknown)!`);
+  console.log(`  Successfully verified all 2955 restaurants (2913 parsed, 42 unknown)!`);
 }
 
-console.log("🎉 ALL BUSINESS HOURS TESTS PASSED!");
+console.log("ALL BUSINESS HOURS TESTS PASSED!");
+
