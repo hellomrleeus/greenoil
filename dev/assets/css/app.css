@@ -3883,10 +3883,10 @@ body {
   display: flex;
   gap: 12px;
   width: 100%;
-  height: calc(100vh - 175px);
+  height: calc(100vh - 105px);
   min-height: 580px;
   align-items: stretch;
-  overflow: hidden;
+  position: relative;
 }
 
 /* 1. Left Column: Google Maps Restaurant Results */
@@ -3905,10 +3905,63 @@ body {
   overflow: hidden;
 }
 
-/* 2. Middle Column: Interactive Map */
-.map-explorer-map-column {
+/* 2. Middle Column: Center Column with Toolbar aligned with Map */
+.map-explorer-center-column {
   flex: 1 1 40%;
   min-width: 340px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.map-explorer-center-column .map-explorer-toolbar-card {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.map-explorer-center-column .map-explorer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.map-explorer-center-column .area-search-pill-container {
+  flex: 0 0 auto;
+}
+
+.map-explorer-center-column .toolbar-filter-item {
+  flex: 0 0 auto;
+}
+
+.map-explorer-center-column .toolbar-search-wrap {
+  flex: 1 1 auto;
+  min-width: 140px;
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.map-explorer-center-column .toolbar-search-wrap .toolbar-input {
+  flex: 1;
+  height: 36px;
+}
+
+.map-explorer-center-column .toolbar-search-wrap .btn {
+  height: 36px;
+  white-space: nowrap;
+}
+
+.map-explorer-center-column .map-explorer-map-column {
+  flex: 1 1 auto;
+  min-height: 0;
   height: 100%;
   position: relative;
   border-radius: 12px;
@@ -4069,19 +4122,117 @@ body {
 }
 
 /* 3. Right Column: Waypoints & Schedule */
-.map-explorer-right-column {
+.map-explorer-right-column-wrap {
   flex: 0 0 350px;
   width: 350px;
   max-width: 390px;
   min-width: 290px;
   height: 100%;
+  position: relative;
+  z-index: 20;
+}
+
+.map-explorer-right-column {
+  width: 100%;
+  height: 100%;
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.28s ease;
+  overflow: visible;
+}
+
+/* Expanded state: Overlays over the map to the left, NOT squeezing the map */
+.map-explorer-right-column.is-expanded {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 680px;
+  max-width: calc(100vw - 420px);
+  z-index: 50;
+  box-shadow: -8px 0 28px rgba(15, 23, 42, 0.16);
+}
+
+/* Toggle Expand/Collapse Handle: Vertically Centered on the Left Border */
+.btn-toggle-waypoints-expand {
+  position: absolute;
+  left: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 52px;
+  border-radius: 8px 0 0 8px;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-right: none;
+  box-shadow: -3px 0 10px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  color: #64748b;
+  padding: 0;
+  transition: all 0.18s ease;
+}
+
+.btn-toggle-waypoints-expand:hover {
+  background: #f8fafc;
+  color: #2563eb;
+  border-color: #93c5fd;
+  width: 28px;
+  left: -17px;
+}
+
+.btn-toggle-waypoints-expand:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+/* Responsive Expanded Layout for Waypoints List & Toolbar */
+.map-explorer-right-column.is-expanded .map-waypoints-header {
+  padding: 0.85rem 1.15rem;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+.map-explorer-right-column.is-expanded .waypoints-toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.map-explorer-right-column.is-expanded .waypoints-toolbar .btn {
+  flex: 1;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.map-explorer-right-column.is-expanded .waypoints-batch-bar {
+  padding: 0.45rem 0.75rem;
+}
+
+.map-explorer-right-column.is-expanded .batch-actions-btns {
+  gap: 0.5rem;
+}
+
+.map-explorer-right-column.is-expanded .batch-actions-btns .btn {
+  padding: 0.25rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+.map-explorer-right-column.is-expanded .map-waypoints-container {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-content: start;
+  padding: 0.85rem 1.15rem;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 
 .map-waypoints-header {
@@ -4722,6 +4873,10 @@ body {
     height: 420px;
     flex: none;
   }
+  .map-explorer-center-column {
+    width: 100%;
+    flex: none;
+  }
   .map-explorer-map-column {
     width: 100%;
     max-width: 100%;
@@ -4730,12 +4885,27 @@ body {
     min-height: 420px;
     flex: none;
   }
+  .map-explorer-right-column-wrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0 !important;
+    height: auto;
+    flex: none;
+  }
   .map-explorer-right-column {
     width: 100%;
     max-width: 100%;
     min-width: 0 !important;
     height: 440px;
     flex: none;
+  }
+  .map-explorer-right-column.is-expanded {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+  }
+  .btn-toggle-waypoints-expand {
+    display: none;
   }
   .area-popover-panel {
     width: 95vw;

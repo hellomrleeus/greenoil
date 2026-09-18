@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title data-i18n="app_title">Green Oil 工作台</title>
-  <link rel="stylesheet" href="assets/css/app.css?v=20260918_v16">
+  <link rel="stylesheet" href="assets/css/app.css?v=20260919_v17">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%2316a34a%22/><text x=%2250%22 y=%2267%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2252%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-weight=%22700%22>G</text></svg>">
   <script src="assets/js/vendor/xlsx.full.min.js"></script>
 </head>
@@ -408,104 +408,7 @@
       
         <!-- TAB 3: EMBEDDED GOOGLE MAPS & DYNAMIC ROUTE PLANNER (3-COLUMN WORKBENCH) -->
         <section class="tab-view active" id="tab-mapexplorer">
-          <!-- Topbar Search & Filter Ribbon -->
-          <div class="card map-explorer-toolbar-card" style="margin-bottom: 0.85rem; padding: 0.65rem 0.85rem;">
-            <div class="map-explorer-toolbar">
-              <!-- 1. Area Search Pill with Popover Panel -->
-              <div class="area-search-pill-container" id="areaSearchPillContainer">
-                <div class="area-search-pill-btn" id="areaSearchPillBtn" title="点击展开大区区划多选" data-i18n-title="map_area_pill_title">
-                  <div class="area-active-tags-summary" id="areaActiveTagsSummary">
-                    <span class="area-tag-pill active" data-i18n="popover_all_gta">全部大区 (All GTA)</span>
-                  </div>
-                  <span class="area-pill-chevron">▼</span>
-                </div>
-
-                <!-- Floating Popover Modal -->
-                <div class="area-popover-panel" id="areaPopoverPanel" style="display: none;">
-                  <div class="popover-search-input-wrap">
-                    <span class="popover-search-icon">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    </span>
-                    <input type="text" id="popoverSearchInput" class="popover-search-input" placeholder="输入城市或商圈社区名称过滤..." data-i18n-placeholder="popover_search_placeholder" />
-                  </div>
-
-                  <div class="popover-top-bar">
-                    <div class="popover-tags-row" id="popoverActiveTagsRow"></div>
-                    <button type="button" class="btn-clear-all" id="popoverClearAllBtn" data-i18n="popover_clear_all">Clear All</button>
-                  </div>
-
-                  <div class="popover-location-action" id="popoverCurrentLocationBtn">
-                    <span data-i18n="popover_reset_all_gta">重置为多伦多大区中心 (All GTA)</span>
-                  </div>
-
-                  <!-- Nearby Neighborhoods Section -->
-                  <div class="popover-section" id="popoverNearbySection" style="display: none;">
-                    <div class="popover-section-title" id="popoverNearbyTitle" data-i18n="popover_nearby_title">周边社区 (NEARBY NEIGHBORHOODS)</div>
-                    <div class="popover-pills-row" id="popoverNearbyPills"></div>
-                  </div>
-
-                  <!-- Cities Pills Section -->
-                  <div class="popover-section">
-                    <div class="popover-section-title" data-i18n="map_filter_city">大区城市 (CITIES)</div>
-                    <div class="popover-pills-row" id="popoverCityPills"></div>
-                  </div>
-
-                  <!-- Neighborhoods Pills Section -->
-                  <div class="popover-section" id="popoverNeighborhoodSection">
-                    <div class="popover-section-title" data-i18n="map_filter_neighborhood">细分社区 / 商圈 (NEIGHBORHOODS)</div>
-                    <div class="popover-pills-row" id="popoverNeighborhoodPills"></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 2. Category Dropdown Filter -->
-              <div class="toolbar-filter-item">
-                <select class="form-select toolbar-select" id="mapCategorySelect">
-                  <option value="全部" data-i18n="cat_all">全部品类 (All Food)</option>
-                  <option value="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</option>
-                  <option value="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</option>
-                  <option value="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</option>
-                  <option value="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</option>
-                  <option value="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</option>
-                  <option value="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</option>
-                </select>
-              </div>
-
-              <!-- 3. Search Keyword Input -->
-              <div class="toolbar-filter-item toolbar-search-wrap">
-                <input type="text" class="form-input toolbar-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." data-i18n-placeholder="map_search_placeholder" />
-                <button class="btn btn-primary btn-sm" id="mapBtnSearchGmap" title="搜索 Google Maps" data-i18n-title="btn_search">
-                  <span data-i18n="btn_search">搜索</span>
-                </button>
-              </div>
-
-              <!-- Hidden legacy selects for script compatibility -->
-              <select id="mapCitySelect" style="display: none;"><option value="all">All</option></select>
-              <select id="mapNeighborhoodSelect" style="display: none;"><option value="all">All</option></select>
-              <select id="mapStreetSelect" style="display: none;"><option value="all">All</option></select>
-            </div>
-          </div>
-
-          <!-- Google Maps API Notice Banner -->
-          <div id="mapApiNotice" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-              <div>
-                <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;" data-i18n="map_alert_title">
-                  地图服务提示
-                </div>
-                <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;" data-i18n="map_alert_body">
-                  Google Maps 服务未激活，已自动切换至备用地图视图（路线规划与地点检索功能正常可用）。
-                </div>
-              </div>
-              <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;" data-i18n="map_alert_btn">
-                  服务配置说明
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <!-- 3-COLUMN WORKSPACE: LEFT (RESTAURANTS) | CENTER (MAP) | RIGHT (WAYPOINTS) -->
+          <!-- 3-COLUMN WORKSPACE: LEFT (RESTAURANTS) | CENTER (TOOLBAR + MAP) | RIGHT (WAYPOINTS) -->
           <div class="map-explorer-split">
             
             <!-- 1. LEFT COLUMN: Google Maps Restaurant Results (~340px) -->
@@ -536,127 +439,235 @@
               </div>
             </div>
 
-            <!-- 2. MIDDLE COLUMN: Interactive Google Map & Blue Route (Flex-1) -->
-            <div class="map-explorer-map-column">
-              <!-- Floating Route Status Ribbon (Top of Map) -->
-              <div class="map-floating-route-ribbon" id="mapFloatingRouteRibbon">
-                <div class="route-ribbon-left">
-                  <span class="route-ribbon-pulse"></span>
-                  <span class="route-ribbon-title" data-i18n="map_ribbon_title">动态路径规划</span>
-                  <span class="route-ribbon-divider">|</span>
-                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_stops">经停:</span> <b id="mapRouteStopsCount" style="color: #2563eb;">0</b> <span data-i18n="map_ribbon_stop_unit">站</span></span>
-                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_distance">总里程:</span> <b id="mapRouteDistance">0</b> km</span>
-                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_duration">预估耗时:</span> <b id="mapRouteTime">0</b> <span data-i18n="map_ribbon_min_unit">分钟</span></span>
-                </div>
-                <div class="route-ribbon-actions">
-                  <button type="button" class="btn btn-secondary btn-sm route-ribbon-btn" id="mapBtnFitRoute" title="居中展示全路线视野" data-i18n-title="map_btn_fit_route" data-i18n="map_btn_fit_route">
-                    居中全景
-                  </button>
-                  <button type="button" class="btn btn-primary btn-sm route-ribbon-btn" id="mapBtnToggleRoute" style="background: #2563eb; border-color: #2563eb;">
-                    <span id="mapRouteToggleLabel" data-i18n="map_route_planning">规划中</span>
-                  </button>
+            <!-- 2. MIDDLE COLUMN: Center Column (Toolbar Aligned with Map + Interactive Map) -->
+            <div class="map-explorer-center-column">
+              <!-- Topbar Search & Filter Ribbon (Aligned with Map) -->
+              <div class="card map-explorer-toolbar-card" id="mapExplorerToolbarCard">
+                <div class="map-explorer-toolbar">
+                  <!-- 1. Area Search Pill with Popover Panel -->
+                  <div class="area-search-pill-container" id="areaSearchPillContainer">
+                    <div class="area-search-pill-btn" id="areaSearchPillBtn" title="点击展开大区区划多选" data-i18n-title="map_area_pill_title">
+                      <div class="area-active-tags-summary" id="areaActiveTagsSummary">
+                        <span class="area-tag-pill active" data-i18n="popover_all_gta">全部大区 (All GTA)</span>
+                      </div>
+                      <span class="area-pill-chevron">▼</span>
+                    </div>
+
+                    <!-- Floating Popover Modal -->
+                    <div class="area-popover-panel" id="areaPopoverPanel" style="display: none;">
+                      <div class="popover-search-input-wrap">
+                        <span class="popover-search-icon">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        </span>
+                        <input type="text" id="popoverSearchInput" class="popover-search-input" placeholder="输入城市或商圈社区名称过滤..." data-i18n-placeholder="popover_search_placeholder" />
+                      </div>
+
+                      <div class="popover-top-bar">
+                        <div class="popover-tags-row" id="popoverActiveTagsRow"></div>
+                        <button type="button" class="btn-clear-all" id="popoverClearAllBtn" data-i18n="popover_clear_all">Clear All</button>
+                      </div>
+
+                      <div class="popover-location-action" id="popoverCurrentLocationBtn">
+                        <span data-i18n="popover_reset_all_gta">重置为多伦多大区中心 (All GTA)</span>
+                      </div>
+
+                      <!-- Nearby Neighborhoods Section -->
+                      <div class="popover-section" id="popoverNearbySection" style="display: none;">
+                        <div class="popover-section-title" id="popoverNearbyTitle" data-i18n="popover_nearby_title">周边社区 (NEARBY NEIGHBORHOODS)</div>
+                        <div class="popover-pills-row" id="popoverNearbyPills"></div>
+                      </div>
+
+                      <!-- Cities Pills Section -->
+                      <div class="popover-section">
+                        <div class="popover-section-title" data-i18n="map_filter_city">大区城市 (CITIES)</div>
+                        <div class="popover-pills-row" id="popoverCityPills"></div>
+                      </div>
+
+                      <!-- Neighborhoods Pills Section -->
+                      <div class="popover-section" id="popoverNeighborhoodSection">
+                        <div class="popover-section-title" data-i18n="map_filter_neighborhood">细分社区 / 商圈 (NEIGHBORHOODS)</div>
+                        <div class="popover-pills-row" id="popoverNeighborhoodPills"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 2. Category Dropdown Filter -->
+                  <div class="toolbar-filter-item">
+                    <select class="form-select toolbar-select" id="mapCategorySelect">
+                      <option value="全部" data-i18n="cat_all">全部品类 (All Food)</option>
+                      <option value="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</option>
+                      <option value="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</option>
+                      <option value="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</option>
+                      <option value="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</option>
+                      <option value="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</option>
+                      <option value="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</option>
+                    </select>
+                  </div>
+
+                  <!-- 3. Search Keyword Input -->
+                  <div class="toolbar-filter-item toolbar-search-wrap">
+                    <input type="text" class="form-input toolbar-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." data-i18n-placeholder="map_search_placeholder" />
+                    <button class="btn btn-primary btn-sm" id="mapBtnSearchGmap" title="搜索 Google Maps" data-i18n-title="btn_search">
+                      <span data-i18n="btn_search">搜索</span>
+                    </button>
+                  </div>
+
+                  <!-- Hidden legacy selects for script compatibility -->
+                  <select id="mapCitySelect" style="display: none;"><option value="all">All</option></select>
+                  <select id="mapNeighborhoodSelect" style="display: none;"><option value="all">All</option></select>
+                  <select id="mapStreetSelect" style="display: none;"><option value="all">All</option></select>
                 </div>
               </div>
 
-              <!-- Floating Search In Current Viewport Button -->
-              <button type="button" id="mapSearchThisAreaBtn" class="map-search-this-area-btn" onclick="window.mapExplorerSearchThisArea();" style="display:none;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <span data-i18n="btn_search_this_area">在当前地图视野内找店</span>
-              </button>
+              <!-- Google Maps API Notice Banner -->
+              <div id="mapApiNotice" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                  <div>
+                    <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;" data-i18n="map_alert_title">
+                      地图服务提示
+                    </div>
+                    <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;" data-i18n="map_alert_body">
+                      Google Maps 服务未激活，已自动切换至备用地图视图（路线规划与地点检索功能正常可用）。
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                    <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;" data-i18n="map_alert_btn">
+                      服务配置说明
+                    </a>
+                  </div>
+                </div>
+              </div>
 
-              <!-- Map Canvas -->
-              <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
+              <!-- Interactive Google Map Canvas -->
+              <div class="map-explorer-map-column">
+                <!-- Floating Route Status Ribbon (Top of Map) -->
+                <div class="map-floating-route-ribbon" id="mapFloatingRouteRibbon">
+                  <div class="route-ribbon-left">
+                    <span class="route-ribbon-pulse"></span>
+                    <span class="route-ribbon-title" data-i18n="map_ribbon_title">动态路径规划</span>
+                    <span class="route-ribbon-divider">|</span>
+                    <span class="route-ribbon-stat"><span data-i18n="map_ribbon_stops">经停:</span> <b id="mapRouteStopsCount" style="color: #2563eb;">0</b> <span data-i18n="map_ribbon_stop_unit">站</span></span>
+                    <span class="route-ribbon-stat"><span data-i18n="map_ribbon_distance">总里程:</span> <b id="mapRouteDistance">0</b> km</span>
+                    <span class="route-ribbon-stat"><span data-i18n="map_ribbon_duration">预估耗时:</span> <b id="mapRouteTime">0</b> <span data-i18n="map_ribbon_min_unit">分钟</span></span>
+                  </div>
+                  <div class="route-ribbon-actions">
+                    <button type="button" class="btn btn-secondary btn-sm route-ribbon-btn" id="mapBtnFitRoute" title="居中展示全路线视野" data-i18n-title="map_btn_fit_route" data-i18n="map_btn_fit_route">
+                      居中全景
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm route-ribbon-btn" id="mapBtnToggleRoute" style="background: #2563eb; border-color: #2563eb;">
+                      <span id="mapRouteToggleLabel" data-i18n="map_route_planning">规划中</span>
+                    </button>
+                  </div>
+                </div>
 
-              <!-- Map Legend -->
-              <div class="map-floating-legend">
-                <span class="legend-item"><span class="legend-dot start-point">HQ</span> <span data-i18n="map_legend_hq">起点</span></span>
-                <span class="legend-item"><span class="legend-dot route-point">1</span> <span data-i18n="map_legend_waypoint">途经点</span></span>
-                <span class="legend-item"><span class="legend-dot search-point"></span> <span data-i18n="map_legend_candidate">候选餐馆</span></span>
+                <!-- Floating Search In Current Viewport Button -->
+                <button type="button" id="mapSearchThisAreaBtn" class="map-search-this-area-btn" onclick="window.mapExplorerSearchThisArea();" style="display:none;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                  <span data-i18n="btn_search_this_area">在当前地图视野内找店</span>
+                </button>
+
+                <!-- Map Canvas -->
+                <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
+
+                <!-- Map Legend -->
+                <div class="map-floating-legend">
+                  <span class="legend-item"><span class="legend-dot start-point">HQ</span> <span data-i18n="map_legend_hq">起点</span></span>
+                  <span class="legend-item"><span class="legend-dot route-point">1</span> <span data-i18n="map_legend_waypoint">途经点</span></span>
+                  <span class="legend-item"><span class="legend-dot search-point"></span> <span data-i18n="map_legend_candidate">候选餐馆</span></span>
+                </div>
               </div>
             </div>
 
-            <!-- 3. RIGHT COLUMN: Waypoints Management & Route Schedule (~340px) -->
-            <div class="map-explorer-right-column">
-              <div class="map-waypoints-header">
-                <div class="waypoints-header-top">
-                  <div style="display: flex; align-items: center; gap: 6px;">
-                    <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2563eb;"></span>
-                    <h3 class="waypoints-title" data-i18n="fs_route_waypoints_title">途经站点清单</h3>
-                    <span class="waypoints-count-badge" id="mapWaypointsBadge">0</span>
-                  </div>
-                  <button type="button" class="btn-clear-waypoints" id="mapBtnClearRoute" title="清空所有经停点" data-i18n-title="btn_clear_waypoints" data-i18n="btn_clear_waypoints">
-                    清空路线
-                  </button>
-                </div>
-
-                <!-- Starting Point Selector Box -->
-                <div class="waypoints-origin-box">
-                  <div class="origin-label-row">
-                    <span class="origin-label" data-i18n="route_origin_label">起点</span>
-                    <span class="origin-tag">Green Oil HQ</span>
-                  </div>
-                  <div class="origin-address-row">
-                    <input type="text" id="mapRouteOriginInput" class="form-input origin-input" value="Green Oil Inc, 888 Progress Ave, Scarborough, ON" placeholder="输入或修改起点地址..." data-i18n-placeholder="route_origin_placeholder" />
-                  </div>
-                </div>
-
-                <!-- Action Toolbar: Route Optimize, Import & Export -->
-                <div class="waypoints-toolbar">
-                  <button type="button" class="btn btn-primary btn-sm btn-optimize" id="mapBtnOptimizeRoute" title="优化经停路线顺序" data-i18n-title="btn_optimize_route" data-i18n="btn_optimize_route">
-                    路线优化
-                  </button>
-                  <button type="button" class="btn btn-outline btn-sm btn-import" id="mapBtnImportWaypoints" title="导入途经站点（支持多行文本或Excel/CSV）" data-i18n-title="btn_import_waypoints" style="color: #0f766e; border-color: #99f6e4; background: #f0fdfa;">
-                    <span data-i18n="btn_import_waypoints">导入站点</span>
-                  </button>
-                  <button type="button" class="btn btn-secondary btn-sm btn-export" id="mapBtnExportWaypoints" title="导出当前调整后顺序的Excel/CSV清单" data-i18n-title="btn_export_waypoints" data-i18n="btn_export_waypoints">
-                    导出清单
-                  </button>
-                </div>
-
-                <!-- Waypoints Realtime Search Filter -->
-                <div class="waypoints-search-wrap" style="margin-top: 0.5rem; position: relative;">
-                  <span class="waypoints-search-icon" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; display: flex; align-items: center;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.3"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                  </span>
-                  <input type="text" id="mapWaypointsSearchInput" class="form-input waypoints-search-input" style="padding-left: 1.6rem; padding-right: 1.5rem; font-size: 0.78rem; height: 28px; width: 100%; border-radius: 4px;" placeholder="搜索途经站点（店名/地址）..." data-i18n-placeholder="waypoints_search_placeholder" />
-                  <button type="button" class="waypoints-search-clear" id="mapWaypointsSearchClear" style="display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1;" title="清空搜索">&times;</button>
-                </div>
-
-                <!-- Batch Actions Ribbon (Select All, Lock Group, Batch Delete) -->
-                <div class="waypoints-batch-bar" id="mapWaypointsBatchBar" style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.45rem; padding: 0.35rem 0.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.78rem;">
-                  <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; user-select: none; margin-bottom: 0;">
-                    <input type="checkbox" id="mapWaypointsSelectAll" class="waypoint-checkbox" style="cursor: pointer;" />
-                    <span id="mapWaypointsSelectAllLabel" data-i18n="batch_select_all" style="font-weight: 600; color: #475569;">全选</span>
-                  </label>
-                  <div class="batch-actions-btns" style="display: flex; gap: 0.35rem; align-items: center;">
-                    <button type="button" class="btn btn-sm btn-outline" id="mapBtnLockWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #4338ca; border-color: #c7d2fe; background: #eef2ff;" title="锁定选中的站点为整体组合（需>=2个）">
-                      <span>🔒</span> <span data-i18n="btn_lock_stops">锁定组合</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline" id="mapBtnUnlockWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #b45309; border-color: #fde68a; background: #fffbeb;" title="解除选中站点的锁定">
-                      <span>🔓</span> <span data-i18n="btn_unlock_stops">解锁</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline" id="mapBtnBatchDeleteWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #dc2626; border-color: #fecaca; background: #fef2f2;" title="批量移除选中的站点">
-                      <span data-i18n="btn_batch_delete">批量删除</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="waypoints-drag-tip" style="margin-top: 0.4rem;">
-                  <span data-i18n="waypoints_drag_tip">拖拽调整途经点顺序，路线实时更新</span>
-                </div>
-              </div>
-
-              <!-- Scrollable Drag-and-Drop Waypoints List -->
-              <div class="map-waypoints-container custom-scrollbar" id="mapWaypointsCardsContainer">
-                <!-- Rendered dynamically -->
-              </div>
-
-              <!-- Right Footer: External Google Maps Navigation -->
-              <div class="map-waypoints-footer">
-                <button type="button" class="btn btn-primary btn-nav-google" id="mapBtnExternalNav">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
-                  <span data-i18n="btn_launch_google_nav">在 Google 地图开启导航</span>
+            <!-- 3. RIGHT COLUMN WRAPPER: Waypoints Management with Non-Squeezing Expandable Overlay -->
+            <div class="map-explorer-right-column-wrap">
+              <div class="map-explorer-right-column" id="mapExplorerRightColumn">
+                <!-- Vertically Centered Expand/Collapse Button on Left Edge -->
+                <button type="button" class="btn-toggle-waypoints-expand" id="mapBtnToggleWaypointsExpand" title="展开站点列表" data-i18n-title="btn_expand_waypoints" aria-label="展开站点列表">
+                  <svg class="toggle-icon-expand" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  <svg class="toggle-icon-collapse" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </button>
+
+                <div class="map-waypoints-header">
+                  <div class="waypoints-header-top">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2563eb;"></span>
+                      <h3 class="waypoints-title" data-i18n="fs_route_waypoints_title">途经站点清单</h3>
+                      <span class="waypoints-count-badge" id="mapWaypointsBadge">0</span>
+                    </div>
+                    <button type="button" class="btn-clear-waypoints" id="mapBtnClearRoute" title="清空所有经停点" data-i18n-title="btn_clear_waypoints" data-i18n="btn_clear_waypoints">
+                      清空路线
+                    </button>
+                  </div>
+
+                  <!-- Starting Point Selector Box -->
+                  <div class="waypoints-origin-box">
+                    <div class="origin-label-row">
+                      <span class="origin-label" data-i18n="route_origin_label">起点</span>
+                      <span class="origin-tag">Green Oil HQ</span>
+                    </div>
+                    <div class="origin-address-row">
+                      <input type="text" id="mapRouteOriginInput" class="form-input origin-input" value="Green Oil Inc, 888 Progress Ave, Scarborough, ON" placeholder="输入或修改起点地址..." data-i18n-placeholder="route_origin_placeholder" />
+                    </div>
+                  </div>
+
+                  <!-- Action Toolbar: Route Optimize, Import & Export -->
+                  <div class="waypoints-toolbar">
+                    <button type="button" class="btn btn-primary btn-sm btn-optimize" id="mapBtnOptimizeRoute" title="优化经停路线顺序" data-i18n-title="btn_optimize_route" data-i18n="btn_optimize_route">
+                      路线优化
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm btn-import" id="mapBtnImportWaypoints" title="导入途经站点（支持多行文本或Excel/CSV）" data-i18n-title="btn_import_waypoints" style="color: #0f766e; border-color: #99f6e4; background: #f0fdfa;">
+                      <span data-i18n="btn_import_waypoints">导入站点</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm btn-export" id="mapBtnExportWaypoints" title="导出当前调整后顺序的Excel/CSV清单" data-i18n-title="btn_export_waypoints" data-i18n="btn_export_waypoints">
+                      导出清单
+                    </button>
+                  </div>
+
+                  <!-- Waypoints Realtime Search Filter -->
+                  <div class="waypoints-search-wrap" style="margin-top: 0.5rem; position: relative;">
+                    <span class="waypoints-search-icon" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); pointer-events: none; display: flex; align-items: center;">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.3"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </span>
+                    <input type="text" id="mapWaypointsSearchInput" class="form-input waypoints-search-input" style="padding-left: 1.6rem; padding-right: 1.5rem; font-size: 0.78rem; height: 28px; width: 100%; border-radius: 4px;" placeholder="搜索途经站点（店名/地址）..." data-i18n-placeholder="waypoints_search_placeholder" />
+                    <button type="button" class="waypoints-search-clear" id="mapWaypointsSearchClear" style="display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: transparent; color: #94a3b8; font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1;" title="清空搜索">&times;</button>
+                  </div>
+
+                  <!-- Batch Actions Ribbon (Select All, Lock Group, Batch Delete) -->
+                  <div class="waypoints-batch-bar" id="mapWaypointsBatchBar" style="display: flex; align-items: center; justify-content: space-between; margin-top: 0.45rem; padding: 0.35rem 0.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.78rem;">
+                    <label style="display: flex; align-items: center; gap: 0.35rem; cursor: pointer; user-select: none; margin-bottom: 0;">
+                      <input type="checkbox" id="mapWaypointsSelectAll" class="waypoint-checkbox" style="cursor: pointer;" />
+                      <span id="mapWaypointsSelectAllLabel" data-i18n="batch_select_all" style="font-weight: 600; color: #475569;">全选</span>
+                    </label>
+                    <div class="batch-actions-btns" style="display: flex; gap: 0.35rem; align-items: center;">
+                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnLockWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #4338ca; border-color: #c7d2fe; background: #eef2ff;" title="锁定选中的站点为整体组合（需>=2个）">
+                        <span>🔒</span> <span data-i18n="btn_lock_stops">锁定组合</span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnUnlockWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #b45309; border-color: #fde68a; background: #fffbeb;" title="解除选中站点的锁定">
+                        <span>🔓</span> <span data-i18n="btn_unlock_stops">解锁</span>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline" id="mapBtnBatchDeleteWaypoints" style="font-size: 0.72rem; padding: 0.2rem 0.45rem; color: #dc2626; border-color: #fecaca; background: #fef2f2;" title="批量移除选中的站点">
+                        <span data-i18n="btn_batch_delete">批量删除</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="waypoints-drag-tip" style="margin-top: 0.4rem;">
+                    <span data-i18n="waypoints_drag_tip">拖拽调整途经点顺序，路线实时更新</span>
+                  </div>
+                </div>
+
+                <!-- Scrollable Drag-and-Drop Waypoints List -->
+                <div class="map-waypoints-container custom-scrollbar" id="mapWaypointsCardsContainer">
+                  <!-- Rendered dynamically -->
+                </div>
+
+                <!-- Right Footer: External Google Maps Navigation -->
+                <div class="map-waypoints-footer">
+                  <button type="button" class="btn btn-primary btn-nav-google" id="mapBtnExternalNav">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                    <span data-i18n="btn_launch_google_nav">在 Google 地图开启导航</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -857,6 +868,6 @@
   </div>
 
   <!-- App Entry Scripts -->
-  <script type="module" src="assets/js/app.js?v=20260918_v16"></script>
+  <script type="module" src="assets/js/app.js?v=20260919_v17"></script>
 </body>
 </html>

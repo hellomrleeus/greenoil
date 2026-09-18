@@ -3860,6 +3860,21 @@ export const MapExplorer = {
         this.togglePopover(false);
         this.hideMapContextMenu();
         this.closeRouteNavModal();
+        const rightCol = document.getElementById("mapExplorerRightColumn");
+        const toggleExpandBtn = document.getElementById("mapBtnToggleWaypointsExpand");
+        if (rightCol && rightCol.classList.contains("is-expanded")) {
+          rightCol.classList.remove("is-expanded");
+          if (toggleExpandBtn) {
+            const expandIcon = toggleExpandBtn.querySelector(".toggle-icon-expand");
+            const collapseIcon = toggleExpandBtn.querySelector(".toggle-icon-collapse");
+            if (expandIcon && collapseIcon) {
+              expandIcon.style.display = "block";
+              collapseIcon.style.display = "none";
+            }
+            toggleExpandBtn.title = i18n.t("btn_expand_waypoints") || "展开站点列表";
+            toggleExpandBtn.setAttribute("data-i18n-title", "btn_expand_waypoints");
+          }
+        }
       }
     });
 
@@ -4055,6 +4070,25 @@ export const MapExplorer = {
     const batchDeleteBtn = document.getElementById("mapBtnBatchDeleteWaypoints");
     if (batchDeleteBtn) {
       batchDeleteBtn.addEventListener("click", () => this.deleteSelectedWaypoints());
+    }
+
+    // Right column: Toggle Expand/Collapse Wide Overlay Mode
+    const toggleExpandBtn = document.getElementById("mapBtnToggleWaypointsExpand");
+    const rightCol = document.getElementById("mapExplorerRightColumn");
+    if (toggleExpandBtn && rightCol) {
+      toggleExpandBtn.addEventListener("click", () => {
+        const isExpanded = rightCol.classList.toggle("is-expanded");
+        const expandIcon = toggleExpandBtn.querySelector(".toggle-icon-expand");
+        const collapseIcon = toggleExpandBtn.querySelector(".toggle-icon-collapse");
+        if (expandIcon && collapseIcon) {
+          expandIcon.style.display = isExpanded ? "none" : "block";
+          collapseIcon.style.display = isExpanded ? "block" : "none";
+        }
+        const titleKey = isExpanded ? "btn_collapse_waypoints" : "btn_expand_waypoints";
+        const titleText = i18n.t(titleKey) || (isExpanded ? "收起站点列表" : "展开站点列表");
+        toggleExpandBtn.title = titleText;
+        toggleExpandBtn.setAttribute("data-i18n-title", titleKey);
+      });
     }
 
     // Import modal event bindings
