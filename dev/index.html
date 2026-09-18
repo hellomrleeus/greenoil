@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title data-i18n="app_title">Green Oil 工作台</title>
+  <link rel="stylesheet" href="assets/css/app.css?v=20260918_v15">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2248%22 fill=%22%2316a34a%22/><text x=%2250%22 y=%2267%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2252%22 font-family=%22system-ui,-apple-system,sans-serif%22 font-weight=%22700%22>G</text></svg>">
+  <script src="assets/js/vendor/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <!-- Mobile Sidebar Backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="appSidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13C4 8.5 7.5 4 13 4c2.5 0 5 1 7 3-1 3.5-3 5.5-6 6.5-1.5.5-3 0-3 0"></path><path d="M11 20c1.5-3 3-5 6-6.5"></path></svg>
+        </div>
+        <div class="brand-text-wrap">
+          <div class="brand-title">Green Oil</div>
+        </div>
+        <button class="sidebar-collapse-btn desktop-only" id="sidebarCollapseBtn" title="折叠侧边栏" aria-label="折叠侧边栏" data-i18n-title="sidebar_collapse">&lt;</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="tab-mapexplorer" data-title="地图找店与路径规划" data-title-key="page_title_mapexplorer" title="地图找店与路径规划" data-i18n-title="nav_mapexplorer">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+          </span>
+          <span data-i18n="nav_mapexplorer">地图找店与路径规划</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-calculator" data-title="用油计算器" data-title-key="page_title_calculator" title="用油计算器" data-i18n-title="nav_calculator">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M8 10h.01"></path><path d="M12 10h.01"></path><path d="M16 10h.01"></path><path d="M8 14h.01"></path><path d="M12 14h.01"></path><path d="M8 18h.01"></path><path d="M12 18h.01"></path></svg>
+          </span>
+          <span data-i18n="nav_calculator">用油计算器</span>
+        </button>
+
+        <button class="nav-item" data-tab="tab-greasetrap" data-title="Grease Trap" data-title-key="page_title_greasetrap" title="Grease Trap" data-i18n-title="nav_greasetrap">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+          </span>
+          <span data-i18n="nav_greasetrap">Grease Trap</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">GO</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebarUserName" data-i18n="operator_demo_name">greenoil</div>
+          </div>
+        </div>
+        <button class="btn-logout" id="btnLogout" title="退出登录" data-i18n-title="btn_logout">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          <span data-i18n="btn_logout">退出登录</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="main-wrapper">
+      
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="菜单"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+          <button class="sidebar-toggle-btn desktop-only" id="sidebarToggleBtn" title="展开侧边栏" aria-label="展开侧边栏" data-i18n-title="sidebar_expand">&gt;</button>
+          <h1 class="page-title" id="currentPageTitle" data-i18n="page_title_mapexplorer">地图找店与路径规划</h1>
+        </div>
+
+        <div class="topbar-right">
+          <!-- Language Selector -->
+          <div class="lang-select-wrap">
+            <select id="langSelect" class="lang-select" aria-label="Language">
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+              <option value="ko">한국어</option>
+            </select>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content Area -->
+      <main class="content-area">
+
+        <!-- TAB 1: OIL CONSUMPTION CALCULATOR -->
+        <section class="tab-view" id="tab-calculator">
+          
+          <div class="calculator-grid">
+            
+            <!-- Left Panel: Inputs -->
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-dark);" data-i18n="calc_fryer_params">
+                  炸锅参数
+                </h3>
+                <span class="api-badge" id="calcTargetRestBadge" style="display: none; background: var(--primary-dark); color: white;" data-i18n="calc_linked_rest">
+                  关联餐馆
+                </span>
+              </div>
+
+              <!-- Fryer List -->
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <label class="form-label" style="margin-bottom: 0;">
+                    <span data-i18n="calc_fryer_list">炸锅列表</span> (<span id="totalFryerCountText">2 个</span>)
+                  </label>
+                  <button class="btn btn-secondary btn-sm" id="btnAddFryer">
+                    <span data-i18n="btn_add_fryer">添加炸锅</span>
+                  </button>
+                </div>
+                <div class="fryer-list" id="fryerListContainer"></div>
+              </div>
+
+              <!-- Replacement Frequency -->
+              <div class="frequency-box">
+                <div class="frequency-title" data-i18n="calc_freq_title">
+                  更换频率
+                </div>
+
+                <div class="frequency-sentence">
+                  <span data-i18n="calc_freq_prefix">每</span>
+                  <input type="text" inputmode="numeric" id="freqDays" class="number-input" value="7" maxlength="3" />
+                  <span data-i18n="calc_freq_days_suffix">天换</span>
+                  <input type="text" inputmode="numeric" id="freqTimes" class="number-input" value="2" maxlength="3" />
+                  <span data-i18n="calc_freq_times_suffix">次，每次换</span>
+                  <input type="text" inputmode="numeric" id="freqFryers" class="number-input" value="2" maxlength="3" />
+                  <span data-i18n="calc_freq_fryers_suffix">个炸锅的油</span>
+                </div>
+              </div>
+
+              <!-- Buttons -->
+              <div style="display: flex; gap: 0.75rem;">
+                <button class="btn btn-primary btn-lg" id="btnCalculateOil" style="flex: 2;">
+                  <span data-i18n="btn_calc_oil_submit">计算月用油量</span>
+                </button>
+                <button class="btn btn-secondary btn-lg" id="btnResetCalc" style="flex: 1;">
+                  <span data-i18n="btn_calc_reset">重置</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Panel: Results & Business Insights -->
+            <div class="calc-results-card">
+              <h3 data-i18n="calc_res_title">
+                用油与废油测算
+              </h3>
+
+              <!-- Big Metric -->
+              <div class="metric-big">
+                <div class="metric-big-label" data-i18n="calc_res_monthly_label">预计月用油总量</div>
+                <div class="metric-big-val">
+                  <span id="resMonthlyOil">0</span>
+                  <span class="metric-big-unit" data-i18n="calc_res_monthly_unit">升 / 月</span>
+                </div>
+              </div>
+
+              <!-- Sub Metrics Grid -->
+              <div class="metrics-subgrid">
+                <div class="sub-metric">
+                  <div class="sub-metric-label" data-i18n="calc_res_std_drums">折合商用标准桶 (16L)</div>
+                  <div class="sub-metric-val" id="resStandardDrums">0 桶</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label" data-i18n="calc_res_uco">预计废油回收量 (75%)</div>
+                  <div class="sub-metric-val" id="resUcoRecovery">0 升</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label" data-i18n="calc_res_200l_drums">建议配置容器 (Drum / Bin)</div>
+                  <div class="sub-metric-val" id="res200LDrums">-</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label" data-i18n="calc_res_baseline">计算基准</div>
+                  <div class="sub-metric-val" style="font-size: 1.05rem;" data-i18n="calc_res_30days">30 天 / 月</div>
+                </div>
+              </div>
+
+              <!-- Dedicated Pricing & Rebate Module -->
+              <div class="pricing-workbench-card">
+                <div class="pricing-card-header">
+                  <div class="pricing-card-title">
+                    <span data-i18n="calc_pricing_module_title">回收报价与收益返还</span>
+                  </div>
+                  <!-- Mode Switcher Tabs (Default: Total Oil) -->
+                  <div class="pricing-mode-tabs" role="tablist" aria-label="Pricing Calculation Basis">
+                    <button type="button" class="pricing-mode-tab active" id="btnModeTotalOil" data-mode="total" data-i18n="calc_mode_total_oil">
+                      按总用油量
+                    </button>
+                    <button type="button" class="pricing-mode-tab" id="btnModeUcoRate" data-mode="uco" data-i18n="calc_mode_uco_rate">
+                      按出油率 (75%)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Pricing Basis Hint -->
+                <div class="pricing-basis-hint" id="pricingBasisHint">
+                  当前测算口径：按总用油量
+                </div>
+
+                <!-- 2 Metrics: Suggested Price & Est. Monthly Rebate -->
+                <div class="pricing-metrics-row">
+                  <div class="pricing-metric-box">
+                    <div class="pricing-metric-label" data-i18n="calc_res_price_label">建议回收报价 (Price)</div>
+                    <div class="pricing-metric-val" id="resUcoPrice">$0.40 / L</div>
+                  </div>
+                  <div class="pricing-metric-box">
+                    <div class="pricing-metric-label" data-i18n="calc_res_income_label">预估月回收返还</div>
+                    <div class="pricing-metric-val" id="resUcoIncome">$0.00</div>
+                  </div>
+                </div>
+
+                <!-- GOI UCO Pricing Reference Table -->
+                <div class="uco-pricing-table-section">
+                  <div class="uco-pricing-header">
+                    <div class="uco-pricing-title">
+                      <span data-i18n="calc_pricing_ref_title">GOI UCO 报价参考标准</span>
+                    </div>
+                    <span class="uco-tier-pill" id="ucoCurrentTierPill">--</span>
+                  </div>
+                  <div class="uco-pricing-table-wrap">
+                    <table class="uco-pricing-table">
+                      <thead>
+                        <tr>
+                          <th data-i18n="calc_col_volume">Monthly UCO Volume</th>
+                          <th style="text-align: right;" data-i18n="calc_col_price">建议报价 Price</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr id="ucoTierRow0" data-tier="0">
+                          <td class="tier-vol-cell">&lt; 100 L / month</td>
+                          <td class="tier-price-cell">$0.25/L</td>
+                        </tr>
+                        <tr id="ucoTierRow1" data-tier="1">
+                          <td class="tier-vol-cell">100–200 L / month</td>
+                          <td class="tier-price-cell">$0.30/L</td>
+                        </tr>
+                        <tr id="ucoTierRow2" data-tier="2">
+                          <td class="tier-vol-cell">200–300 L / month</td>
+                          <td class="tier-price-cell">$0.35/L</td>
+                        </tr>
+                        <tr id="ucoTierRow3" data-tier="3">
+                          <td class="tier-vol-cell">300 L+ / month</td>
+                          <td class="tier-price-cell">$0.40/L or more</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Business Advice Box -->
+              <div class="business-advice-box">
+                <h4 data-i18n="calc_res_advice_title">回收方案：</h4>
+                <p id="resPickupAdvice">正在计算...</p>
+              </div>
+
+              <!-- Export / Copy Action -->
+              <div style="margin-top: 1.5rem;">
+                <button class="btn btn-primary" id="btnCopyQuote" style="background: #10b981; border: none; width: 100%; color: white;">
+                  <span data-i18n="btn_copy_oil_quote">复制测算结果</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- TAB 3: GREASE TRAP WORKBENCH -->
+        <section class="tab-view" id="tab-greasetrap">
+          <div class="calculator-grid">
+            
+            <!-- Left Panel: Grease Trap Config -->
+            <div class="card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--primary-dark);" data-i18n="trap_title">
+                  隔油池清洁配置 (Grease Trap)
+                </h3>
+                <span class="api-badge" id="trapTargetRestBadge" style="display: none; background: var(--primary-dark); color: white;" data-i18n="calc_linked_rest">
+                  关联餐馆
+                </span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.9rem; font-weight: 600;" data-i18n="trap_count_label">隔油池数量</label>
+                <div class="trap-count-selector" id="trapCountPills" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 1rem;">
+                  <button type="button" class="btn btn-secondary trap-count-btn active" data-count="1">1</button>
+                  <button type="button" class="btn btn-secondary trap-count-btn" data-count="2">2</button>
+                  <button type="button" class="btn btn-secondary trap-count-btn" data-count="3">3</button>
+                  <button type="button" class="btn btn-secondary trap-count-btn" data-count="4">4</button>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.9rem; font-weight: 600;" for="gtTrapSizeSelect" data-i18n="trap_size_label">
+                  单个隔油池容量规格 (主单位: 公制升数 / 括号: 加仑)
+                </label>
+                <select id="gtTrapSizeSelect" class="form-input" style="font-size: 0.95rem; padding: 0.6rem 0.75rem; width: 100%;">
+                  <!-- Populated via JS -->
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="font-size: 0.9rem; font-weight: 600;" for="gtCleanFrequency" data-i18n="trap_freq_label">
+                  建议清洗频率
+                </label>
+                <select id="gtCleanFrequency" class="form-input" style="font-size: 0.95rem; padding: 0.6rem 0.75rem; width: 100%;">
+                  <option value="1" selected data-i18n="trap_freq_1">每月清洗 1 次 (高频使用)</option>
+                  <option value="2" data-i18n="trap_freq_2">每 2 个月清洗 1 次 (标准中大型餐馆)</option>
+                  <option value="3" data-i18n="trap_freq_3">每季度清洗 1 次 (3个月 / 市政法定最低维保线)</option>
+                </select>
+              </div>
+
+              <div class="frequency-box" style="margin-top: 1.25rem;">
+                <div class="frequency-title">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  <span data-i18n="trap_compliance_title">市政环保排污合规说明</span>
+                </div>
+                <div style="font-size: 0.85rem; line-height: 1.5; color: var(--text-main);" data-i18n="trap_compliance_body">
+                  安省大多伦多各市镇（如多伦多 Bylaw 560、万锦与约克区 Sewer Use Bylaw）严格要求餐饮商户必须安装隔油池并定期由合规持牌服务商抽吸清洗。违规排废或油垢溢出将面临市政重罚及停业整顿。
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button class="btn btn-primary btn-lg" id="btnCalculateTrap" style="flex: 2;">
+                  <span data-i18n="btn_calc_trap_submit">计算清洁费用</span>
+                </button>
+                <button class="btn btn-secondary btn-lg" id="btnResetTrap" style="flex: 1;">
+                  <span data-i18n="btn_reset_trap">重置</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right Panel: Cleaning Price & Quote Card -->
+            <div class="calc-results-card">
+              <h3 data-i18n="trap_res_title">
+                隔油池清洁收费方案 (Ontario HST 13%)
+              </h3>
+
+              <!-- Big Metric: Total with Tax -->
+              <div class="metric-big">
+                <div class="metric-big-label" data-i18n="trap_res_total_label">单次清洁税后合计 (CAD)</div>
+                <div class="metric-big-val">
+                  <span id="gtResTotal">$113.00</span>
+                  <span class="metric-big-unit" data-i18n="trap_res_tax_badge">含 13% HST</span>
+                </div>
+              </div>
+
+              <!-- Sub Metrics Grid -->
+              <div class="metrics-subgrid">
+                <div class="sub-metric">
+                  <div class="sub-metric-label" data-i18n="trap_res_price_label">税前服务费</div>
+                  <div class="sub-metric-val" id="gtResPrice">$100.00</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label" data-i18n="trap_res_tax_label">安省税金 (13% HST)</div>
+                  <div class="sub-metric-val" id="gtResTax">$13.00</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label" data-i18n="trap_res_spec_label">当前选定规格</div>
+                  <div class="sub-metric-val" id="gtResSpecText" style="font-size: 1.05rem;">1 个 · 95 升 (25 加仑)</div>
+                </div>
+
+                <div class="sub-metric">
+                  <div class="sub-metric-label" data-i18n="trap_res_annual_label">预计年度维保支出</div>
+                  <div class="sub-metric-val" id="gtResAnnualTotal" style="font-size: 1.15rem; color: #34d399;">$1,356.00 / 年</div>
+                </div>
+              </div>
+
+              <!-- Service Details Box -->
+              <div class="business-advice-box">
+                <h4 data-i18n="trap_process_title">Green Oil 标准清洗工艺流程：</h4>
+                <p id="gtServiceDetails" style="font-size: 0.82rem; line-height: 1.5;" data-i18n-html="trap_process_body">
+                  1. 彻底抽吸截留浮油、悬浮物与底部沉淀油泥<br>
+                  2. 高压冲洗四壁并刮擦油脂硬垢<br>
+                  3. 进出水隔板与过滤网疏通检查与密封还原
+                </p>
+              </div>
+
+              <!-- Copy Quote Action -->
+              <div style="margin-top: 1.5rem;">
+                <button class="btn btn-primary" id="btnCopyTrapQuote" style="background: #10b981; border: none; width: 100%; color: white; font-size: 1rem; padding: 0.75rem;">
+                  <span data-i18n="btn_copy_trap_quote">复制隔油池清洁报价单</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      
+        <!-- TAB 3: EMBEDDED GOOGLE MAPS & DYNAMIC ROUTE PLANNER (3-COLUMN WORKBENCH) -->
+        <section class="tab-view active" id="tab-mapexplorer">
+          <!-- Topbar Search & Filter Ribbon -->
+          <div class="card map-explorer-toolbar-card" style="margin-bottom: 0.85rem; padding: 0.65rem 0.85rem;">
+            <div class="map-explorer-toolbar">
+              <!-- 1. Area Search Pill with Popover Panel -->
+              <div class="area-search-pill-container" id="areaSearchPillContainer">
+                <div class="area-search-pill-btn" id="areaSearchPillBtn" title="点击展开大区区划多选" data-i18n-title="map_area_pill_title">
+                  <div class="area-active-tags-summary" id="areaActiveTagsSummary">
+                    <span class="area-tag-pill active" data-i18n="popover_all_gta">全部大区 (All GTA)</span>
+                  </div>
+                  <span class="area-pill-chevron">▼</span>
+                </div>
+
+                <!-- Floating Popover Modal -->
+                <div class="area-popover-panel" id="areaPopoverPanel" style="display: none;">
+                  <div class="popover-search-input-wrap">
+                    <span class="popover-search-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </span>
+                    <input type="text" id="popoverSearchInput" class="popover-search-input" placeholder="输入城市或商圈社区名称过滤..." data-i18n-placeholder="popover_search_placeholder" />
+                  </div>
+
+                  <div class="popover-top-bar">
+                    <div class="popover-tags-row" id="popoverActiveTagsRow"></div>
+                    <button type="button" class="btn-clear-all" id="popoverClearAllBtn" data-i18n="popover_clear_all">Clear All</button>
+                  </div>
+
+                  <div class="popover-location-action" id="popoverCurrentLocationBtn">
+                    <span data-i18n="popover_reset_all_gta">重置为多伦多大区中心 (All GTA)</span>
+                  </div>
+
+                  <!-- Nearby Neighborhoods Section -->
+                  <div class="popover-section" id="popoverNearbySection" style="display: none;">
+                    <div class="popover-section-title" id="popoverNearbyTitle" data-i18n="popover_nearby_title">周边社区 (NEARBY NEIGHBORHOODS)</div>
+                    <div class="popover-pills-row" id="popoverNearbyPills"></div>
+                  </div>
+
+                  <!-- Cities Pills Section -->
+                  <div class="popover-section">
+                    <div class="popover-section-title" data-i18n="map_filter_city">大区城市 (CITIES)</div>
+                    <div class="popover-pills-row" id="popoverCityPills"></div>
+                  </div>
+
+                  <!-- Neighborhoods Pills Section -->
+                  <div class="popover-section" id="popoverNeighborhoodSection">
+                    <div class="popover-section-title" data-i18n="map_filter_neighborhood">细分社区 / 商圈 (NEIGHBORHOODS)</div>
+                    <div class="popover-pills-row" id="popoverNeighborhoodPills"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Category Dropdown Filter -->
+              <div class="toolbar-filter-item">
+                <select class="form-select toolbar-select" id="mapCategorySelect">
+                  <option value="全部" data-i18n="cat_all">全部品类 (All Food)</option>
+                  <option value="中式/台式炸物小吃" data-i18n="cat_chinese">中式/台式炸物</option>
+                  <option value="西式炸鸡/快餐/炸鸡翅" data-i18n="cat_western">西式炸鸡快餐</option>
+                  <option value="韩式炸鸡" data-i18n="cat_korean">韩式炸鸡</option>
+                  <option value="炸鱼薯条" data-i18n="cat_fish_chips">炸鱼薯条</option>
+                  <option value="日式炸物/炸猪排/天妇罗" data-i18n="cat_japanese">日式炸物</option>
+                  <option value="热狗棒/吉事果/甜甜圈" data-i18n="cat_sweets">热狗/甜甜圈</option>
+                </select>
+              </div>
+
+              <!-- 3. Search Keyword Input -->
+              <div class="toolbar-filter-item toolbar-search-wrap">
+                <input type="text" class="form-input toolbar-input" id="mapKeywordInput" placeholder="输入餐馆名或地址..." data-i18n-placeholder="map_search_placeholder" />
+                <button class="btn btn-primary btn-sm" id="mapBtnSearchGmap" title="搜索 Google Maps" data-i18n-title="btn_search">
+                  <span data-i18n="btn_search">搜索</span>
+                </button>
+              </div>
+
+              <!-- Hidden legacy selects for script compatibility -->
+              <select id="mapCitySelect" style="display: none;"><option value="all">All</option></select>
+              <select id="mapNeighborhoodSelect" style="display: none;"><option value="all">All</option></select>
+              <select id="mapStreetSelect" style="display: none;"><option value="all">All</option></select>
+            </div>
+          </div>
+
+          <!-- Google Maps API Notice Banner -->
+          <div id="mapApiNotice" style="display: none; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+              <div>
+                <div style="font-weight: 700; color: #b45309; font-size: 0.9rem; margin-bottom: 0.2rem;" data-i18n="map_alert_title">
+                  地图服务提示
+                </div>
+                <div style="font-size: 0.82rem; color: #78350f; line-height: 1.5;" data-i18n="map_alert_body">
+                  Google Maps 服务未激活，已自动切换至备用地图视图（路线规划与地点检索功能正常可用）。
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+                <a href="https://console.cloud.google.com/marketplace/product/google/maps-backend.googleapis.com" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; font-size: 0.8rem; text-decoration: none;" data-i18n="map_alert_btn">
+                  服务配置说明
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3-COLUMN WORKSPACE: LEFT (RESTAURANTS) | CENTER (MAP) | RIGHT (WAYPOINTS) -->
+          <div class="map-explorer-split">
+            
+            <!-- 1. LEFT COLUMN: Google Maps Restaurant Results (~340px) -->
+            <div class="map-explorer-left-column">
+              <div class="map-list-header">
+                <div>
+                  <h3 class="map-list-title" id="mapResultsRegionTitle" data-i18n="map_results_header">餐馆列表 (Google Maps)</h3>
+                  <div class="map-list-subtitle" id="mapResultsSummary"></div>
+                </div>
+                <div class="map-list-actions">
+                  <button class="btn btn-primary btn-sm" id="mapBtnAddAllToRoute" style="background: #2563eb; border-color: #2563eb; font-size: 0.78rem; padding: 0.25rem 0.6rem;" title="将当前列表全部加入途经点" data-i18n-title="btn_add_all_to_route">
+                    <span data-i18n="btn_add_all_to_route">+ 全部加入路线</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Scrollable Restaurant Cards Container -->
+              <div class="map-places-cards-container custom-scrollbar" id="mapPlacesCardsContainer">
+                <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);" data-i18n="map_loading_places">
+                  正在加载 Google Maps 餐馆数据...
+                </div>
+              </div>
+
+              <!-- List Pagination -->
+              <div class="map-list-pagination" id="mapPaginationWrap">
+                <div id="mapPaginationInfo" style="color: var(--text-muted); font-size: 0.8rem;"></div>
+                <div id="mapPaginationControls" style="display: flex; gap: 0.35rem;"></div>
+              </div>
+            </div>
+
+            <!-- 2. MIDDLE COLUMN: Interactive Google Map & Blue Route (Flex-1) -->
+            <div class="map-explorer-map-column">
+              <!-- Floating Route Status Ribbon (Top of Map) -->
+              <div class="map-floating-route-ribbon" id="mapFloatingRouteRibbon">
+                <div class="route-ribbon-left">
+                  <span class="route-ribbon-pulse"></span>
+                  <span class="route-ribbon-title" data-i18n="map_ribbon_title">动态路径规划</span>
+                  <span class="route-ribbon-divider">|</span>
+                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_stops">经停:</span> <b id="mapRouteStopsCount" style="color: #2563eb;">0</b> <span data-i18n="map_ribbon_stop_unit">站</span></span>
+                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_distance">总里程:</span> <b id="mapRouteDistance">0</b> km</span>
+                  <span class="route-ribbon-stat"><span data-i18n="map_ribbon_duration">预估耗时:</span> <b id="mapRouteTime">0</b> <span data-i18n="map_ribbon_min_unit">分钟</span></span>
+                </div>
+                <div class="route-ribbon-actions">
+                  <button type="button" class="btn btn-secondary btn-sm route-ribbon-btn" id="mapBtnFitRoute" title="居中展示全路线视野" data-i18n-title="map_btn_fit_route" data-i18n="map_btn_fit_route">
+                    居中全景
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm route-ribbon-btn" id="mapBtnToggleRoute" style="background: #2563eb; border-color: #2563eb;">
+                    <span id="mapRouteToggleLabel" data-i18n="map_route_planning">规划中</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Floating Search In Current Viewport Button -->
+              <button type="button" id="mapSearchThisAreaBtn" class="map-search-this-area-btn" onclick="window.mapExplorerSearchThisArea();" style="display:none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <span data-i18n="btn_search_this_area">在当前地图视野内找店</span>
+              </button>
+
+              <!-- Map Canvas -->
+              <div id="mapExplorerCanvas" class="map-explorer-canvas"></div>
+
+              <!-- Map Legend -->
+              <div class="map-floating-legend">
+                <span class="legend-item"><span class="legend-dot start-point">HQ</span> <span data-i18n="map_legend_hq">起点</span></span>
+                <span class="legend-item"><span class="legend-dot route-point">1</span> <span data-i18n="map_legend_waypoint">途经点</span></span>
+                <span class="legend-item"><span class="legend-dot search-point"></span> <span data-i18n="map_legend_candidate">候选餐馆</span></span>
+              </div>
+            </div>
+
+            <!-- 3. RIGHT COLUMN: Waypoints Management & Route Schedule (~340px) -->
+            <div class="map-explorer-right-column">
+              <div class="map-waypoints-header">
+                <div class="waypoints-header-top">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2563eb;"></span>
+                    <h3 class="waypoints-title" data-i18n="fs_route_waypoints_title">途经站点清单</h3>
+                    <span class="waypoints-count-badge" id="mapWaypointsBadge">0</span>
+                  </div>
+                  <button type="button" class="btn-clear-waypoints" id="mapBtnClearRoute" title="清空所有经停点" data-i18n-title="btn_clear_waypoints" data-i18n="btn_clear_waypoints">
+                    清空路线
+                  </button>
+                </div>
+
+                <!-- Starting Point Selector Box -->
+                <div class="waypoints-origin-box">
+                  <div class="origin-label-row">
+                    <span class="origin-label" data-i18n="route_origin_label">起点</span>
+                    <span class="origin-tag">Green Oil HQ</span>
+                  </div>
+                  <div class="origin-address-row">
+                    <input type="text" id="mapRouteOriginInput" class="form-input origin-input" value="Green Oil Inc, 888 Progress Ave, Scarborough, ON" placeholder="输入或修改起点地址..." data-i18n-placeholder="route_origin_placeholder" />
+                  </div>
+                </div>
+
+                <!-- Action Toolbar: Route Optimize & Export -->
+                <div class="waypoints-toolbar">
+                  <button type="button" class="btn btn-primary btn-sm btn-optimize" id="mapBtnOptimizeRoute" title="优化经停路线顺序" data-i18n-title="btn_optimize_route" data-i18n="btn_optimize_route">
+                    路线优化
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm btn-export" id="mapBtnExportWaypoints" title="导出当前调整后顺序的Excel/CSV清单" data-i18n-title="btn_export_waypoints" data-i18n="btn_export_waypoints">
+                    导出清单
+                  </button>
+                </div>
+
+                <div class="waypoints-drag-tip">
+                  <span data-i18n="waypoints_drag_tip">拖拽调整途经点顺序，路线实时更新</span>
+                </div>
+              </div>
+
+              <!-- Scrollable Drag-and-Drop Waypoints List -->
+              <div class="map-waypoints-container custom-scrollbar" id="mapWaypointsCardsContainer">
+                <!-- Rendered dynamically -->
+              </div>
+
+              <!-- Right Footer: External Google Maps Navigation -->
+              <div class="map-waypoints-footer">
+                <button type="button" class="btn btn-primary btn-nav-google" id="mapBtnExternalNav">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                  <span data-i18n="btn_launch_google_nav">在 Google 地图开启导航</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- RESTAURANT DETAIL MODAL -->
+  <div class="modal-overlay" id="detailModalOverlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modalRestName" data-i18n="modal_title">餐馆详情</h3>
+        <button class="modal-close-btn" id="detailModalClose" aria-label="关闭">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-rest-image-wrap" id="modalRestImageWrap">
+          <img id="modalRestImage" src="" alt="Restaurant photo" />
+          <span class="modal-rest-badge" id="modalRestImageBadge"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2v20M21 2v6a3 3 0 0 1-3 3M6 2v10M9 2v10M3 2v10a3 3 0 0 0 3 3v7M6 15v7"/></svg></span>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <span class="status-badge status-open" id="modalRestStatus" data-i18n="status_open">营业中</span>
+          <span class="price-tag" id="modalRestPrice">$$</span>
+          <span class="api-badge" id="modalRestRegion">-</span>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_cat">分类</div>
+          <div class="detail-value" id="modalRestCategory" style="color: var(--primary); font-weight: 600;">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_hub">所属商圈/商场</div>
+          <div class="detail-value" id="modalRestHub" style="color: #6366f1; font-weight: 600;">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_rating">评分与评价</div>
+          <div class="detail-value" id="modalRestRating">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_address">地址</div>
+          <div class="detail-value" id="modalRestAddress">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_phone">电话</div>
+          <div class="detail-value" id="modalRestPhone">-</div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_hours">营业时间</div>
+          <pre class="detail-hours-pre" id="modalRestHours">-</pre>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_keywords">关键词与类型</div>
+          <div class="detail-value">
+            <span id="modalRestType">-</span> | <span id="modalRestKeywords">-</span>
+          </div>
+        </div>
+
+        <div class="detail-field-group">
+          <div class="detail-label" data-i18n="modal_place_id">Place ID 与坐标</div>
+          <div class="detail-value" style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">
+            <span id="modalRestPlaceId">-</span><br>
+            <span id="modalRestCoordinates">-</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modalBtnPhone" style="display: none;">
+          <span data-i18n="btn_modal_call">拨打电话</span>
+        </a>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modalBtnWebsite" style="display: none;">
+          <span data-i18n="btn_modal_website">官网</span>
+        </a>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modalBtnMaps">
+          <span data-i18n="btn_modal_maps">Google 地图</span>
+        </a>
+        <button class="btn btn-primary btn-sm" id="btnModalAddToRoute" style="background: #2563eb; color: white; border: none;">
+          <span data-i18n="btn_add_to_route">加入路线</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN OVERLAY -->
+  <div class="modal-overlay" id="loginOverlay">
+    <div class="login-box">
+      <div class="login-icon">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13C4 8.5 7.5 4 13 4c2.5 0 5 1 7 3-1 3.5-3 5.5-6 6.5-1.5.5-3 0-3 0"></path><path d="M11 20c1.5-3 3-5 6-6.5"></path></svg>
+      </div>
+      <h2 class="login-title" data-i18n="login_title">Green Oil 工作台</h2>
+
+      <div class="login-alert" id="loginAlert" data-i18n="login_error">账号或密码错误</div>
+
+      <form class="login-form" id="loginForm" style="margin-top: 1.25rem;">
+        <div class="form-group">
+          <label class="form-label" for="loginUsername" data-i18n="login_username_label">账号</label>
+          <input type="text" class="form-input" id="loginUsername" required autocomplete="username" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginPassword" data-i18n="login_password_label">密码</label>
+          <input type="password" class="form-input" id="loginPassword" required autocomplete="current-password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.85rem; margin-top: 0.5rem;">
+          <span data-i18n="login_submit">登录</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ROUTE MULTI-STOP NAVIGATION MODAL -->
+  <div class="modal-overlay" id="fsRouteNavModalOverlay">
+    <div class="modal-card fs-modal-card" style="max-width: 640px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="fsRouteNavModalTitle" data-i18n="fs_route_nav_modal_title">路线导航方案</h3>
+        <button class="modal-close-btn" id="fsRouteNavModalClose" aria-label="关闭">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem;">
+        <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.85rem; color: #1e40af; margin-bottom: 1rem; line-height: 1.5;">
+          <div style="font-weight: 600; margin-bottom: 0.25rem;"><span data-i18n="nav_hint_title">导航说明</span></div>
+          <div id="fsRouteNavModalTip" data-i18n="fs_route_nav_modal_tip">
+            当前路线包含较多经停点。建议移动端采用分段导航；桌面端或车载终端可直接查看完整路线。
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.25rem;">
+          <button class="btn btn-primary" id="fsRouteNavBtnFull" style="flex: 1; min-width: 200px; background: #2563eb; border-color: #2563eb; font-size: 0.88rem; padding: 0.6rem 0.8rem; font-weight: 600;">
+            <span data-i18n="fs_route_nav_btn_full">打开完整路线 (网页/车载)</span>
+          </button>
+          <button class="btn btn-outline" id="fsRouteNavBtnOpenAll" style="flex: 1; min-width: 180px; font-size: 0.88rem; padding: 0.6rem 0.8rem; font-weight: 600; color: #0f766e; border-color: #99f6e4; background: #f0fdfa;">
+            <span data-i18n="fs_route_nav_btn_open_all">在新标签页打开所有分段</span>
+          </button>
+        </div>
+
+        <div style="font-size: 0.9rem; font-weight: 700; color: #1e293b; margin-bottom: 0.6rem;">
+          <span data-i18n="fs_route_nav_segments_title">分段路线列表</span>
+        </div>
+
+        <div id="fsRouteNavLegsList" style="display: flex; flex-direction: column; gap: 0.65rem; max-height: 360px; overflow-y: auto; padding-right: 4px;">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 0.75rem 1.25rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end;">
+        <button class="btn btn-outline" id="fsRouteNavModalBtnCancel" data-i18n="btn_close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Entry Scripts -->
+  <script type="module" src="assets/js/app.js?v=20260918_v15"></script>
+</body>
+</html>
