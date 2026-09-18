@@ -10,7 +10,7 @@
  */
 
 import { displayGeometry } from "./map-geometry.js";
-import { Api } from "./api.js?v=20260918_v10";
+import { Api } from "./api.js?v=20260918_v11";
 import { i18n } from "./i18n.js";
 import { BusinessHours } from "./business-hours.js";
 
@@ -765,7 +765,9 @@ export const MapExplorer = {
 
       return `
         <div class="map-waypoint-card" draggable="true" data-index="${index}" data-key="${this.escapeHtml(key)}" onclick="window.mapExplorerWaypointClick('${this.escapeQuotes(key)}', ${index});">
-          <div class="waypoint-drag-handle" title="${this.escapeHtml(i18n.t("waypoints_drag_tip"))}">⋮⋮</div>
+          <div class="waypoint-drag-handle" title="${this.escapeHtml(i18n.t("waypoints_drag_handle_tip") || "拖拽排序")}">
+            <svg width="10" height="14" viewBox="0 0 10 14" fill="#94a3b8"><circle cx="3" cy="2.5" r="1.3"/><circle cx="7" cy="2.5" r="1.3"/><circle cx="3" cy="7" r="1.3"/><circle cx="7" cy="7" r="1.3"/><circle cx="3" cy="11.5" r="1.3"/><circle cx="7" cy="11.5" r="1.3"/></svg>
+          </div>
           <div class="waypoint-seq-badge">${index + 1}</div>
           <div class="waypoint-card-body">
             <div class="waypoint-card-header">
@@ -781,8 +783,8 @@ export const MapExplorer = {
           <div class="waypoint-card-actions">
             <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, -1);" ${index === 0 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_up"))}">↑</button>
             <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, 1);" ${index === list.length - 1 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_down"))}">↓</button>
-            <button type="button" class="btn-wp-action btn-wp-nav" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(w.name)}', '${this.escapeQuotes(w.address)}');" title="${this.escapeHtml(i18n.t("fs_btn_nav_title"))}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg></button>
-            <button type="button" class="btn-wp-action btn-wp-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveWaypoint(${index});" title="${this.escapeHtml(i18n.t("btn_remove_stop"))}">&times;</button>
+            <button type="button" class="btn-wp-action btn-wp-nav" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(w.name)}', '${this.escapeQuotes(w.address)}');" title="${this.escapeHtml(i18n.t("fs_btn_nav_title"))}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg></button>
+            <button type="button" class="btn-wp-action btn-wp-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveWaypoint(${index});" title="${this.escapeHtml(i18n.t("btn_remove_stop"))}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
           </div>
         </div>
       `;
