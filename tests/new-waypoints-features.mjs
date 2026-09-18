@@ -260,5 +260,11 @@ assert.equal(mockRightCol.classList.contains('is-expanded'), true, 'Panel is exp
 assert.equal(mockRightCol.classList.toggle('is-expanded'), false, 'Clicking again removes is-expanded');
 assert.equal(mockRightCol.classList.contains('is-expanded'), false, 'Panel is collapsed');
 
+// 4. Verify expanded layout uses list rows (flex column) and not card grid
+const cssContent = fs.readFileSync(new URL('../assets/css/app.css', import.meta.url), 'utf8');
+assert.ok(!cssContent.includes('.map-explorer-right-column.is-expanded .map-waypoints-container {\n  display: grid;'), 'Expanded waypoints must not be a grid');
+assert.ok(cssContent.includes('.map-explorer-right-column.is-expanded .map-waypoints-container {\n  display: flex;\n  flex-direction: column;'), 'Expanded waypoints must be a list');
+
 console.log('🎉 ALL 7 FEATURE TESTS PASSED SUCCESSFULLY!');
+
 
