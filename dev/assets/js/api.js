@@ -17,7 +17,7 @@ export const Api = {
   },
 
   getAuthHeaders() {
-    const token = localStorage.getItem("greenoil_session_token") || "";
+    const token = (typeof localStorage !== "undefined" ? localStorage.getItem("greenoil_session_token") : "") || "";
     return {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json"
@@ -39,7 +39,7 @@ export const Api = {
     sort = "rating"
   }) {
     const workerUrl = this.getWorkerUrl();
-    const token = localStorage.getItem("greenoil_session_token") || "";
+    const token = (typeof localStorage !== "undefined" ? localStorage.getItem("greenoil_session_token") : "") || "";
 
     const url = new URL(`${workerUrl}/api/restaurants`);
     url.searchParams.set("page", page);
@@ -159,7 +159,7 @@ export const Api = {
    */
   async getHubs() {
     const workerUrl = this.getWorkerUrl();
-    const token = localStorage.getItem("greenoil_session_token") || "";
+    const token = (typeof localStorage !== "undefined" ? localStorage.getItem("greenoil_session_token") : "") || "";
     try {
       const resp = await fetch(`${workerUrl}/api/hubs`, {
         method: "GET",

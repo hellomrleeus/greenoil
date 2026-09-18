@@ -176,9 +176,17 @@ export const MapExplorer = {
         activeCityIds: Array.from(this.activeCityIds),
         activeNeighborhoodIds: Array.from(this.activeNeighborhoodIds),
         activeCategory: this.activeCategory,
+        activeVisited: this.activeVisited,
+        activeOutcome: this.activeOutcome,
         searchKeyword: this.searchKeyword
       };
-      sessionStorage.setItem("greenoil_map_filter_state_v2", JSON.stringify(state));
+      const json = JSON.stringify(state);
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem("greenoil_map_filter_state", json);
+      }
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem("greenoil_map_filter_state_v2", json);
+      }
     } catch (e) {
       console.warn("Failed to save map filter state:", e);
     }
@@ -186,7 +194,13 @@ export const MapExplorer = {
 
   restoreFilterState() {
     try {
-      const saved = sessionStorage.getItem("greenoil_map_filter_state_v2");
+      let saved = null;
+      if (typeof sessionStorage !== "undefined") {
+        saved = sessionStorage.getItem("greenoil_map_filter_state_v2");
+      }
+      if (!saved && typeof localStorage !== "undefined") {
+        saved = localStorage.getItem("greenoil_map_filter_state");
+      }
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed.activeCityIds)) {
@@ -196,16 +210,27 @@ export const MapExplorer = {
           this.activeNeighborhoodIds = new Set(parsed.activeNeighborhoodIds);
         }
         if (parsed.activeCategory) this.activeCategory = parsed.activeCategory;
+        if (parsed.activeVisited) this.activeVisited = parsed.activeVisited;
+        if (parsed.activeOutcome) this.activeOutcome = parsed.activeOutcome;
         if (typeof parsed.searchKeyword === "string") this.searchKeyword = parsed.searchKeyword;
+        return true;
       }
+      return false;
     } catch (e) {
       console.warn("Failed to restore map filter state:", e);
+      return false;
     }
   },
 
   syncFilterControlsFromState() {
     const catSelect = document.getElementById("mapCategorySelect");
     if (catSelect && this.activeCategory) catSelect.value = this.activeCategory;
+
+    const visitedSelect = document.getElementById("mapVisitedSelect");
+    if (visitedSelect && this.activeVisited) visitedSelect.value = this.activeVisited;
+
+    const outcomeSelect = document.getElementById("mapOutcomeSelect");
+    if (outcomeSelect && this.activeOutcome) outcomeSelect.value = this.activeOutcome;
 
     const keywordInput = document.getElementById("mapKeywordInput");
     if (keywordInput && this.searchKeyword) keywordInput.value = this.searchKeyword;
@@ -2363,6 +2388,59 @@ export const MapExplorer = {
     }
   },
 
+  mergeAreaPlaces() {
+    const rawPlaces = this.googleAreaPlaces || [];
+    const localMatches = this.allRestaurants || [];
+
+    const combinedMap = new Map();
+    rawPlaces.forEach(p => {
+      const key = p.placeId || p.name;
+      combinedMap.set(key, p);
+    });
+
+    localMatches.forEach(r => {
+      const key = r.placeId || r.name;
+      if (!combinedMap.has(key)) {
+        combinedMap.set(key, r);
+      }
+    });
+
+    const kvByPlaceId = new Map();
+    const kvByName = new Map();
+    (this.allRestaurants || []).forEach(r => {
+      if (r.placeId) kvByPlaceId.set(r.placeId, r);
+      if (r.name) kvByName.set(r.name.trim().toLowerCase(), r);
+    });
+
+    this.displayedPlaces = Array.from(combinedMap.values()).map(place => {
+      const inKV = this.checkIsInKv ? this.checkIsInKv(place) : (place.inKV || false);
+      place.inKV = inKV;
+
+      const normName = (place.name || "").trim().toLowerCase();
+      const matchedKv = (place.placeId && kvByPlaceId.get(place.placeId)) || 
+                        (normName && kvByName.get(normName));
+
+      if (matchedKv) {
+        if (matchedKv.name && matchedKv.name !== place.name) {
+          if (!place.nameEn) place.nameEn = place.name;
+          place.name = matchedKv.name;
+          if (place._raw) place._raw["餐馆名称 (Name)"] = matchedKv.name;
+        }
+        place.isVisited = matchedKv.isVisited || false;
+        place.lastOutcome = matchedKv.lastOutcome || "";
+        place.lastVisitTime = matchedKv.lastVisitTime || "";
+      } else {
+        place.isVisited = place.isVisited || false;
+        place.lastOutcome = place.lastOutcome || "";
+        place.lastVisitTime = place.lastVisitTime || "";
+      }
+
+      return place;
+    });
+
+    this.filterAndRenderPlaces(true);
+  },
+
   filterAndRenderPlaces(preservePage = false) {
     const selectedSubareas = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
     const selectedAreas = selectedSubareas.length > 0 ? selectedSubareas :
@@ -2392,6 +2470,16 @@ export const MapExplorer = {
 
     this.filteredPlaces = result;
     this.currentPage = preservePage ? Math.min(this.currentPage, Math.ceil(result.length / this.pageSize) || 1) : 1;
+
+    // Prune selections that no longer match current filtered results
+    if (this.selectedMap && typeof this.selectedMap.keys === "function") {
+      const validKeys = new Set(result.map(r => r.placeId || r.name));
+      for (const key of this.selectedMap.keys()) {
+        if (!validKeys.has(key)) {
+          this.selectedMap.delete(key);
+        }
+      }
+    }
 
     this.updateResultsSummary();
     this.renderMarkers();
@@ -3084,7 +3172,7 @@ export const MapExplorer = {
     }
 
     // 2. Modern google.maps.places.Place fallback
-    if (!restaurant && window.google?.maps?.places?.Place) {
+    if (!restaurant && typeof window !== "undefined" && window.google?.maps?.places?.Place) {
       try {
         const place = new google.maps.places.Place({ id: placeId });
         await place.fetchFields({
@@ -3410,16 +3498,14 @@ export const MapExplorer = {
   },
 
   extractGooglePolygonPaths(geometry) {
-    if (!geometry) return [];
+    if (!geometry || !geometry.coordinates) return [];
     if (geometry.type === "Polygon") {
-      return geometry.coordinates.map(ring => ring.map(([lng, lat]) => ({ lat, lng })));
+      return [geometry.coordinates.map(ring => ring.map(([lng, lat]) => ({ lat, lng })))];
     }
     if (geometry.type === "MultiPolygon") {
-      const paths = [];
-      geometry.coordinates.forEach(polygon => {
-        polygon.forEach(ring => paths.push(ring.map(([lng, lat]) => ({ lat, lng }))));
-      });
-      return paths;
+      return geometry.coordinates.map(polygon =>
+        polygon.map(ring => ring.map(([lng, lat]) => ({ lat, lng })))
+      );
     }
     return [];
   },
@@ -3438,38 +3524,49 @@ export const MapExplorer = {
     selectedAreas.forEach(area => {
       if (!area.geometry) return;
       if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
-        const paths = this.extractGooglePolygonPaths(area.geometry);
-        if (paths.length === 0) return;
-        const polygon = new google.maps.Polygon({
-          paths,
-          strokeColor: "#2563eb",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: "#3b82f6",
-          fillOpacity: 0.08,
-          map: this.googleMap,
-          zIndex: 5
+        const polygonRingsList = this.extractGooglePolygonPaths(area.geometry);
+        polygonRingsList.forEach((polyRings, idx) => {
+          if (!polyRings || polyRings.length === 0) return;
+          const polygon = new google.maps.Polygon({
+            clickable: false,
+            paths: polyRings,
+            strokeColor: "#16a34a",
+            strokeOpacity: 0.85,
+            strokeWeight: 2,
+            fillColor: "#22c55e",
+            fillOpacity: 0.12,
+            map: this.googleMap,
+            zIndex: 10
+          });
+          this.polygonsMap.set(`${area.id}_${idx}`, polygon);
         });
-        this.polygonsMap.set(area.id, polygon);
       } else if (this.fallbackMap && window.L) {
-        const layer = L.geoJSON(area.geometry, {
-          style: {
-            color: "#2563eb",
-            weight: 2,
-            opacity: 0.8,
-            fillColor: "#3b82f6",
-            fillOpacity: 0.08
-          }
-        }).addTo(this.fallbackMap);
-        this.polygonsMap.set(area.id, layer);
+        try {
+          const layer = L.geoJSON(area.geometry, {
+            style: {
+              color: "#16a34a",
+              weight: 2,
+              opacity: 0.85,
+              fillColor: "#22c55e",
+              fillOpacity: 0.12
+            }
+          }).addTo(this.fallbackMap);
+          this.polygonsMap.set(area.id, layer);
+        } catch (e) {
+          console.warn("Fallback boundary render error:", e);
+        }
       }
     });
   },
 
   isPlaceInGeometry(place, geometry) {
-    const lat = Number(place.latitude ?? place.lat);
-    const lng = Number(place.longitude ?? place.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+    if (!place) return false;
+    const latitude = place.latitude ?? place.lat;
+    const longitude = place.longitude ?? place.lng;
+    if (latitude == null || longitude == null || String(latitude).trim() === "" || String(longitude).trim() === "") return false;
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return false;
 
     const polygons = geometry?.type === "Polygon" ? [geometry.coordinates] :
       geometry?.type === "MultiPolygon" ? geometry.coordinates : [];
@@ -3500,22 +3597,176 @@ export const MapExplorer = {
   // Neighborhoods & Area Popover
   // -------------------------------------------------------------
   getAllNeighborhoods() {
-    const nbs = [];
     if (this.neighbourhoodsGeoJson && Array.isArray(this.neighbourhoodsGeoJson.features)) {
-      this.neighbourhoodsGeoJson.features.forEach(ft => {
+      return this.neighbourhoodsGeoJson.features.map(ft => {
         const props = ft.properties || {};
-        nbs.push({
+        const cityId = ft.cityId || props.cityId || props.CITY || "toronto";
+        const cityName = ft.cityName || props.cityName || props.CITY || "Toronto";
+        return {
           id: ft.id || props.AREA_ID || props.AREA_SHORT_CODE || ft.code,
-          name: props.AREA_NAME || props.NAME || ft.id,
-          nameZh: props.AREA_NAME_ZH || props.NAME_ZH || props.AREA_NAME || props.NAME || ft.id,
-          nameEn: props.AREA_NAME_EN || props.NAME_EN || props.AREA_NAME || props.NAME || ft.id,
-          cityName: props.CITY || "Toronto",
+          code: ft.code || props.AREA_SHORT_CODE || props.AREA_ID,
+          name: ft.name || props.AREA_NAME || props.NAME || ft.id,
+          nameZh: ft.nameZh || props.AREA_NAME_ZH || props.NAME_ZH || ft.name || props.AREA_NAME || props.NAME || ft.id,
+          nameEn: ft.nameEn || props.AREA_NAME_EN || props.NAME_EN || ft.name || props.AREA_NAME || props.NAME || ft.id,
+          nameKo: ft.nameKo || props.AREA_NAME_KO || props.NAME_KO || ft.name || props.AREA_NAME || props.NAME || ft.id,
+          boundaryType: ft.boundaryType || props.boundaryType || "neighbourhood",
+          cityId: cityId,
+          cityName: cityName,
+          cityNameZh: ft.cityNameZh || props.cityNameZh,
+          cityNameKo: ft.cityNameKo || props.cityNameKo,
+          center: ft.center,
+          bbox: ft.bbox,
           geometry: ft.geometry,
-          bbox: ft.bbox
-        });
+          neighbors: ft.neighbors || [],
+          parentCityId: cityId,
+          parentCityName: cityName
+        };
       });
     }
-    return nbs;
+    const list = [];
+    GTA_COMMUNITIES.forEach(c => {
+      if (Array.isArray(c.neighborhoods)) {
+        c.neighborhoods.forEach(nb => {
+          list.push({ ...nb, parentCityId: c.id, parentCityName: c.name });
+        });
+      }
+    });
+    return list;
+  },
+
+  getNeighborhoodById(nbId) {
+    if (this.neighbourhoodsMap && this.neighbourhoodsMap.has(nbId)) {
+      const ft = this.neighbourhoodsMap.get(nbId);
+      const props = ft.properties || {};
+      const cityId = ft.cityId || props.cityId || props.CITY || "toronto";
+      const cityName = ft.cityName || props.cityName || props.CITY || "Toronto";
+      return {
+        id: ft.id || props.AREA_ID || props.AREA_SHORT_CODE || ft.code,
+        code: ft.code || props.AREA_SHORT_CODE || props.AREA_ID,
+        name: ft.name || props.AREA_NAME || props.NAME || ft.id,
+        nameZh: ft.nameZh || props.AREA_NAME_ZH || props.NAME_ZH || ft.name || props.AREA_NAME || props.NAME || ft.id,
+        nameEn: ft.nameEn || props.AREA_NAME_EN || props.NAME_EN || ft.name || props.AREA_NAME || props.NAME || ft.id,
+        nameKo: ft.nameKo || props.AREA_NAME_KO || props.NAME_KO || ft.name || props.AREA_NAME || props.NAME || ft.id,
+        boundaryType: ft.boundaryType || props.boundaryType || "neighbourhood",
+        cityId: cityId,
+        cityName: cityName,
+        cityNameZh: ft.cityNameZh || props.cityNameZh,
+        cityNameKo: ft.cityNameKo || props.cityNameKo,
+        center: ft.center,
+        bbox: ft.bbox,
+        geometry: ft.geometry,
+        neighbors: ft.neighbors || [],
+        parentCityId: cityId,
+        parentCityName: cityName
+      };
+    }
+    for (const c of GTA_COMMUNITIES) {
+      if (Array.isArray(c.neighborhoods)) {
+        const found = c.neighborhoods.find(n => n.id === nbId);
+        if (found) return { ...found, parentCityId: c.id, parentCityName: c.name };
+      }
+    }
+    return null;
+  },
+
+  findWardAtCoordinate(lat, lng) {
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+    const wards = this.getAllNeighborhoods().filter(area => area.boundaryType === "ward");
+    if (wards.length === 0) return null;
+
+    const byId = new Map(wards.map(ward => [ward.id, ward]));
+    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    const nearbyIds = [];
+    selectedNbs.forEach(area => (area.neighbors || []).forEach(id => {
+      if (!nearbyIds.includes(id)) nearbyIds.push(id);
+    }));
+    const selectedCityIds = this.activeCityIds.has("all")
+      ? []
+      : Array.from(this.activeCityIds);
+    selectedCityIds.forEach(cityId => wards.filter(ward => ward.parentCityId === cityId).forEach(ward => {
+      if (!nearbyIds.includes(ward.id)) nearbyIds.push(ward.id);
+    }));
+
+    const inBbox = ward => {
+      const box = ward.bbox;
+      return !Array.isArray(box) || box.length !== 4 ||
+        (longitude >= Number(box[0]) && longitude <= Number(box[2]) &&
+         latitude >= Number(box[1]) && latitude <= Number(box[3]));
+    };
+    const contains = ward => inBbox(ward) && this.isPlaceInGeometry({ lat: latitude, lng: longitude }, ward.geometry);
+
+    for (const id of nearbyIds) {
+      const ward = byId.get(id);
+      if (ward && contains(ward)) return { ward, source: "nearby" };
+    }
+    for (const ward of wards) {
+      if (nearbyIds.includes(ward.id)) continue;
+      if (contains(ward)) return { ward, source: "global" };
+    }
+    return null;
+  },
+
+  findNeighborhoodAtCoordinate(lat, lng) {
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+
+    const neighborhoods = this.getAllNeighborhoods().filter(area => area.boundaryType !== "ward");
+    if (neighborhoods.length === 0) return null;
+    const byId = new Map(neighborhoods.map(area => [area.id, area]));
+    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    const nearbyIds = [];
+    selectedNbs.forEach(area => (area.neighbors || []).forEach(id => {
+      if (byId.has(id) && !nearbyIds.includes(id)) nearbyIds.push(id);
+    }));
+    const selectedCityIds = this.activeCityIds.has("all") ? [] : Array.from(this.activeCityIds);
+    selectedCityIds.forEach(cityId => neighborhoods.filter(area => area.parentCityId === cityId).forEach(area => {
+      if (!nearbyIds.includes(area.id)) nearbyIds.push(area.id);
+    }));
+
+    const contains = area => this.isPointInBbox({ lat: latitude, lng: longitude }, area.bbox) &&
+      this.isPlaceInGeometry({ lat: latitude, lng: longitude }, area.geometry);
+    for (const id of nearbyIds) {
+      const area = byId.get(id);
+      if (area && contains(area)) return { area, source: "nearby", kind: "neighborhood" };
+    }
+    for (const area of neighborhoods) {
+      if (nearbyIds.includes(area.id)) continue;
+      if (contains(area)) return { area, source: "global", kind: "neighborhood" };
+    }
+    return null;
+  },
+
+  findAdministrativeAreaAtCoordinate(lat, lng) {
+    const wardMatch = this.findWardAtCoordinate(lat, lng);
+    if (wardMatch?.ward) return { area: wardMatch.ward, source: wardMatch.source, kind: "ward" };
+    return this.findNeighborhoodAtCoordinate(lat, lng);
+  },
+
+  isCoordinateInsideSelectedArea(lat, lng) {
+    const point = { lat: Number(lat), lng: Number(lng) };
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) return false;
+    const selectedNbs = this.getAllNeighborhoods().filter(area => this.activeNeighborhoodIds.has(area.id));
+    if (selectedNbs.length > 0) return selectedNbs.some(area =>
+      this.isPlaceInGeometry(point, area.geometry) || this.isPointInBbox(point, area.bbox));
+
+    const selectedCities = GTA_COMMUNITIES.filter(city => city.id !== "all" && this.activeCityIds.has(city.id));
+    if (selectedCities.length > 0) return selectedCities.some(city =>
+      this.isPlaceInGeometry(point, city.geometry) || this.isPointInBbox(point, city.bbox));
+
+    const allGta = GTA_COMMUNITIES.find(city => city.id === "all");
+    return this.isPointInBbox(point, allGta?.bbox) ||
+      GTA_COMMUNITIES.filter(city => city.id !== "all").some(city => this.isPlaceInGeometry(point, city.geometry));
+  },
+
+  isPointInBbox(point, bbox) {
+    if (!point || !Array.isArray(bbox) || bbox.length !== 4) return false;
+    const [west, south, east, north] = bbox.map(Number);
+    return Number.isFinite(west) && Number.isFinite(south) && Number.isFinite(east) && Number.isFinite(north) &&
+      point.lng >= west && point.lng <= east && point.lat >= south && point.lat <= north;
   },
 
   togglePopover(forceState) {
@@ -3579,78 +3830,152 @@ export const MapExplorer = {
   },
 
   renderPopover() {
+    const lang = this.getCurrentLanguage();
     const cityContainer = document.getElementById("popoverCityPills");
     const nbContainer = document.getElementById("popoverNeighborhoodPills");
+    const nbSection = document.getElementById("popoverNeighborhoodSection");
     const activeTagsRow = document.getElementById("popoverActiveTagsRow");
     const search = (this.popoverSearchQuery || "").toLowerCase();
 
+    const allNbs = this.getAllNeighborhoods();
+    const isAll = this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0;
+    const selectedCities = GTA_COMMUNITIES.filter(c => c.id !== "all" && this.activeCityIds.has(c.id));
+    const selectedNbs = allNbs.filter(nb => this.activeNeighborhoodIds.has(nb.id));
+
+    // 1. Active Tags Row
     if (activeTagsRow) {
       const activeTags = [];
-      const allNbs = this.getAllNeighborhoods();
-
-      if (this.activeCityIds.has("all") && this.activeNeighborhoodIds.size === 0) {
-        activeTags.push(`<span class="popover-tag-item active">${this.getLocalizedAllGta()}</span>`);
+      if (isAll || (selectedCities.length === 0 && selectedNbs.length === 0)) {
+        activeTags.push(`<span class="popover-tag-item active">${this.escapeHtml(this.getLocalizedAllGta())}</span>`);
       } else {
-        this.activeCityIds.forEach(id => {
-          const city = GTA_COMMUNITIES.find(c => c.id === id);
-          if (city) {
-            activeTags.push(`
-              <span class="popover-tag-item">
-                ${this.getLocalizedName(city)}
-                <span class="popover-tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveCity('${city.id}')">&times;</span>
-              </span>
-            `);
-          }
+        selectedCities.forEach(city => {
+          activeTags.push(`
+            <span class="popover-tag-item">
+              ${this.escapeHtml(this.getLocalizedName(city))}
+              <span class="popover-tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveCity('${city.id}')">&times;</span>
+            </span>
+          `);
         });
 
-        this.activeNeighborhoodIds.forEach(id => {
-          const nb = allNbs.find(n => n.id === id);
-          if (nb) {
-            activeTags.push(`
-              <span class="popover-tag-item">
-                ${this.getLocalizedName(nb)}
-                <span class="popover-tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}')">&times;</span>
-              </span>
-            `);
-          }
+        selectedNbs.forEach(nb => {
+          activeTags.push(`
+            <span class="popover-tag-item">
+              ${this.escapeHtml(this.getLocalizedName(nb))}
+              <span class="popover-tag-remove" onclick="event.stopPropagation(); window.mapExplorerRemoveNeighborhood('${nb.id}')">&times;</span>
+            </span>
+          `);
         });
       }
       activeTagsRow.innerHTML = activeTags.join("");
     }
 
+    // 2. Nearby Neighborhoods Section
+    const nearbySection = document.getElementById("popoverNearbySection");
+    const nearbyTitle = document.getElementById("popoverNearbyTitle");
+    const nearbyPills = document.getElementById("popoverNearbyPills");
+    if (nearbySection && nearbyTitle && nearbyPills) {
+      if (selectedNbs.length > 0) {
+        const currentNb = selectedNbs[selectedNbs.length - 1];
+        const neighbors = currentNb.neighbors || [];
+        const unselectedNeighbors = neighbors.filter(nid => !this.activeNeighborhoodIds.has(nid));
+        if (unselectedNeighbors.length > 0) {
+          nearbySection.style.display = "block";
+          const baseName = this.getLocalizedName(currentNb);
+          const cityName = lang === "en" ? (currentNb.cityName || "Toronto") :
+                           lang === "ko" ? (currentNb.cityNameKo || currentNb.cityName || "토론토") :
+                           (currentNb.cityNameZh || currentNb.cityName || "多伦多");
+          if (lang === "en") {
+            nearbyTitle.textContent = `NEARBY ${baseName.toUpperCase()} - ${cityName.toUpperCase()}, ON`;
+          } else if (lang === "ko") {
+            nearbyTitle.textContent = `인근 추천 지역: ${baseName} - ${cityName}, ON`;
+          } else {
+            nearbyTitle.textContent = `周边推荐社区: ${baseName} - ${cityName}, ON`;
+          }
+
+          let nearbyHtml = "";
+          unselectedNeighbors.slice(0, 8).forEach(nid => {
+            const nFt = this.getNeighborhoodById(nid);
+            if (!nFt) return;
+            const label = `${this.getLocalizedName(nFt)}, ON`;
+            nearbyHtml += `
+              <button type="button" class="popover-pill-btn nearby-pill" data-neighborhood="${nFt.id}">
+                + ${this.escapeHtml(label)}
+              </button>
+            `;
+          });
+          nearbyPills.innerHTML = nearbyHtml;
+        } else {
+          nearbySection.style.display = "none";
+        }
+      } else {
+        nearbySection.style.display = "none";
+      }
+    }
+
+    // 3. City Pills Section
     if (cityContainer) {
       const cities = GTA_COMMUNITIES.filter(c => {
         if (!search) return true;
-        const nameStr = `${c.name} ${c.nameEn || ''} ${c.nameZh || ''}`.toLowerCase();
+        const nameStr = `${c.name} ${c.nameEn || ''} ${c.nameZh || ''} ${c.nameKo || ''}`.toLowerCase();
         return nameStr.includes(search);
       });
+
+      const checkIcon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
       cityContainer.innerHTML = cities.map(c => {
         const isSelected = this.activeCityIds.has(c.id);
         return `
-          <button type="button" class="popover-pill-btn ${isSelected ? 'selected' : ''}" data-city="${c.id}">
-            ${this.getLocalizedName(c)}
+          <button type="button" class="popover-pill-btn ${isSelected ? 'active selected' : ''}" data-city="${c.id}">
+            ${isSelected ? checkIcon : '+ '}${this.escapeHtml(this.getLocalizedName(c))}
           </button>
         `;
       }).join("");
     }
 
+    // 4. Neighborhoods & Wards Section
     if (nbContainer) {
-      const allNbs = this.getAllNeighborhoods();
-      const nbs = allNbs.filter(nb => {
-        if (!search) return false;
-        const nameStr = `${nb.name} ${nb.nameEn || ''} ${nb.nameZh || ''}`.toLowerCase();
-        return nameStr.includes(search);
-      });
+      const isAllCity = this.activeCityIds.has("all");
+      let candidateNbs = isAllCity
+        ? allNbs
+        : allNbs.filter(nb => this.activeCityIds.has(nb.parentCityId));
 
-      nbContainer.innerHTML = nbs.slice(0, 30).map(nb => {
-        const isSelected = this.activeNeighborhoodIds.has(nb.id);
-        return `
-          <button type="button" class="popover-pill-btn ${isSelected ? 'selected' : ''}" data-neighborhood="${nb.id}">
-            ${this.getLocalizedName(nb)}
-          </button>
-        `;
-      }).join("");
+      const titleEl = nbSection?.querySelector(".popover-section-title");
+      if (titleEl) {
+        const wardsOnly = candidateNbs.length > 0 && candidateNbs.every(nb => nb.boundaryType === "ward");
+        titleEl.textContent = wardsOnly
+          ? ({ zh: "官方行政选区 (Wards)", en: "Official Wards", ko: "공식 선거구" }[lang] || "官方行政选区 (Wards)")
+          : (i18n.t("map_filter_neighborhood") || "社区 / 行政选区");
+      }
+
+      if (search) {
+        candidateNbs = candidateNbs.filter(nb => {
+          const nameStr = `${nb.name} ${nb.nameEn || ''} ${nb.nameZh || ''} ${nb.nameKo || ''}`.toLowerCase();
+          return nameStr.includes(search);
+        });
+      }
+
+      if (candidateNbs.length === 0) {
+        if (search) {
+          const noMatchText = lang === "en" ? "No matching subareas found" : (lang === "ko" ? "일치하는 지역이 없습니다" : "未找到匹配社区/选区");
+          nbContainer.innerHTML = `<span style="font-size: 0.8rem; color: #94a3b8; padding: 0.25rem 0.5rem;">${this.escapeHtml(noMatchText)}</span>`;
+          if (nbSection) nbSection.style.display = "block";
+        } else if (!isAllCity) {
+          if (nbSection) nbSection.style.display = "none";
+        }
+      } else {
+        if (nbSection) nbSection.style.display = "block";
+        const checkIcon = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;margin-right:3px"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        const displayList = isAllCity && !search ? candidateNbs.slice(0, 50) : candidateNbs;
+        nbContainer.innerHTML = displayList.map(nb => {
+          const isSelected = this.activeNeighborhoodIds.has(nb.id);
+          const label = `${this.getLocalizedName(nb)}, ON`;
+          return `
+            <button type="button" class="popover-pill-btn ${isSelected ? 'active selected' : ''}" data-neighborhood="${nb.id}">
+              ${isSelected ? checkIcon : '+ '}${this.escapeHtml(label)}
+            </button>
+          `;
+        }).join("");
+      }
     }
   },
 
@@ -3673,6 +3998,7 @@ export const MapExplorer = {
     this.renderPopover();
     this.updateAreaSummaryBtn();
     this.panToSelectedArea();
+    this.drawSelectedBoundaries();
     this.saveFilterState();
     this.loadPlacesForCurrentArea();
   },
@@ -3686,6 +4012,7 @@ export const MapExplorer = {
     this.renderPopover();
     this.updateAreaSummaryBtn();
     this.panToSelectedArea();
+    this.drawSelectedBoundaries();
     this.saveFilterState();
     this.loadPlacesForCurrentArea();
   },
@@ -3704,6 +4031,7 @@ export const MapExplorer = {
     this.renderPopover();
     this.updateAreaSummaryBtn();
     this.panToSelectedArea();
+    this.drawSelectedBoundaries();
     this.saveFilterState();
     this.loadPlacesForCurrentArea();
   },
@@ -3717,6 +4045,7 @@ export const MapExplorer = {
     this.renderPopover();
     this.updateAreaSummaryBtn();
     this.panToSelectedArea();
+    this.drawSelectedBoundaries();
     this.saveFilterState();
     this.loadPlacesForCurrentArea();
   },
@@ -3761,47 +4090,153 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   getMapEventCoordinate(latLng) {
     if (!latLng) return null;
-    if (typeof latLng.lat === "function") {
-      return { lat: latLng.lat(), lng: latLng.lng() };
+    const rawLat = typeof latLng.lat === "function" ? latLng.lat() : latLng.lat;
+    const rawLng = typeof latLng.lng === "function" ? latLng.lng() : latLng.lng;
+    const lat = Number(rawLat);
+    const lng = Number(rawLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    return { lat, lng };
+  },
+
+  getMapContextMenuCopy() {
+    const lang = this.getCurrentLanguage();
+    if (lang === "en") {
+      return {
+        title: "Add Area",
+        add: (area, kind) => kind === "ward" ? `Add ${area.nameEn || area.name}` : `Add ${area.nameEn || area.name} Neighborhood`,
+        matchedNearby: "Matched in nearby recommended wards",
+        matchedGlobal: "Matched in all official wards",
+        matchedNeighborhood: "No ward polygon here; matched local neighbourhood boundary",
+        noWard: "No official ward or neighbourhood covers this point",
+        close: "Close"
+      };
     }
-    return { lat: Number(latLng.lat), lng: Number(latLng.lng) };
+    if (lang === "ko") {
+      return {
+        title: "행정 구역 추가",
+        add: (area, kind) => kind === "ward" ? `${area.nameKo || area.name} 추가` : `${area.nameKo || area.name} 지역 추가`,
+        matchedNearby: "주변 추천 선거구에서 찾음",
+        matchedGlobal: "전체 공식 선거구에서 찾음",
+        matchedNeighborhood: "선거구 경계가 없어 인근 지역 경계로 찾음",
+        noWard: "해당 지점의 공식 선거구 또는 지역을 찾지 못했습니다",
+        close: "닫기"
+      };
+    }
+    return {
+      title: "添加区划",
+      add: (area, kind) => kind === "ward" ? `添加 ${area.nameZh || area.name}` : `添加 ${area.nameZh || area.name}（社区）`,
+      matchedNearby: "已在周边推荐选区中匹配",
+      matchedGlobal: "已在全部官方选区中匹配",
+      matchedNeighborhood: "此处没有 WARD 边界，已匹配到社区边界",
+      noWard: "此位置没有覆盖的官方选区或社区",
+      close: "关闭"
+    };
+  },
+
+  hideMapContextMenu() {
+    if (this.mapContextMenuEl) {
+      this.mapContextMenuEl.remove();
+      this.mapContextMenuEl = null;
+    }
+    this.mapContextMenuPoint = null;
+  },
+
+  addNeighborhoodFromMapContext(nbId) {
+    const nb = this.getNeighborhoodById(nbId);
+    if (!nb) return;
+    this.popoverSearchQuery = "";
+    const searchInput = document.getElementById("popoverSearchInput");
+    if (searchInput) searchInput.value = "";
+    if (this.activeCityIds.has("all")) this.activeCityIds.clear();
+    if (nb.parentCityId && nb.parentCityId !== "all") this.activeCityIds.add(nb.parentCityId);
+    this.activeNeighborhoodIds.add(nb.id);
+    this.hideMapContextMenu();
+    this.renderPopover();
+    this.updateAreaSummaryBtn();
+    this.panToSelectedArea();
+    this.drawSelectedBoundaries();
+    this.saveFilterState();
+    this.loadPlacesForCurrentArea();
   },
 
   showMapContextMenu(lat, lng, clientX, clientY) {
     this.hideMapContextMenu();
+
+    const match = this.findAdministrativeAreaAtCoordinate(lat, lng);
+    const copy = this.getMapContextMenuCopy();
+    const coordsText = `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`;
+    const coordsHeader = i18n.t("map_context_coords", { coords: coordsText }) || `Coordinates: ${coordsText}`;
+    const setOriginText = i18n.t("map_context_set_origin") || "设为路线起点";
+
     const menu = document.createElement("div");
     menu.className = "map-context-menu";
+    menu.setAttribute("role", "menu");
     menu.style.position = "fixed";
-    menu.style.left = `${clientX}px`;
-    menu.style.top = `${clientY}px`;
+    menu.style.left = `${Math.max(8, Number(clientX) || 8)}px`;
+    menu.style.top = `${Math.max(8, Number(clientY) || 8)}px`;
     menu.style.zIndex = "9999";
     menu.style.background = "#ffffff";
     menu.style.border = "1px solid #e2e8f0";
     menu.style.borderRadius = "8px";
     menu.style.boxShadow = "0 8px 24px rgba(0,0,0,0.14)";
     menu.style.padding = "6px";
-    menu.style.minWidth = "180px";
+    menu.style.minWidth = "200px";
 
-    const coordsText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    const coordsHeader = i18n.t("map_context_coords", { coords: coordsText }) || `Coordinates: ${coordsText}`;
-    const setOriginText = i18n.t("map_context_set_origin") || "Set as Route Origin";
-
-    menu.innerHTML = `
+    let contentHtml = `
       <div style="padding: 6px 10px; font-size: 11px; font-weight: 600; color: #64748b; border-bottom: 1px solid #f1f5f9;">
         ${this.escapeHtml(coordsHeader)}
       </div>
-      <button type="button" class="btn btn-secondary btn-sm" id="mapContextSetOrigin" style="width: 100%; text-align: left; margin-top: 4px; font-size: 12px; border: none; padding: 6px 10px;">
+    `;
+
+    if (match?.area) {
+      const area = match.area;
+      const noteText = match.kind === "neighborhood"
+        ? copy.matchedNeighborhood
+        : (match.source === "nearby" ? copy.matchedNearby : copy.matchedGlobal);
+      const actionText = copy.add(area, match.kind);
+
+      contentHtml += `
+        <div style="padding: 6px 10px; font-size: 11px; color: #16a34a; font-weight: 500;">
+          ${this.escapeHtml(noteText)}
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="mapContextAddArea" style="width: 100%; text-align: left; margin-bottom: 4px; font-size: 12px; padding: 6px 10px;">
+          + ${this.escapeHtml(actionText)}
+        </button>
+      `;
+    }
+
+    contentHtml += `
+      <button type="button" class="btn btn-secondary btn-sm" id="mapContextSetOrigin" style="width: 100%; text-align: left; margin-top: 2px; font-size: 12px; border: none; padding: 6px 10px;">
         ${this.escapeHtml(setOriginText)}
+      </button>
+      <button type="button" class="btn btn-sm" id="mapContextClose" style="width: 100%; text-align: left; margin-top: 2px; font-size: 11px; color: #94a3b8; background: transparent; border: none; padding: 4px 10px;">
+        ${this.escapeHtml(copy.close)}
       </button>
     `;
 
+    menu.innerHTML = contentHtml;
     document.body.appendChild(menu);
     this.mapContextMenuEl = menu;
+    this.mapContextMenuPoint = { lat: Number(lat), lng: Number(lng) };
+
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth - 8) menu.style.left = `${Math.max(8, window.innerWidth - rect.width - 8)}px`;
+    if (rect.bottom > window.innerHeight - 8) menu.style.top = `${Math.max(8, window.innerHeight - rect.height - 8)}px`;
+
+    if (match?.area) {
+      const addBtn = menu.querySelector("#mapContextAddArea");
+      if (addBtn) {
+        addBtn.addEventListener("click", e => {
+          e.stopPropagation();
+          this.addNeighborhoodFromMapContext(match.area.id);
+        });
+      }
+    }
 
     const setOriginBtn = menu.querySelector("#mapContextSetOrigin");
     if (setOriginBtn) {
       setOriginBtn.addEventListener("click", () => {
-        this.originCoords = { lat, lng };
+        this.originCoords = { lat: Number(lat), lng: Number(lng) };
         this.originAddress = `${i18n.t("map_coord_prefix") || "Coordinates: "}${coordsText}`;
         const input = document.getElementById("mapRouteOriginInput");
         if (input) input.value = this.originAddress;
@@ -3810,12 +4245,10 @@ export const MapExplorer = {
         this.hideMapContextMenu();
       });
     }
-  },
 
-  hideMapContextMenu() {
-    if (this.mapContextMenuEl) {
-      this.mapContextMenuEl.remove();
-      this.mapContextMenuEl = null;
+    const closeBtn = menu.querySelector("#mapContextClose");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => this.hideMapContextMenu());
     }
   },
 
