@@ -1527,7 +1527,209 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
-  // Export Waypoints (English Headers for Excel, regardless of user language)
+  // -------------------------------------------------------------
+  // English Normalization Helpers for Excel Export (Headers & Content)
+  // -------------------------------------------------------------
+  toEnglishRestaurantName(name, nameEn) {
+    if (nameEn && nameEn.trim() && /[a-zA-Z]/.test(nameEn)) {
+      return nameEn.trim();
+    }
+    if (!name || typeof name !== "string") return "N/A";
+
+    if (/[a-zA-Z]/.test(name)) {
+      let en = name;
+      en = en.replace(/（/g, " (").replace(/）/g, ") ").replace(/【/g, " [").replace(/】/g, "] ");
+      en = en.replace(/([a-zA-Z0-9])\(/g, "$1 (");
+      en = en.replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\uac00-\ud7af\u1100-\u11ff\u3040-\u30ff]/g, " ");
+      en = en.replace(/\(\s*\)/g, " ").replace(/\[\s*\]/g, " ");
+      en = en.replace(/\s+/g, " ").trim();
+      en = en.replace(/^[-–—,;:.\s]+|[-–—,;:.\s]+$/g, "");
+      if (en && /[a-zA-Z]/.test(en)) {
+        return en;
+      }
+    }
+    return name.trim();
+  },
+
+  toEnglishAddress(raw) {
+    if (!raw || /^(?:未提供|无|未知|not provided|unknown|none|null|n\/a)$/i.test(String(raw).trim())) {
+      return "N/A";
+    }
+    let s = String(raw).trim();
+    if (!/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\uac00-\ud7af]/.test(s)) {
+      return s;
+    }
+
+    const termMap = [
+      [/(?:邮政编码|郵區編號|邮编|우편번호)[:：]?\s*/g, " "],
+      [/(?:单元|室|房)\s*/g, "Unit "],
+      [/号|호/g, " #"],
+      [/大道/g, " Ave"],
+      [/路/g, " Rd"],
+      [/街/g, " St"],
+      [/巷/g, " Ln"],
+      [/广场/g, " Plaza"],
+      [/商场/g, " Mall"],
+      [/楼|层|층/g, " Fl"]
+    ];
+
+    const cityMap = [
+      ["加拿大", "Canada"], ["캐나다", "Canada"],
+      ["美国", "USA"], ["미국", "USA"],
+      ["新西兰", "New Zealand"], ["뉴질랜드", "New Zealand"],
+      ["澳大利亚", "Australia"], ["호주", "Australia"],
+      ["安大略省", "ON"], ["安大略", "ON"], ["安省", "ON"], ["온타리오주", "ON"], ["온타리오", "ON"],
+      ["卑诗省", "BC"], ["卑诗", "BC"], ["BC省", "BC"],
+      ["魁北克省", "QC"], ["魁北克", "QC"],
+      ["多伦多市中心", "Downtown Toronto"],
+      ["多伦多", "Toronto"], ["토론토", "Toronto"],
+      ["士嘉堡", "Scarborough"], ["스카버러", "Scarborough"],
+      ["万锦市", "Markham"], ["万锦", "Markham"], ["마컴", "Markham"],
+      ["列治文山市", "Richmond Hill"], ["列治文山", "Richmond Hill"], ["리치먼드힐", "Richmond Hill"],
+      ["北约克", "North York"], ["노스요크", "North York"],
+      ["密西沙加", "Mississauga"], ["미시소가", "Mississauga"],
+      ["旺市", "Vaughan"], ["본", "Vaughan"],
+      ["奥克维尔", "Oakville"], ["오크빌", "Oakville"],
+      ["伯灵顿", "Burlington"], ["벌링턴", "Burlington"],
+      ["宾顿", "Brampton"], ["布兰普顿", "Brampton"], ["브램턴", "Brampton"],
+      ["皮克林", "Pickering"], ["피커링", "Pickering"],
+      ["阿贾克斯", "Ajax"], ["아약스", "Ajax"],
+      ["惠特比", "Whitby"], ["휘트비", "Whitby"],
+      ["奥沙瓦", "Oshawa"], ["오샤와", "Oshawa"],
+      ["纽马克特", "Newmarket"], ["新市", "Newmarket"], ["뉴마켓", "Newmarket"],
+      ["奥罗拉", "Aurora"], ["极光镇", "Aurora"], ["오로라", "Aurora"],
+      ["东贵林", "East Gwillimbury"],
+      ["滑铁卢", "Waterloo"], ["워털루", "Waterloo"],
+      ["基奇纳", "Kitchener"], ["키치너", "Kitchener"],
+      ["贵湖", "Guelph"], ["圭尔夫", "Guelph"], ["궬프", "Guelph"],
+      ["哈密尔顿", "Hamilton"], ["汉密尔顿", "Hamilton"], ["해밀턴", "Hamilton"],
+      ["市中心", "Downtown"],
+      ["约克巷", "York Lane"]
+    ];
+
+    for (const [pat, rep] of termMap) {
+      s = s.replace(pat, rep);
+    }
+    for (const [zh, en] of cityMap) {
+      s = s.replaceAll(zh, ` ${en} `);
+    }
+
+    s = s.replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\uac00-\ud7af]/g, " ");
+    s = s.replace(/[,，]+/g, ", ");
+    s = s.replace(/\s+/g, " ");
+    s = s.replace(/,\s*,/g, ", ");
+    s = s.replace(/ON Toronto/g, "Toronto, ON").replace(/ON Markham/g, "Markham, ON");
+    s = s.replace(/ON Scarborough/g, "Scarborough, ON").replace(/ON North York/g, "North York, ON");
+    s = s.replace(/Canada ON/g, "ON, Canada").replace(/USA TN/g, "TN, USA");
+    s = s.replace(/^[,\s]+|[,\s]+$/g, "").trim();
+    return s || "N/A";
+  },
+
+  formatOpeningHoursEnglish(rawHours) {
+    if (!rawHours) return "N/A";
+    let rawStr = typeof rawHours === "string" ? rawHours : (Array.isArray(rawHours) ? rawHours.join("\n") : String(rawHours));
+    let cleanStr = rawStr.replace(/[\u202F\u00A0\u2009\u200A\u3000]/g, " ").replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+    if (!cleanStr || /^(?:未提供|无|未知|not provided|unknown|none|null|n\/a)$/i.test(cleanStr)) {
+      return "N/A";
+    }
+
+    if (/^(?:24\s*(?:hours|小时)|open\s*24|全天营业|24\/7|24시간\s*영업)$/i.test(cleanStr)) {
+      return "Open 24 hours";
+    }
+
+    const dayMap = {
+      "星期一": "Mon", "周一": "Mon", "礼拜一": "Mon", "월요일": "Mon", "monday": "Mon", "mon": "Mon",
+      "星期二": "Tue", "周二": "Tue", "礼拜二": "Tue", "화요일": "Tue", "tuesday": "Tue", "tue": "Tue",
+      "星期三": "Wed", "周三": "Wed", "礼拜三": "Wed", "수요일": "Wed", "wednesday": "Wed", "wed": "Wed",
+      "星期四": "Thu", "周四": "Thu", "礼拜四": "Thu", "목요일": "Thu", "thursday": "Thu", "thu": "Thu",
+      "星期五": "Fri", "周五": "Fri", "礼拜五": "Fri", "금요일": "Fri", "friday": "Fri", "fri": "Fri",
+      "星期六": "Sat", "周六": "Sat", "礼拜六": "Sat", "토요일": "Sat", "saturday": "Sat", "sat": "Sat",
+      "星期日": "Sun", "星期天": "Sun", "周日": "Sun", "周天": "Sun", "礼拜天": "Sun", "礼拜日": "Sun", "일요일": "Sun", "sunday": "Sun", "sun": "Sun"
+    };
+
+    const daysOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+    const lines = cleanStr.split(/[\r\n]+| · /);
+    const parsedDays = {};
+    let anyMatched = false;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const colonIdx = trimmed.search(/[:：]/);
+      if (colonIdx === -1) continue;
+
+      const dayPart = trimmed.substring(0, colonIdx).trim().toLowerCase();
+      const valPart = trimmed.substring(colonIdx + 1).trim();
+
+      let dayEn = null;
+      for (const [k, v] of Object.entries(dayMap)) {
+        if (dayPart === k.toLowerCase() || dayPart.replace(/[:：]/g, "") === k.toLowerCase()) {
+          dayEn = v;
+          break;
+        }
+      }
+
+      if (dayEn) {
+        anyMatched = true;
+        let valEn = valPart;
+        if (/^(?:closed|close|off|day off|休息|打烊|不营业|未营业|휴무)$/i.test(valPart) || /休息|打烊|휴무/i.test(valPart)) {
+          valEn = "Closed";
+        } else if (/24\s*(?:hours|小时)|open\s*24|全天营业|24\/7|24시간/i.test(valPart)) {
+          valEn = "Open 24 hours";
+        } else {
+          valEn = valPart.replace(/[–—~至到]/g, "-").replace(/\s+/g, " ").trim();
+        }
+        parsedDays[dayEn] = valEn;
+      }
+    }
+
+    if (!anyMatched) {
+      return cleanStr
+        .replace(/24小时营业|全天营业/g, "Open 24 hours")
+        .replace(/休息|打烊|不营业/g, "Closed")
+        .replace(/星期一|周一/g, "Mon")
+        .replace(/星期二|周二/g, "Tue")
+        .replace(/星期三|周三/g, "Wed")
+        .replace(/星期四|周四/g, "Thu")
+        .replace(/星期五|周五/g, "Fri")
+        .replace(/星期六|周六/g, "Sat")
+        .replace(/星期日|周日|星期天/g, "Sun")
+        .replace(/\n+/g, ", ");
+    }
+
+    if (daysOrder.every(d => d in parsedDays)) {
+      const groups = [];
+      let curVal = parsedDays[daysOrder[0]];
+      let startIdx = 0;
+      for (let i = 1; i < daysOrder.length; i++) {
+        const v = parsedDays[daysOrder[i]];
+        if (v !== curVal) {
+          groups.push({ start: startIdx, end: i - 1, val: curVal });
+          startIdx = i;
+          curVal = v;
+        }
+      }
+      groups.push({ start: startIdx, end: daysOrder.length - 1, val: curVal });
+
+      const resultParts = groups.map(g => {
+        let label = "";
+        if (g.start === g.end) {
+          label = daysOrder[g.start];
+        } else if (g.start === 0 && g.end === 6) {
+          label = "Mon-Sun";
+        } else {
+          label = `${daysOrder[g.start]}-${daysOrder[g.end]}`;
+        }
+        return `${label}: ${g.val}`;
+      });
+      return resultParts.join(", ");
+    }
+
+    return Object.entries(parsedDays).map(([d, v]) => `${d}: ${v}`).join(", ");
+  },
+
+  // Export Waypoints (Strictly English Headers and Content for Excel)
   // -------------------------------------------------------------
   exportWaypoints() {
     const targets = this.routeWaypoints;
@@ -1537,21 +1739,19 @@ export const MapExplorer = {
     }
 
     const exportRows = targets.map((w, idx) => {
-      const rawHours = w.openingHours || "N/A";
-      let openHours = this.formatWeekdayOpeningHours(rawHours);
-      if (!openHours || openHours === "未提供" || openHours === "无") {
-        openHours = "N/A";
-      }
-      const phone = (w.phone && w.phone !== "无" && w.phone !== "未提供") ? w.phone : "N/A";
-      const displayName = w.name + (w.nameEn && w.nameEn !== w.name ? ` (${w.nameEn})` : "");
+      const displayName = this.toEnglishRestaurantName(w.name, w.nameEn);
+      const address = this.toEnglishAddress(w.address);
+      const openHours = this.formatOpeningHoursEnglish(w.openingHours);
+      const phone = (w.phone && w.phone !== "无" && w.phone !== "未提供" && w.phone !== "未知") ? w.phone : "N/A";
+      const eta = (w._estArrivalStr && w._estArrivalStr !== "-") ? w._estArrivalStr : "N/A";
 
       return {
         "Stop #": idx + 1,
         "Restaurant Name": displayName,
-        "Address": w.address || "N/A",
+        "Address": address,
         "Phone": phone,
         "Opening Hours": openHours,
-        "Estimated Arrival (ETA)": w._estArrivalStr || "N/A"
+        "Estimated Arrival (ETA)": eta
       };
     });
 

@@ -151,9 +151,28 @@ const s3Idx = sorted.findIndex(w => w.name === 'Stop 3');
 assert.equal(Math.abs(s2Idx - s3Idx), 1, 'TSP optimization must keep locked group members strictly adjacent');
 
 // -------------------------------------------------------------
-// Test 6: English Headers in Excel Export (Independent of UI Language)
+// Test 6: English Headers & Content in Excel Export (Independent of UI Language)
 // -------------------------------------------------------------
-console.log('6. Testing English Export Headers across Languages...');
+console.log('6. Testing English Export Headers & Table Content across Languages...');
+MapExplorer.routeWaypoints = [
+  {
+    name: "Yang's Braised Chicken Rice(First Markham Place)杨铭宇黄焖鸡米饭",
+    nameEn: "",
+    address: "加拿大安大略省多伦多邮政编码: M2J 3C1",
+    phone: "未提供",
+    openingHours: "星期一: 11:00–02:00\n星期二: 11:00–02:00\n星期三: 11:00–02:00\n星期四: 11:00–02:00\n星期五: 11:00–02:00\n星期六: 11:00–02:00\n星期日: 11:00–02:00",
+    _estArrivalStr: "-"
+  },
+  {
+    name: "御品",
+    nameEn: "Kingsfield Chinese Cuisine",
+    address: "Ontario, Markham, Woodbine Ave, Unit 1CF5邮政编码: L6C 0M5",
+    phone: "(905) 123-4567",
+    openingHours: "星期一: 11:00–19:00\n星期二: 11:00–19:00\n星期三: 11:00–19:00\n星期四: 11:00–19:00\n星期五: 11:00–19:00\n星期六: 11:00–19:00\n星期日: 休息",
+    _estArrivalStr: "14:30"
+  }
+];
+
 // Set language to Chinese
 i18n.setLanguage('zh');
 let exportedData = null;
@@ -162,7 +181,7 @@ globalThis.window.XLSX.utils.json_to_sheet = (data) => {
   return data;
 };
 MapExplorer.exportWaypoints();
-assert.ok(exportedData && exportedData.length > 0, 'Export rows generated');
+assert.ok(exportedData && exportedData.length === 2, 'Export rows generated');
 const headers = Object.keys(exportedData[0]);
 assert.deepEqual(headers, [
   'Stop #',
@@ -172,6 +191,20 @@ assert.deepEqual(headers, [
   'Opening Hours',
   'Estimated Arrival (ETA)'
 ], 'Headers must be English even when language is zh');
+
+// Verify Content is in English
+assert.equal(exportedData[0]['Restaurant Name'], "Yang's Braised Chicken Rice (First Markham Place)", 'Restaurant Name must be English');
+assert.ok(!/[\u4e00-\u9fff]/.test(exportedData[0]['Address']), 'Address must not contain Chinese');
+assert.ok(exportedData[0]['Address'].includes('Toronto') && exportedData[0]['Address'].includes('M2J 3C1'), 'Address formatted in English');
+assert.equal(exportedData[0]['Opening Hours'], 'Mon-Sun: 11:00-02:00', 'Opening hours must be formatted into English');
+assert.equal(exportedData[0]['Phone'], 'N/A', 'Phone fallback must be N/A');
+assert.equal(exportedData[0]['Estimated Arrival (ETA)'], 'N/A', 'ETA fallback must be N/A');
+
+assert.equal(exportedData[1]['Restaurant Name'], 'Kingsfield Chinese Cuisine', 'nameEn preferred for Restaurant Name');
+assert.ok(!/[\u4e00-\u9fff]/.test(exportedData[1]['Address']), 'Address must not contain Chinese');
+assert.equal(exportedData[1]['Opening Hours'], 'Mon-Sat: 11:00-19:00, Sun: Closed', 'Closed and range hours formatted into English');
+assert.equal(exportedData[1]['Phone'], '(905) 123-4567');
+assert.equal(exportedData[1]['Estimated Arrival (ETA)'], '14:30');
 
 // Set language to Korean
 i18n.setLanguage('ko');
@@ -185,5 +218,7 @@ assert.deepEqual(Object.keys(exportedData[0]), [
   'Opening Hours',
   'Estimated Arrival (ETA)'
 ], 'Headers must be English even when language is ko');
+assert.equal(exportedData[0]['Opening Hours'], 'Mon-Sun: 11:00-02:00');
 
-console.log('🎉 ALL 6 FEATURE TESTS PASSED SUCCESSFULLY!');
+console.log('🎉 ALL 6 FEATURE TESTS PASSED SUCCESSFULLY (INCLUDING STRICT ENGLISH CONTENT)!');
+
