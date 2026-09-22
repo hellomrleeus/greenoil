@@ -313,10 +313,13 @@ export const Api = {
         finalQuery = `${finalQuery} Ontario Canada`;
       }
 
+      const currentLang = (typeof i18n !== "undefined" && i18n.currentLang) ? i18n.currentLang : "zh";
+      const apiLangCode = currentLang.startsWith("zh") ? "zh-CN" : (currentLang.startsWith("ko") ? "ko" : "en");
+
       requestBody = {
         textQuery: finalQuery,
         pageSize: 20,
-        languageCode: "zh-CN",
+        languageCode: apiLangCode,
         regionCode: "CA"
       };
 
@@ -432,9 +435,40 @@ export const Api = {
     const categories = typeCategoryMap[primaryType] || ["餐饮美食", primaryType.replace(/_/g, " ")];
     const categoriesRaw = categories.join(" · ");
 
+    let nameEn = "";
+    let nameZh = "";
+    const CJK_REGEX = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/;
+    const CJK_ALL_REGEX = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/g;
+
+    if (/[a-zA-Z]/.test(name)) {
+      let en = name.replace(/（/g, " (").replace(/）/g, ") ").replace(/【/g, " [").replace(/】/g, "] ");
+      en = en.replace(/([a-zA-Z0-9])\(/g, "$1 (");
+      en = en.replace(CJK_ALL_REGEX, " ").replace(/\(\s*\)/g, " ").replace(/\[\s*\]/g, " ").replace(/\s+/g, " ").trim();
+      en = en.replace(/^[-–—,;:.\s&]+|[-–—,;:.\s&]+$/g, "");
+      if (en && /[a-zA-Z]/.test(en)) {
+        nameEn = en;
+      }
+    }
+
+    if (CJK_REGEX.test(name)) {
+      if (/[a-zA-Z]/.test(name)) {
+        let zh = name.replace(/（/g, " (").replace(/）/g, ") ").replace(/【/g, " [").replace(/】/g, "] ");
+        zh = zh.replace(/[a-zA-Z][a-zA-Z0-9'’&.\s-]*[a-zA-Z0-9]/g, " ").replace(/[a-zA-Z]/g, " ");
+        zh = zh.replace(/\(\s*\)/g, " ").replace(/\[\s*\]/g, " ").replace(/\s*&\s*/g, " ").replace(/\s+/g, " ").trim();
+        zh = zh.replace(/^[-–—,;:.\s&]+|[-–—,;:.\s&]+$/g, "").replace(/^\s*[\(\[（【]\s*/, "").replace(/\s*[\)\]）】]\s*$/, "").trim();
+        if (CJK_REGEX.test(zh)) {
+          nameZh = zh;
+        }
+      } else {
+        nameZh = name.trim();
+      }
+    }
+
     return {
       placeId: p.id,
       name,
+      nameEn,
+      nameZh,
       address,
       phone,
       website,

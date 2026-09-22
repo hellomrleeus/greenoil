@@ -1438,7 +1438,10 @@ export const MapExplorer = {
 
       const isMatch = !kw || 
         (w.name && w.name.toLowerCase().includes(kw)) || 
+        (w.nameEn && w.nameEn.toLowerCase().includes(kw)) || 
         (w.address && w.address.toLowerCase().includes(kw));
+
+      const displayName = this.getRestaurantDisplayName(w);
 
       let statusObj = w.openingHours ? BusinessHours.getBusinessStatus(w.openingHours) : null;
       if (!statusObj && w.status) {
@@ -1475,8 +1478,8 @@ export const MapExplorer = {
           </div>
           <div class="waypoint-seq-badge">${index + 1}</div>
           <div class="waypoint-card-body">
-            <div class="waypoint-title" title="${this.escapeHtml(w.name)}">
-              ${this.escapeHtml(w.name)}
+            <div class="waypoint-title" title="${this.escapeHtml(displayName)}">
+              ${this.escapeHtml(displayName)}
               ${lockBadgeHtml}
             </div>
             ${hoursBadge ? `<div class="waypoint-tag-row">${hoursBadge}</div>` : ""}
@@ -1489,7 +1492,7 @@ export const MapExplorer = {
           <div class="waypoint-card-actions">
             <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, -1);" ${index === 0 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_up"))}">↑</button>
             <button type="button" class="btn-wp-action" onclick="event.stopPropagation(); window.mapExplorerMoveWaypoint(${index}, 1);" ${index === list.length - 1 ? "disabled" : ""} title="${this.escapeHtml(i18n.t("fs_btn_move_down"))}">↓</button>
-            <button type="button" class="btn-wp-action btn-wp-nav" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(w.name)}', '${this.escapeQuotes(w.address)}');" title="${this.escapeHtml(i18n.t("fs_btn_nav_title"))}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg></button>
+            <button type="button" class="btn-wp-action btn-wp-nav" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(displayName)}', '${this.escapeQuotes(w.address)}');" title="${this.escapeHtml(i18n.t("fs_btn_nav_title"))}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg></button>
             <button type="button" class="btn-wp-action btn-wp-remove ${isLocked ? 'is-locked-action' : ''}" onclick="event.stopPropagation(); window.mapExplorerRemoveWaypoint(${index});" title="${isLocked ? this.escapeHtml(i18n.t("alert_single_locked_delete")) : this.escapeHtml(i18n.t("btn_remove_stop"))}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
           </div>
         </div>
@@ -1971,8 +1974,10 @@ export const MapExplorer = {
   // English Normalization Helpers for Excel Export (Headers & Content)
   // -------------------------------------------------------------
   toEnglishRestaurantName(name, nameEn) {
+    const CJK_ALL_REGEX = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/g;
     if (nameEn && nameEn.trim() && /[a-zA-Z]/.test(nameEn)) {
-      return nameEn.trim();
+      const cleaned = nameEn.replace(CJK_ALL_REGEX, " ").replace(/\s+/g, " ").trim();
+      if (/[a-zA-Z]/.test(cleaned)) return cleaned;
     }
     if (!name || typeof name !== "string") return "N/A";
 
@@ -1980,15 +1985,57 @@ export const MapExplorer = {
       let en = name;
       en = en.replace(/（/g, " (").replace(/）/g, ") ").replace(/【/g, " [").replace(/】/g, "] ");
       en = en.replace(/([a-zA-Z0-9])\(/g, "$1 (");
-      en = en.replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\uac00-\ud7af\u1100-\u11ff\u3040-\u30ff]/g, " ");
+      en = en.replace(CJK_ALL_REGEX, " ");
       en = en.replace(/\(\s*\)/g, " ").replace(/\[\s*\]/g, " ");
       en = en.replace(/\s+/g, " ").trim();
-      en = en.replace(/^[-–—,;:.\s]+|[-–—,;:.\s]+$/g, "");
+      en = en.replace(/^[-–—,;:.\s&]+|[-–—,;:.\s&]+$/g, "");
       if (en && /[a-zA-Z]/.test(en)) {
         return en;
       }
     }
     return name.trim();
+  },
+
+  toChineseRestaurantName(name, nameZh, nameEn) {
+    const CJK_REGEX = /[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff]/;
+    if (nameZh && CJK_REGEX.test(nameZh)) {
+      return nameZh.trim();
+    }
+    if (!name || typeof name !== "string") return nameEn || "未命名餐馆";
+
+    if (CJK_REGEX.test(name)) {
+      if (/[a-zA-Z]/.test(name)) {
+        let zh = name.replace(/（/g, " (").replace(/）/g, ") ").replace(/【/g, " [").replace(/】/g, "] ");
+        zh = zh.replace(/[a-zA-Z][a-zA-Z0-9'’&.\s-]*[a-zA-Z0-9]/g, " ");
+        zh = zh.replace(/[a-zA-Z]/g, " ");
+        zh = zh.replace(/\(\s*\)/g, " ").replace(/\[\s*\]/g, " ");
+        zh = zh.replace(/\s*&\s*/g, " ");
+        zh = zh.replace(/\s+/g, " ").trim();
+        zh = zh.replace(/^[-–—,;:.\s&]+|[-–—,;:.\s&]+$/g, "");
+        zh = zh.replace(/^\s*[\(\[（【]\s*/, "").replace(/\s*[\)\]）】]\s*$/, "").trim();
+        if (CJK_REGEX.test(zh)) {
+          return zh;
+        }
+      }
+      return name.trim();
+    }
+
+    return name.trim();
+  },
+
+  getRestaurantDisplayName(restaurant, lang) {
+    if (!restaurant) return "";
+    const name = typeof restaurant === "string" ? restaurant : (restaurant.name || "");
+    const nameEn = typeof restaurant === "object" ? (restaurant.nameEn || "") : "";
+    const nameZh = typeof restaurant === "object" ? (restaurant.nameZh || "") : "";
+
+    let currentLang = lang;
+    if (!currentLang && typeof i18n !== "undefined" && i18n.currentLang) {
+      currentLang = i18n.currentLang;
+    }
+    const isZh = (currentLang || "zh").toLowerCase().startsWith("zh");
+
+    return isZh ? this.toChineseRestaurantName(name, nameZh, nameEn) : this.toEnglishRestaurantName(name, nameEn);
   },
 
   toEnglishAddress(raw) {
@@ -2231,21 +2278,34 @@ export const MapExplorer = {
       return;
     }
 
+    const isZh = (typeof i18n !== "undefined" && i18n.currentLang && i18n.currentLang.startsWith("zh"));
+
     const exportRows = targets.map((w, idx) => {
-      const displayName = this.toEnglishRestaurantName(w.name, w.nameEn);
-      const address = this.toEnglishAddress(w.address);
+      const displayName = this.getRestaurantDisplayName(w, isZh ? "zh" : "en");
+      const address = isZh ? (w.address || "N/A") : this.toEnglishAddress(w.address);
       const openHours = this.formatOpeningHoursEnglish(w.openingHours);
       const phone = (w.phone && w.phone !== "无" && w.phone !== "未提供" && w.phone !== "未知") ? w.phone : "N/A";
       const eta = (w._estArrivalStr && w._estArrivalStr !== "-") ? w._estArrivalStr : "N/A";
 
-      return {
-        "Stop #": idx + 1,
-        "Restaurant Name": displayName,
-        "Address": address,
-        "Phone": phone,
-        "Opening Hours": openHours,
-        "Estimated Arrival (ETA)": eta
-      };
+      if (isZh) {
+        return {
+          "序号": idx + 1,
+          "餐厅名称": displayName,
+          "地址": address,
+          "电话": phone,
+          "营业时间": openHours,
+          "预计到达时间 (ETA)": eta
+        };
+      } else {
+        return {
+          "Stop #": idx + 1,
+          "Restaurant Name": displayName,
+          "Address": address,
+          "Phone": phone,
+          "Opening Hours": openHours,
+          "Estimated Arrival (ETA)": eta
+        };
+      }
     });
 
     const dateStr = new Date().toISOString().slice(0, 10);
@@ -3028,6 +3088,7 @@ export const MapExplorer = {
 
     let cardsHtml = pageItems.map(r => {
       const key = r.placeId || r.name;
+      const displayName = this.getRestaurantDisplayName(r);
       const photoInfo = this.getRestaurantPhoto(r);
       const inRouteIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
       const isInRoute = inRouteIdx !== -1;
@@ -3063,11 +3124,11 @@ export const MapExplorer = {
       return `
         <div tabindex="-1" class="map-place-card ${isInRoute ? 'in-route' : ''}" data-key="${this.escapeHtml(key)}" onmouseenter="window.mapExplorerHighlight('${this.escapeQuotes(key)}', true);" onmouseleave="window.mapExplorerHighlight('${this.escapeQuotes(key)}', false);" onclick="window.mapExplorerCardClick('${this.escapeQuotes(key)}');">
           <div class="card-thumb" style="${photoInfo.url ? '' : 'display:none'}">
-            <img ${photoInfo.url ? `src="${this.escapeHtml(photoInfo.url)}"` : ''} alt="${this.escapeHtml(r.name)}" loading="lazy" class="card-img" onload="this.parentElement.style.display=''" onerror="this.parentElement.style.display='none'" />
+            <img ${photoInfo.url ? `src="${this.escapeHtml(photoInfo.url)}"` : ''} alt="${this.escapeHtml(displayName)}" loading="lazy" class="card-img" onload="this.parentElement.style.display=''" onerror="this.parentElement.style.display='none'" />
           </div>
           <div class="card-main">
             <div class="card-title-row" style="display: flex; align-items: center; gap: 0.5rem;">
-              <h4 class="card-title" title="${this.escapeHtml(r.name)}" style="flex: 1; margin: 0;">${this.escapeHtml(r.name)}</h4>
+              <h4 class="card-title" title="${this.escapeHtml(displayName)}" style="flex: 1; margin: 0;">${this.escapeHtml(displayName)}</h4>
               <span style="font-size: 0.78rem; font-weight: 700; color: #475569; flex-shrink: 0;">${this.escapeHtml(this.formatPrice(r.price || "$$"))}</span>
             </div>
 
@@ -3088,7 +3149,7 @@ export const MapExplorer = {
 
             <div class="card-actions-row">
               ${routeBtn}
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="Google Maps 导航">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); window.mapExplorerOpenNav('${this.escapeQuotes(displayName)}', '${this.escapeQuotes(r.address)}');" style="font-size:0.75rem; padding:0.25rem 0.45rem;" title="Google Maps 导航">
                 ${this.escapeHtml(i18n.t("map_card_nav"))}
               </button>
             </div>
@@ -3280,6 +3341,7 @@ export const MapExplorer = {
       const key = r.placeId || r.name;
       const wpIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
       const isWaypoint = wpIdx !== -1;
+      const displayName = this.getRestaurantDisplayName(r);
 
       if (this.googleMap && !this.isFallbackMode && window.google && window.google.maps) {
         const useAdvanced = !!(window.google.maps.marker && window.google.maps.marker.AdvancedMarkerElement);
@@ -3294,7 +3356,7 @@ export const MapExplorer = {
             marker = new google.maps.marker.AdvancedMarkerElement({
               position: { lat, lng },
               map: this.googleMap,
-              title: r.name,
+              title: displayName,
               content: content,
               zIndex: isWaypoint ? 100 + (wpIdx + 1) : 20
             });
@@ -3303,7 +3365,7 @@ export const MapExplorer = {
             marker = new google.maps.Marker({
               position: { lat, lng },
               map: this.googleMap,
-              title: r.name,
+              title: displayName,
               icon: icon,
               zIndex: isWaypoint ? 100 + (wpIdx + 1) : 20
             });
@@ -3313,7 +3375,7 @@ export const MapExplorer = {
           marker = new google.maps.Marker({
             position: { lat, lng },
             map: this.googleMap,
-            title: r.name,
+            title: displayName,
             icon: icon,
             zIndex: isWaypoint ? 100 + (wpIdx + 1) : 20
           });
@@ -3538,6 +3600,7 @@ export const MapExplorer = {
   // -------------------------------------------------------------
   getPopupHtml(r) {
     const key = r.placeId || r.name;
+    const displayName = this.getRestaurantDisplayName(r);
     const photoInfo = this.getRestaurantPhoto(r);
     const inRouteIdx = this.routeWaypoints.findIndex(w => (w.placeId && w.placeId === r.placeId) || ((w.name || "").trim().toLowerCase() === (r.name || "").trim().toLowerCase()));
     const isInRoute = inRouteIdx !== -1;
@@ -3571,9 +3634,9 @@ export const MapExplorer = {
     return `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 2px; max-width: 260px;">
         <div style="display:flex; gap: 8px; align-items: center; margin-bottom: 6px;">
-          ${photoInfo.url ? `<div style="width:48px;height:48px;flex-shrink:0;overflow:hidden;border-radius:6px"><img src="${this.escapeHtml(photoInfo.url)}" alt="${this.escapeHtml(r.name)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()" /></div>` : ''}
+          ${photoInfo.url ? `<div style="width:48px;height:48px;flex-shrink:0;overflow:hidden;border-radius:6px"><img src="${this.escapeHtml(photoInfo.url)}" alt="${this.escapeHtml(displayName)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.remove()" /></div>` : ''}
           <div style="min-width: 0; flex: 1;">
-            <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(r.name)}">${this.escapeHtml(r.name)}</h4>
+            <h4 style="margin: 0; font-size: 13px; font-weight: 700; color: #0f172a; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${this.escapeHtml(displayName)}">${this.escapeHtml(displayName)}</h4>
             <div style="margin-top: 3px; display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
               ${hoursBadge}
             </div>
@@ -3587,7 +3650,7 @@ export const MapExplorer = {
         </div>
         <div style="display:flex; gap: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; flex-wrap: wrap;">
           ${routeBtn}
-          <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(r.name)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer;">
+          <button onclick="window.mapExplorerOpenNav('${this.escapeQuotes(displayName)}', '${this.escapeQuotes(r.address)}')" style="background:#0f172a; color:white; border:none; border-radius:4px; padding:3px 7px; font-size:11px; cursor:pointer;">
             ${this.escapeHtml(i18n.t("map_card_nav"))}
           </button>
         </div>
