@@ -1586,17 +1586,24 @@ async function handleSaveRouteWaypoints(request, env, corsHeaders) {
  * Map Explorer: Get persisted grouped routes from KV (New Endpoint)
  */
 async function handleGetMapRoutes(request, env, corsHeaders) {
+  const DEFAULT_MAP_ORIGIN = "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9";
+  const isLegacyOrigin = (addr) => {
+    if (!addr || typeof addr !== "string") return true;
+    const s = addr.trim();
+    return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
+  };
+
   let mapRouteData = {
     groups: [
       {
         id: "group_default",
         name: "路线 1",
-        origin: "Green Oil Inc, 888 Progress Ave, Scarborough, ON",
+        origin: DEFAULT_MAP_ORIGIN,
         waypoints: []
       }
     ],
     activeGroupId: "group_default",
-    origin: "Green Oil Inc, 888 Progress Ave, Scarborough, ON",
+    origin: DEFAULT_MAP_ORIGIN,
     updatedAt: null
   };
 
@@ -1605,6 +1612,14 @@ async function handleGetMapRoutes(request, env, corsHeaders) {
       const data = await env.RESTAURANTS_KV.get(KV_MAP_ROUTES_KEY, { type: "json" });
       if (data && Array.isArray(data.groups) && data.groups.length > 0) {
         mapRouteData = data;
+        if (isLegacyOrigin(mapRouteData.origin)) {
+          mapRouteData.origin = DEFAULT_MAP_ORIGIN;
+        }
+        for (const grp of mapRouteData.groups) {
+          if (isLegacyOrigin(grp.origin)) {
+            grp.origin = DEFAULT_MAP_ORIGIN;
+          }
+        }
       }
     } catch (err) {
       return new Response(JSON.stringify({ success: false, error: err.message }), {
@@ -1646,16 +1661,17 @@ async function handleSaveMapRoutes(request, env, corsHeaders) {
     });
   }
 
+  const DEFAULT_MAP_ORIGIN = "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9";
   const groups = Array.isArray(body.groups) && body.groups.length > 0 ? body.groups : [
     {
       id: "group_default",
       name: "路线 1",
-      origin: body.origin || "Green Oil Inc, 888 Progress Ave, Scarborough, ON",
+      origin: body.origin || DEFAULT_MAP_ORIGIN,
       waypoints: Array.isArray(body.waypoints) ? body.waypoints : []
     }
   ];
   const activeGroupId = body.activeGroupId || groups[0].id;
-  const origin = body.origin || groups[0].origin || "Green Oil Inc, 888 Progress Ave, Scarborough, ON";
+  const origin = body.origin || groups[0].origin || DEFAULT_MAP_ORIGIN;
   const now = new Date().toISOString();
 
   for (const grp of groups) {

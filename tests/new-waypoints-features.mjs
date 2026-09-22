@@ -30,7 +30,8 @@ const mockElement = {
   style: {},
   classList: { add: () => {}, remove: () => {} },
   addEventListener: () => {},
-  querySelectorAll: () => []
+  querySelectorAll: () => [],
+  querySelector: () => null
 };
 globalThis.document = {
   documentElement: { lang: 'zh-CN' },

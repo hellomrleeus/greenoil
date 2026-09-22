@@ -14,7 +14,7 @@ import { Restaurants } from "./restaurants.js";
 import { Auth } from "./auth.js";
 import { BusinessHours } from "./business-hours.js";
 
-const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc, Toronto, ON";
+const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9";
 const STORAGE_ORIGIN_KEY = "greenoil_start_address";
 const STORAGE_SALES_CACHE_KEY = "greenoil_field_sales_cache";
 const STORAGE_WAYPOINTS_KEY = "greenoil_route_waypoints";
@@ -138,7 +138,13 @@ export const FieldSales = {
   selectedCalendarDate: new Date().toISOString().slice(0, 10),
 
   async init() {
-    this.originAddress = localStorage.getItem(STORAGE_ORIGIN_KEY) || DEFAULT_ORIGIN_ADDRESS;
+    const savedOrigin = localStorage.getItem(STORAGE_ORIGIN_KEY);
+    if (!savedOrigin || savedOrigin.includes("Progress Ave") || savedOrigin === "Green Oil Inc, Toronto, ON" || savedOrigin === "Green Oil Inc") {
+      this.originAddress = DEFAULT_ORIGIN_ADDRESS;
+      localStorage.setItem(STORAGE_ORIGIN_KEY, DEFAULT_ORIGIN_ADDRESS);
+    } else {
+      this.originAddress = savedOrigin;
+    }
     this.bindSubTabEvents();
     this.bindRouteEvents();
     this.bindRecordEvents();
@@ -1805,7 +1811,7 @@ export const FieldSales = {
       "$1\n"
     );
 
-    const lines = cleanStr.split(/[\r\n;]+/).map(s => s.trim()).filter(Boolean);
+    const lines = cleanStr.split(/[\r\n]+|\s*[|·;；]\s*/).map(s => s.trim()).filter(Boolean);
 
     const WEEKDAYS = [
       { dayIndex: 1, name: "周一", regex: /^(monday\b|mon\b|星期一|周一)(?![~–\-至到])[\s:：]*/i },

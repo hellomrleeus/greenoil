@@ -232,7 +232,7 @@ export const TRANSLATIONS = {
     // Route Planning
     fs_route_title: "外勤拜访路线规划",
     fs_route_origin: "起点地址 (Green Oil Inc)",
-    fs_route_origin_placeholder: "Green Oil Inc, Toronto, ON",
+    fs_route_origin_placeholder: "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9",
     fs_route_departure_time: "出发时间",
     fs_route_btn_now: "当前时间",
     fs_route_est_arrival: "预计抵达",
@@ -905,7 +905,7 @@ export const TRANSLATIONS = {
     // Route Planning
     fs_route_title: "Field Visit Route Planning",
     fs_route_origin: "Origin Address (Green Oil Inc)",
-    fs_route_origin_placeholder: "Green Oil Inc, Toronto, ON",
+    fs_route_origin_placeholder: "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9",
     fs_route_departure_time: "Departure Time",
     fs_route_btn_now: "Now",
     fs_route_est_arrival: "Est. Arrival",
@@ -1578,7 +1578,7 @@ export const TRANSLATIONS = {
     // Route Planning
     fs_route_title: "현장 방문 경로 계획",
     fs_route_origin: "출발지 주소 (Green Oil Inc)",
-    fs_route_origin_placeholder: "Green Oil Inc, Toronto, ON",
+    fs_route_origin_placeholder: "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9",
     fs_route_departure_time: "출발 시간",
     fs_route_btn_now: "현재 시간",
     fs_route_est_arrival: "예상 도착",

@@ -116,6 +116,12 @@ export function formatOpeningHoursEnglish(rawHours) {
     return "Open 24 hours";
   }
 
+  // Pre-process: insert newline before any day name preceded by delimiter or whitespace
+  cleanStr = cleanStr.replace(
+    /([^\r\n])\s*(?=(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon\b|tue\b|wed\b|thu\b|fri\b|sat\b|sun\b|星期[一二三四五六日天]|周[一二三四五六日天]|礼拜[一二三四五六日天]|월요일|화요일|수요일|목요일|금요일|토요일|일요일)[\s:：])/gi,
+    "$1\n"
+  );
+
   const DAY_MAP = {
     "星期一": "Mon", "周一": "Mon", "礼拜一": "Mon", "월요일": "Mon", "monday": "Mon", "mon": "Mon",
     "星期二": "Tue", "周二": "Tue", "礼拜二": "Tue", "화요일": "Tue", "tuesday": "Tue", "tue": "Tue",
@@ -128,7 +134,7 @@ export function formatOpeningHoursEnglish(rawHours) {
 
   const DAYS_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-  const lines = cleanStr.split(/[\r\n]+| · /);
+  const lines = cleanStr.split(/[\r\n]+|\s*[|·;；]\s*/).map(s => s.trim()).filter(Boolean);
   const parsedDays = {};
   let anyMatched = false;
 
@@ -157,16 +163,30 @@ export function formatOpeningHoursEnglish(rawHours) {
       } else if (/24\s*(?:hours|小时)|open\s*24|全天营业|24\/7|24시간/i.test(valPart)) {
         valEn = "Open 24 hours";
       } else {
-        valEn = valPart.replace(/[–—~至到]/g, "-").replace(/\s+/g, " ").trim();
+        valEn = valPart
+          .replace(/[–—~至到]/g, "-")
+          .replace(/上午/g, "AM ")
+          .replace(/下午/g, "PM ")
+          .replace(/晚上/g, "PM ")
+          .replace(/中午/g, "PM ")
+          .replace(/凌晨/g, "AM ")
+          .replace(/次日|翌日/g, "Next day ")
+          .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\uac00-\ud7af]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (!valEn) valEn = "N/A";
       }
       parsedDays[dayEn] = valEn;
     }
   }
 
   if (!anyMatched) {
-    return cleanStr
+    let fallback = cleanStr
       .replace(/24小时营业|全天营业/g, "Open 24 hours")
       .replace(/休息|打烊|不营业/g, "Closed")
+      .replace(/星期一至星期日|周一至周日/g, "Mon-Sun")
+      .replace(/星期一至星期五|周一至周五/g, "Mon-Fri")
+      .replace(/星期六至星期日|周六至周日/g, "Sat-Sun")
       .replace(/星期一|周一/g, "Mon")
       .replace(/星期二|周二/g, "Tue")
       .replace(/星期三|周三/g, "Wed")
@@ -174,7 +194,17 @@ export function formatOpeningHoursEnglish(rawHours) {
       .replace(/星期五|周五/g, "Fri")
       .replace(/星期六|周六/g, "Sat")
       .replace(/星期日|周日|星期天/g, "Sun")
-      .replace(/\n+/g, ", ");
+      .replace(/上午/g, "AM ")
+      .replace(/下午/g, "PM ")
+      .replace(/晚上/g, "PM ")
+      .replace(/中午/g, "PM ")
+      .replace(/凌晨/g, "AM ")
+      .replace(/[–—~至到]/g, "-")
+      .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\uac00-\ud7af]/g, " ")
+      .replace(/[\r\n]+|\s*[|·;；]\s*/g, ", ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return fallback || "N/A";
   }
 
   if (DAYS_ORDER.every(d => d in parsedDays)) {
@@ -203,6 +233,29 @@ export function formatOpeningHoursEnglish(rawHours) {
       return `${label}: ${g.val}`;
     });
     return resultParts.join(", ");
+  }
+
+  const presentDays = DAYS_ORDER.filter(d => d in parsedDays);
+  if (presentDays.length > 0) {
+    const groups = [];
+    let curVal = parsedDays[presentDays[0]];
+    let startIdx = 0;
+    for (let i = 1; i < presentDays.length; i++) {
+      const v = parsedDays[presentDays[i]];
+      const prevOrderIdx = DAYS_ORDER.indexOf(presentDays[i - 1]);
+      const curOrderIdx = DAYS_ORDER.indexOf(presentDays[i]);
+      if (v !== curVal || curOrderIdx !== prevOrderIdx + 1) {
+        groups.push({ start: presentDays[startIdx], end: presentDays[i - 1], val: curVal });
+        startIdx = i;
+        curVal = v;
+      }
+    }
+    groups.push({ start: presentDays[startIdx], end: presentDays[presentDays.length - 1], val: curVal });
+
+    return groups.map(g => {
+      const label = g.start === g.end ? g.start : `${g.start}-${g.end}`;
+      return `${label}: ${g.val}`;
+    }).join(", ");
   }
 
   return Object.entries(parsedDays).map(([d, v]) => `${d}: ${v}`).join(", ");
@@ -254,5 +307,33 @@ assert.equal(hours3, "Open 24 hours");
 
 const hours4 = formatOpeningHoursEnglish("未提供");
 assert.equal(hours4, "N/A");
+
+// Pipe-delimited string matching user screenshot (Row 2: Gal's Sushi)
+const hoursPipeAllSame = formatOpeningHoursEnglish(
+  "Mon: 11:30-22:00 | 星期二: 11:30-22:00 | 星期三: 11:30-22:00 | 星期四: 11:30-22:00 | 星期五: 11:30-22:00 | 星期六: 11:30-22:00 | 星期日: 11:30-22:00"
+);
+assert.equal(hoursPipeAllSame, "Mon-Sun: 11:30-22:00");
+assert.ok(!/[\u4e00-\u9fff]/.test(hoursPipeAllSame), "Must not contain Chinese characters");
+
+// Pipe-delimited string with Closed on Mon (Row 3: Sushi Umi)
+const hoursPipeClosedMon = formatOpeningHoursEnglish(
+  "Mon: Closed | 星期二: 11:30-22:00 | 星期三: 11:30-22:00 | 星期四: 11:30-22:00 | 星期五: 11:30-22:00 | 星期六: 11:30-22:00 | 星期日: 11:30-22:00"
+);
+assert.equal(hoursPipeClosedMon, "Mon: Closed, Tue-Sun: 11:30-22:00");
+assert.ok(!/[\u4e00-\u9fff]/.test(hoursPipeClosedMon), "Must not contain Chinese characters");
+
+// Pipe-delimited with split shifts (Row 7: Akoya Izakaya)
+const hoursPipeSplit = formatOpeningHoursEnglish(
+  "Mon: 11:00-14:30, 17:00-22:30 | 星期二: 11:00-14:30, 17:00-22:30 | 星期三: 11:00-14:30, 17:00-22:30 | 星期四: 11:00-14:30, 17:00-22:30 | 星期五: 11:00-14:30, 17:00-22:30 | 星期六: 11:00-14:30, 17:00-22:30 | 星期日: 11:00-14:30, 17:00-22:30"
+);
+assert.equal(hoursPipeSplit, "Mon-Sun: 11:00-14:30, 17:00-22:30");
+assert.ok(!/[\u4e00-\u9fff]/.test(hoursPipeSplit), "Must not contain Chinese characters");
+
+// Pipe-delimited with varied shifts (Row 8: Pizza Pizza)
+const hoursPipeVaried = formatOpeningHoursEnglish(
+  "Mon: 11:00-02:00 | 星期二: 11:00-02:00 | 星期三: 11:00-02:00 | 星期四: 11:00-03:00 | 星期五: 11:00-03:00 | 星期六: 11:00-03:00 | 星期日: 11:00-02:00"
+);
+assert.equal(hoursPipeVaried, "Mon-Wed: 11:00-02:00, Thu-Sat: 11:00-03:00, Sun: 11:00-02:00");
+assert.ok(!/[\u4e00-\u9fff]/.test(hoursPipeVaried), "Must not contain Chinese characters");
 
 console.log("All English Export tests passed successfully!");
