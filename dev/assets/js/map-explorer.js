@@ -95,8 +95,8 @@ export const GTA_COMMUNITIES = [
   }
 ];
 
-const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc, 888 Progress Ave, Scarborough, ON";
-const DEFAULT_ORIGIN_COORDS = { lat: 43.7764, lng: -79.2318 };
+const DEFAULT_ORIGIN_ADDRESS = "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9";
+const DEFAULT_ORIGIN_COORDS = { lat: 43.7643, lng: -79.4768 };
 
 export const MapExplorer = {
   isInitialized: false,
@@ -411,9 +411,27 @@ export const MapExplorer = {
         this.activeGroupId = "group_default";
       }
 
+      const isLegacyOrigin = (addr) => {
+        if (!addr || typeof addr !== "string") return true;
+        const s = addr.trim();
+        return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
+      };
+
+      if (Array.isArray(this.routeGroups)) {
+        this.routeGroups.forEach(g => {
+          if (isLegacyOrigin(g.origin)) {
+            g.origin = DEFAULT_ORIGIN_ADDRESS;
+          }
+        });
+      }
+
       const activeGroup = this.getActiveRouteGroup();
-      if (activeGroup && activeGroup.origin) {
+      if (activeGroup && activeGroup.origin && !isLegacyOrigin(activeGroup.origin)) {
         this.originAddress = activeGroup.origin;
+      } else {
+        this.originAddress = DEFAULT_ORIGIN_ADDRESS;
+        if (activeGroup) activeGroup.origin = DEFAULT_ORIGIN_ADDRESS;
+        this.originCoords = { ...DEFAULT_ORIGIN_COORDS };
       }
     } catch (e) {
       console.warn("Failed to load route groups from local storage:", e);
@@ -472,11 +490,29 @@ export const MapExplorer = {
             this.activeGroupId = this.routeGroups[0].id;
           }
 
+          const isLegacyOrigin = (addr) => {
+            if (!addr || typeof addr !== "string") return true;
+            const s = addr.trim();
+            return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
+          };
+
+          if (Array.isArray(this.routeGroups)) {
+            this.routeGroups.forEach(g => {
+              if (isLegacyOrigin(g.origin)) {
+                g.origin = DEFAULT_ORIGIN_ADDRESS;
+              }
+            });
+          }
+
           const activeGroup = this.getActiveRouteGroup();
-          if (activeGroup && activeGroup.origin) {
+          if (activeGroup && activeGroup.origin && !isLegacyOrigin(activeGroup.origin)) {
             this.originAddress = activeGroup.origin;
-          } else if (serverData.origin) {
+          } else if (serverData.origin && !isLegacyOrigin(serverData.origin)) {
             this.originAddress = serverData.origin;
+          } else {
+            this.originAddress = DEFAULT_ORIGIN_ADDRESS;
+            if (activeGroup) activeGroup.origin = DEFAULT_ORIGIN_ADDRESS;
+            this.originCoords = { ...DEFAULT_ORIGIN_COORDS };
           }
 
           try {
@@ -499,7 +535,12 @@ export const MapExplorer = {
         // Local has existing waypoints but server is empty: upload to cloud immediately
         this.saveRouteWaypoints({ immediate: true });
       } else if (serverData.origin && !this.originAddress) {
-        this.originAddress = serverData.origin;
+        const isLegacyOrigin = (addr) => {
+          if (!addr || typeof addr !== "string") return true;
+          const s = addr.trim();
+          return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
+        };
+        this.originAddress = isLegacyOrigin(serverData.origin) ? DEFAULT_ORIGIN_ADDRESS : serverData.origin;
         const originInput = document.getElementById("mapRouteOriginInput");
         if (originInput) originInput.value = this.originAddress;
       }
@@ -597,26 +638,27 @@ export const MapExplorer = {
       `;
     }).join("");
 
-    const activePill = bar.querySelector(".map-route-tab-pill.active");
+    const activePill = (bar && typeof bar.querySelector === "function") ? bar.querySelector(".map-route-tab-pill.active") : null;
     if (activePill && typeof activePill.scrollIntoView === "function") {
       activePill.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
     }
 
-    bar.querySelectorAll(".map-route-tab-pill").forEach(pill => {
-      pill.addEventListener("click", () => {
+    if (bar && typeof bar.querySelectorAll === "function") {
+      bar.querySelectorAll(".map-route-tab-pill").forEach(pill => {
         const gid = pill.dataset.groupId;
-        if (gid && gid !== this.activeGroupId) {
-          this.switchRouteGroup(gid);
-        }
+        pill.addEventListener("click", () => {
+          if (gid && gid !== this.activeGroupId) {
+            this.switchRouteGroup(gid);
+          }
+        });
+        pill.addEventListener("dblclick", e => {
+          e.stopPropagation();
+          if (gid) {
+            this.renameRouteGroup(gid);
+          }
+        });
       });
-      pill.addEventListener("dblclick", e => {
-        e.stopPropagation();
-        const gid = pill.dataset.groupId;
-        if (gid) {
-          this.renameRouteGroup(gid);
-        }
-      });
-    });
+    }
   },
 
   switchRouteGroup(groupId) {
@@ -2108,6 +2150,12 @@ export const MapExplorer = {
       return "Open 24 hours";
     }
 
+    // Pre-process: insert newline before any day name preceded by delimiter or whitespace
+    cleanStr = cleanStr.replace(
+      /([^\r\n])\s*(?=(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon\b|tue\b|wed\b|thu\b|fri\b|sat\b|sun\b|星期[一二三四五六日天]|周[一二三四五六日天]|礼拜[一二三四五六日天]|월요일|화요일|수요일|목요일|금요일|토요일|일요일)[\s:：])/gi,
+      "$1\n"
+    );
+
     const dayMap = {
       "星期一": "Mon", "周一": "Mon", "礼拜一": "Mon", "월요일": "Mon", "monday": "Mon", "mon": "Mon",
       "星期二": "Tue", "周二": "Tue", "礼拜二": "Tue", "화요일": "Tue", "tuesday": "Tue", "tue": "Tue",
@@ -2120,7 +2168,7 @@ export const MapExplorer = {
 
     const daysOrder = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-    const lines = cleanStr.split(/[\r\n]+| · /);
+    const lines = cleanStr.split(/[\r\n]+|\s*[|·;；]\s*/).map(s => s.trim()).filter(Boolean);
     const parsedDays = {};
     let anyMatched = false;
 
@@ -2149,16 +2197,30 @@ export const MapExplorer = {
         } else if (/24\s*(?:hours|小时)|open\s*24|全天营业|24\/7|24시간/i.test(valPart)) {
           valEn = "Open 24 hours";
         } else {
-          valEn = valPart.replace(/[–—~至到]/g, "-").replace(/\s+/g, " ").trim();
+          valEn = valPart
+            .replace(/[–—~至到]/g, "-")
+            .replace(/上午/g, "AM ")
+            .replace(/下午/g, "PM ")
+            .replace(/晚上/g, "PM ")
+            .replace(/中午/g, "PM ")
+            .replace(/凌晨/g, "AM ")
+            .replace(/次日|翌日/g, "Next day ")
+            .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\uac00-\ud7af]/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (!valEn) valEn = "N/A";
         }
         parsedDays[dayEn] = valEn;
       }
     }
 
     if (!anyMatched) {
-      return cleanStr
+      let fallback = cleanStr
         .replace(/24小时营业|全天营业/g, "Open 24 hours")
         .replace(/休息|打烊|不营业/g, "Closed")
+        .replace(/星期一至星期日|周一至周日/g, "Mon-Sun")
+        .replace(/星期一至星期五|周一至周五/g, "Mon-Fri")
+        .replace(/星期六至星期日|周六至周日/g, "Sat-Sun")
         .replace(/星期一|周一/g, "Mon")
         .replace(/星期二|周二/g, "Tue")
         .replace(/星期三|周三/g, "Wed")
@@ -2166,7 +2228,17 @@ export const MapExplorer = {
         .replace(/星期五|周五/g, "Fri")
         .replace(/星期六|周六/g, "Sat")
         .replace(/星期日|周日|星期天/g, "Sun")
-        .replace(/\n+/g, ", ");
+        .replace(/上午/g, "AM ")
+        .replace(/下午/g, "PM ")
+        .replace(/晚上/g, "PM ")
+        .replace(/中午/g, "PM ")
+        .replace(/凌晨/g, "AM ")
+        .replace(/[–—~至到]/g, "-")
+        .replace(/[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\uac00-\ud7af]/g, " ")
+        .replace(/[\r\n]+|\s*[|·;；]\s*/g, ", ")
+        .replace(/\s+/g, " ")
+        .trim();
+      return fallback || "N/A";
     }
 
     if (daysOrder.every(d => d in parsedDays)) {
@@ -2195,6 +2267,29 @@ export const MapExplorer = {
         return `${label}: ${g.val}`;
       });
       return resultParts.join(", ");
+    }
+
+    const presentDays = daysOrder.filter(d => d in parsedDays);
+    if (presentDays.length > 0) {
+      const groups = [];
+      let curVal = parsedDays[presentDays[0]];
+      let startIdx = 0;
+      for (let i = 1; i < presentDays.length; i++) {
+        const v = parsedDays[presentDays[i]];
+        const prevOrderIdx = daysOrder.indexOf(presentDays[i - 1]);
+        const curOrderIdx = daysOrder.indexOf(presentDays[i]);
+        if (v !== curVal || curOrderIdx !== prevOrderIdx + 1) {
+          groups.push({ start: presentDays[startIdx], end: presentDays[i - 1], val: curVal });
+          startIdx = i;
+          curVal = v;
+        }
+      }
+      groups.push({ start: presentDays[startIdx], end: presentDays[presentDays.length - 1], val: curVal });
+
+      return groups.map(g => {
+        const label = g.start === g.end ? g.start : `${g.start}-${g.end}`;
+        return `${label}: ${g.val}`;
+      }).join(", ");
     }
 
     return Object.entries(parsedDays).map(([d, v]) => `${d}: ${v}`).join(", ");
