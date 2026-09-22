@@ -152,9 +152,10 @@ const s3Idx = sorted.findIndex(w => w.name === 'Stop 3');
 assert.equal(Math.abs(s2Idx - s3Idx), 1, 'TSP optimization must keep locked group members strictly adjacent');
 
 // -------------------------------------------------------------
-// Test 6: English Headers & Content in Excel Export (Independent of UI Language)
 // -------------------------------------------------------------
-console.log('6. Testing English Export Headers & Table Content across Languages...');
+// Test 6: Language-Aware Restaurant Name & Strictly English Opening Hours in Export
+// -------------------------------------------------------------
+console.log('6. Testing Language-Aware Restaurant Name & English Hours in Export...');
 MapExplorer.routeWaypoints = [
   {
     name: "Yang's Braised Chicken Rice(First Markham Place)杨铭宇黄焖鸡米饭",
@@ -183,31 +184,48 @@ globalThis.window.XLSX.utils.json_to_sheet = (data) => {
 };
 MapExplorer.exportWaypoints();
 assert.ok(exportedData && exportedData.length === 2, 'Export rows generated');
-const headers = Object.keys(exportedData[0]);
-assert.deepEqual(headers, [
+const headersZh = Object.keys(exportedData[0]);
+assert.deepEqual(headersZh, [
+  '序号',
+  '餐厅名称',
+  '地址',
+  '电话',
+  '营业时间',
+  '预计到达时间 (ETA)'
+], 'Headers must be Chinese when language is zh');
+
+// Verify Content in Chinese mode: Chinese names, but opening hours ALWAYS in English!
+assert.equal(exportedData[0]['餐厅名称'], "杨铭宇黄焖鸡米饭", 'Restaurant Name must be Chinese in zh mode');
+assert.equal(exportedData[0]['营业时间'], 'Mon-Sun: 11:00-02:00', 'Opening hours must remain in English even in zh mode');
+assert.equal(exportedData[0]['电话'], 'N/A', 'Phone fallback must be N/A');
+assert.equal(exportedData[0]['预计到达时间 (ETA)'], 'N/A', 'ETA fallback must be N/A');
+
+assert.equal(exportedData[1]['餐厅名称'], '御品', 'Chinese restaurant name preserved in zh mode');
+assert.equal(exportedData[1]['营业时间'], 'Mon-Sat: 11:00-19:00, Sun: Closed', 'Opening hours must remain in English in zh mode');
+assert.equal(exportedData[1]['电话'], '(905) 123-4567');
+assert.equal(exportedData[1]['预计到达时间 (ETA)'], '14:30');
+
+// Set language to English
+i18n.setLanguage('en');
+exportedData = null;
+MapExplorer.exportWaypoints();
+const headersEn = Object.keys(exportedData[0]);
+assert.deepEqual(headersEn, [
   'Stop #',
   'Restaurant Name',
   'Address',
   'Phone',
   'Opening Hours',
   'Estimated Arrival (ETA)'
-], 'Headers must be English even when language is zh');
-
-// Verify Content is in English
-assert.equal(exportedData[0]['Restaurant Name'], "Yang's Braised Chicken Rice (First Markham Place)", 'Restaurant Name must be English');
-assert.ok(!/[\u4e00-\u9fff]/.test(exportedData[0]['Address']), 'Address must not contain Chinese');
-assert.ok(exportedData[0]['Address'].includes('Toronto') && exportedData[0]['Address'].includes('M2J 3C1'), 'Address formatted in English');
-assert.equal(exportedData[0]['Opening Hours'], 'Mon-Sun: 11:00-02:00', 'Opening hours must be formatted into English');
-assert.equal(exportedData[0]['Phone'], 'N/A', 'Phone fallback must be N/A');
-assert.equal(exportedData[0]['Estimated Arrival (ETA)'], 'N/A', 'ETA fallback must be N/A');
-
+], 'Headers must be English when language is en');
+assert.equal(exportedData[0]['Restaurant Name'], "Yang's Braised Chicken Rice (First Markham Place)", 'Restaurant Name must be English in en mode');
+assert.ok(!/[\u4e00-\u9fff]/.test(exportedData[0]['Restaurant Name']), 'Restaurant name must not contain Chinese in en mode');
+assert.ok(!/[\u4e00-\u9fff]/.test(exportedData[0]['Address']), 'Address must not contain Chinese in en mode');
+assert.equal(exportedData[0]['Opening Hours'], 'Mon-Sun: 11:00-02:00', 'Opening hours must be English');
 assert.equal(exportedData[1]['Restaurant Name'], 'Kingsfield Chinese Cuisine', 'nameEn preferred for Restaurant Name');
-assert.ok(!/[\u4e00-\u9fff]/.test(exportedData[1]['Address']), 'Address must not contain Chinese');
-assert.equal(exportedData[1]['Opening Hours'], 'Mon-Sat: 11:00-19:00, Sun: Closed', 'Closed and range hours formatted into English');
-assert.equal(exportedData[1]['Phone'], '(905) 123-4567');
-assert.equal(exportedData[1]['Estimated Arrival (ETA)'], '14:30');
+assert.equal(exportedData[1]['Opening Hours'], 'Mon-Sat: 11:00-19:00, Sun: Closed');
 
-// Set language to Korean
+// Set language to Korean (non-zh)
 i18n.setLanguage('ko');
 exportedData = null;
 MapExplorer.exportWaypoints();
@@ -218,7 +236,8 @@ assert.deepEqual(Object.keys(exportedData[0]), [
   'Phone',
   'Opening Hours',
   'Estimated Arrival (ETA)'
-], 'Headers must be English even when language is ko');
+], 'Headers must be English when language is non-zh');
+assert.equal(exportedData[0]['Restaurant Name'], "Yang's Braised Chicken Rice (First Markham Place)");
 assert.equal(exportedData[0]['Opening Hours'], 'Mon-Sun: 11:00-02:00');
 
 // -------------------------------------------------------------
