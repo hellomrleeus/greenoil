@@ -27,17 +27,6 @@ export const FieldSales = {
   get routeTabs() {
     if (typeof window !== "undefined") {
       if (!window.__greenoil_route_tabs__ || !Array.isArray(window.__greenoil_route_tabs__) || window.__greenoil_route_tabs__.length === 0) {
-        try {
-          const saved = localStorage.getItem(STORAGE_ROUTE_TABS_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              window.__greenoil_route_tabs__ = parsed;
-            }
-          }
-        } catch (e) {}
-      }
-      if (!window.__greenoil_route_tabs__ || !Array.isArray(window.__greenoil_route_tabs__) || window.__greenoil_route_tabs__.length === 0) {
         window.__greenoil_route_tabs__ = [{
           id: "tab_default",
           name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
@@ -70,12 +59,6 @@ export const FieldSales = {
 
   get activeRouteTabId() {
     if (typeof window !== "undefined") {
-      if (!window.__greenoil_active_tab_id__) {
-        try {
-          const saved = localStorage.getItem(STORAGE_ACTIVE_TAB_KEY);
-          if (saved) window.__greenoil_active_tab_id__ = saved;
-        } catch (e) {}
-      }
       return window.__greenoil_active_tab_id__ || "tab_default";
     }
     return this._activeRouteTabId || "tab_default";
@@ -138,13 +121,16 @@ export const FieldSales = {
   selectedCalendarDate: new Date().toISOString().slice(0, 10),
 
   async init() {
-    const savedOrigin = localStorage.getItem(STORAGE_ORIGIN_KEY);
-    if (!savedOrigin || savedOrigin.includes("Progress Ave") || savedOrigin === "Green Oil Inc, Toronto, ON" || savedOrigin === "Green Oil Inc") {
-      this.originAddress = DEFAULT_ORIGIN_ADDRESS;
-      localStorage.setItem(STORAGE_ORIGIN_KEY, DEFAULT_ORIGIN_ADDRESS);
-    } else {
-      this.originAddress = savedOrigin;
-    }
+    try {
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(STORAGE_WAYPOINTS_KEY);
+        localStorage.removeItem(STORAGE_ROUTE_TABS_KEY);
+        localStorage.removeItem(STORAGE_ACTIVE_TAB_KEY);
+        localStorage.removeItem(STORAGE_ORIGIN_KEY);
+      }
+    } catch (e) {}
+
+    this.originAddress = DEFAULT_ORIGIN_ADDRESS;
     this.bindSubTabEvents();
     this.bindRouteEvents();
     this.bindRecordEvents();
@@ -258,7 +244,6 @@ export const FieldSales = {
       originInput.value = this.originAddress;
       originInput.addEventListener("change", (e) => {
         this.originAddress = e.target.value.trim() || DEFAULT_ORIGIN_ADDRESS;
-        localStorage.setItem(STORAGE_ORIGIN_KEY, this.originAddress);
         this.saveRouteWaypoints();
       });
     }
@@ -502,43 +487,9 @@ export const FieldSales = {
   },
 
   async loadRouteWaypoints() {
-    // 1. Load local cache first for immediate responsiveness
-    try {
-      const savedTabs = localStorage.getItem(STORAGE_ROUTE_TABS_KEY);
-      const activeId = localStorage.getItem(STORAGE_ACTIVE_TAB_KEY);
+    this.getActiveRouteTab();
 
-      if (savedTabs) {
-        const parsedTabs = JSON.parse(savedTabs);
-        if (Array.isArray(parsedTabs) && parsedTabs.length > 0) {
-          this.routeTabs = parsedTabs;
-          if (activeId && this.routeTabs.some(t => t.id === activeId)) {
-            this.activeRouteTabId = activeId;
-          } else {
-            this.activeRouteTabId = this.routeTabs[0].id;
-          }
-          this.ensureWaypointUids();
-        }
-      } else {
-        // Fallback to legacy single list
-        const saved = localStorage.getItem(STORAGE_WAYPOINTS_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            this.routeTabs = [{
-              id: "tab_default",
-              name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
-              waypoints: parsed
-            }];
-            this.activeRouteTabId = "tab_default";
-            this.ensureWaypointUids();
-          }
-        }
-      }
-    } catch (e) {
-      this.getActiveRouteTab();
-    }
-
-    // 2. Fetch latest route waypoints and origin from Cloudflare Worker KV
+    // Fetch latest route waypoints and origin directly from Cloudflare Worker KV
     try {
       const res = await Api.getRouteWaypoints();
       if (res && res.success && res.data) {
@@ -550,10 +501,6 @@ export const FieldSales = {
             this.activeRouteTabId = this.routeTabs[0].id;
           }
           this.ensureWaypointUids();
-          try {
-            localStorage.setItem(STORAGE_ROUTE_TABS_KEY, JSON.stringify(this.routeTabs));
-            localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
-          } catch (e) {}
         } else if (Array.isArray(res.data.waypoints)) {
           // If server only returned legacy waypoints, DO NOT overwrite if user already has multiple tabs
           if (!this.routeTabs || this.routeTabs.length <= 1) {
@@ -564,21 +511,22 @@ export const FieldSales = {
             }];
             this.activeRouteTabId = "tab_default";
             this.ensureWaypointUids();
-            try {
-              localStorage.setItem(STORAGE_ROUTE_TABS_KEY, JSON.stringify(this.routeTabs));
-              localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
-            } catch (e) {}
           }
         }
 
-        if (res.data.origin) {
+        const isLegacyOrigin = (addr) => {
+          if (!addr || typeof addr !== "string") return true;
+          const s = addr.trim();
+          return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
+        };
+
+        if (res.data.origin && !isLegacyOrigin(res.data.origin)) {
           this.originAddress = res.data.origin;
-          try {
-            localStorage.setItem(STORAGE_ORIGIN_KEY, this.originAddress);
-          } catch (e) {}
-          const originInput = document.getElementById("fsRouteOriginInput");
-          if (originInput) originInput.value = this.originAddress;
+        } else {
+          this.originAddress = DEFAULT_ORIGIN_ADDRESS;
         }
+        const originInput = document.getElementById("fsRouteOriginInput");
+        if (originInput) originInput.value = this.originAddress;
       }
     } catch (err) {
       console.warn("Failed to fetch route waypoints from backend:", err);
@@ -587,16 +535,7 @@ export const FieldSales = {
 
   async saveRouteWaypoints() {
     this.getActiveRouteTab();
-    // 1. Save to local storage
-    try {
-      localStorage.setItem(STORAGE_ROUTE_TABS_KEY, JSON.stringify(this.routeTabs));
-      localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
-      localStorage.setItem(STORAGE_WAYPOINTS_KEY, JSON.stringify(this.routeWaypoints));
-    } catch (e) {
-      console.warn("Failed to persist route waypoints to local storage:", e);
-    }
-
-    // 2. Save to backend KV
+    // Persist directly to backend KV
     try {
       await Api.saveRouteWaypoints(this.routeWaypoints, this.originAddress, this.routeTabs, this.activeRouteTabId);
     } catch (err) {
@@ -656,12 +595,9 @@ export const FieldSales = {
     const searchInput = document.getElementById("fsRouteSearchInput");
     if (searchInput) searchInput.value = "";
 
-    try {
-      localStorage.setItem(STORAGE_ACTIVE_TAB_KEY, this.activeRouteTabId);
-    } catch (e) {}
-
     this.renderRouteTabs();
     this.renderRouteWaypoints();
+    this.saveRouteWaypoints();
   },
 
   createRouteTab(name = null) {

@@ -495,7 +495,7 @@ export const Api = {
   /**
    * Save Route Waypoints to Cloudflare KV
    */
-  async saveRouteWaypoints(waypoints = [], origin = "Green Oil Inc, Toronto, ON", tabs = null, activeTabId = null) {
+  async saveRouteWaypoints(waypoints = [], origin = "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9", tabs = null, activeTabId = null) {
     const workerUrl = this.getWorkerUrl();
     try {
       const resp = await fetch(`${workerUrl}/api/route`, {
@@ -532,7 +532,7 @@ export const Api = {
   /**
    * Map Explorer: Save Grouped Routes to Cloudflare KV (New Dedicated Endpoint)
    */
-  async saveMapRoutes(groups = [], activeGroupId = null, origin = "Green Oil Inc, Toronto, ON") {
+  async saveMapRoutes(groups = [], activeGroupId = null, origin = "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9") {
     const workerUrl = this.getWorkerUrl();
     try {
       const resp = await fetch(`${workerUrl}/api/map-routes`, {
