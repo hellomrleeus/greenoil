@@ -372,82 +372,42 @@ export const MapExplorer = {
   },
 
   // -------------------------------------------------------------
-  // Route State Management & Cloud Persistence (Multi-Group KV)
+  // -------------------------------------------------------------
+  // Route State Management & Cloud Persistence (Cloudflare KV)
   // -------------------------------------------------------------
   initRouteState() {
-    // 1. Immediate local cache read (0ms instant render)
+    // 1. Clean up any stale legacy route keys from localStorage
     try {
-      const savedGroups = localStorage.getItem("greenoil_map_route_groups_v1");
-      const savedActiveId = localStorage.getItem("greenoil_map_active_group_id_v1");
-      if (savedGroups) {
-        const parsed = JSON.parse(savedGroups);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          this.routeGroups = parsed;
-          if (savedActiveId && this.routeGroups.some(g => g.id === savedActiveId)) {
-            this.activeGroupId = savedActiveId;
-          } else {
-            this.activeGroupId = this.routeGroups[0].id;
-          }
-        }
-      } else {
-        // Fallback / auto-migration from older v2 single route if present
-        const oldSaved = localStorage.getItem("greenoil_route_waypoints_v2");
-        const oldOrigin = localStorage.getItem("greenoil_route_origin_v2") || DEFAULT_ORIGIN_ADDRESS;
-        let oldWaypoints = [];
-        if (oldSaved) {
-          try {
-            const parsedOld = JSON.parse(oldSaved);
-            if (Array.isArray(parsedOld)) oldWaypoints = parsedOld;
-          } catch (e) {}
-        }
-        this.routeGroups = [
-          {
-            id: "group_default",
-            name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
-            origin: oldOrigin,
-            waypoints: oldWaypoints
-          }
-        ];
-        this.activeGroupId = "group_default";
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem("greenoil_map_route_groups_v1");
+        localStorage.removeItem("greenoil_map_active_group_id_v1");
+        localStorage.removeItem("greenoil_map_routes_updated_at");
+        localStorage.removeItem("greenoil_route_waypoints_v2");
+        localStorage.removeItem("greenoil_route_updated_at");
+        localStorage.removeItem("greenoil_route_origin_v2");
       }
+    } catch (e) {}
 
-      const isLegacyOrigin = (addr) => {
-        if (!addr || typeof addr !== "string") return true;
-        const s = addr.trim();
-        return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
-      };
-
-      if (Array.isArray(this.routeGroups)) {
-        this.routeGroups.forEach(g => {
-          if (isLegacyOrigin(g.origin)) {
-            g.origin = DEFAULT_ORIGIN_ADDRESS;
-          }
-        });
+    // 2. Initialize in-memory default state
+    this.routeGroups = [
+      {
+        id: "group_default",
+        name: (typeof i18n !== "undefined" && i18n.t ? i18n.t("fs_route_tab_default_name") : "路线 1") || "路线 1",
+        origin: DEFAULT_ORIGIN_ADDRESS,
+        waypoints: []
       }
-
-      const activeGroup = this.getActiveRouteGroup();
-      if (activeGroup && activeGroup.origin && !isLegacyOrigin(activeGroup.origin)) {
-        this.originAddress = activeGroup.origin;
-      } else {
-        this.originAddress = DEFAULT_ORIGIN_ADDRESS;
-        if (activeGroup) activeGroup.origin = DEFAULT_ORIGIN_ADDRESS;
-        this.originCoords = { ...DEFAULT_ORIGIN_COORDS };
-      }
-    } catch (e) {
-      console.warn("Failed to load route groups from local storage:", e);
-    }
+    ];
+    this.activeGroupId = "group_default";
+    this.originAddress = DEFAULT_ORIGIN_ADDRESS;
+    this.originCoords = { ...DEFAULT_ORIGIN_COORDS };
 
     const originInput = document.getElementById("mapRouteOriginInput");
     if (originInput) {
-      if (this.originAddress) {
-        originInput.value = this.originAddress;
-      } else if (originInput.value) {
-        this.originAddress = originInput.value.trim();
-      }
+      originInput.value = this.originAddress;
     }
     this.renderWaypoints();
 
-    // 2. Asynchronous remote sync with Cloudflare KV (New Dedicated Endpoint)
+    // 3. Directly sync authoritative route state from Cloudflare KV backend
     this.syncRouteFromBackend();
   },
 
@@ -475,65 +435,46 @@ export const MapExplorer = {
         });
       }
 
-      const localUpdated = localStorage.getItem("greenoil_map_routes_updated_at") || "";
-      const serverUpdated = serverData.updatedAt || "";
-      const serverTotalWaypoints = serverGroups ? serverGroups.reduce((acc, g) => acc + (g.waypoints ? g.waypoints.length : 0), 0) : 0;
-      const localTotalWaypoints = this.routeGroups.reduce((acc, g) => acc + (g.waypoints ? g.waypoints.length : 0), 0);
-
       if (serverGroups && serverGroups.length > 0) {
-        // If local is empty or server data is newer/same, adopt server route groups
-        if (localTotalWaypoints === 0 || !localUpdated || (serverUpdated && serverUpdated >= localUpdated)) {
-          this.routeGroups = serverGroups;
-          if (serverData.activeGroupId && this.routeGroups.some(g => g.id === serverData.activeGroupId)) {
-            this.activeGroupId = serverData.activeGroupId;
-          } else {
-            this.activeGroupId = this.routeGroups[0].id;
-          }
-
-          const isLegacyOrigin = (addr) => {
-            if (!addr || typeof addr !== "string") return true;
-            const s = addr.trim();
-            return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
-          };
-
-          if (Array.isArray(this.routeGroups)) {
-            this.routeGroups.forEach(g => {
-              if (isLegacyOrigin(g.origin)) {
-                g.origin = DEFAULT_ORIGIN_ADDRESS;
-              }
-            });
-          }
-
-          const activeGroup = this.getActiveRouteGroup();
-          if (activeGroup && activeGroup.origin && !isLegacyOrigin(activeGroup.origin)) {
-            this.originAddress = activeGroup.origin;
-          } else if (serverData.origin && !isLegacyOrigin(serverData.origin)) {
-            this.originAddress = serverData.origin;
-          } else {
-            this.originAddress = DEFAULT_ORIGIN_ADDRESS;
-            if (activeGroup) activeGroup.origin = DEFAULT_ORIGIN_ADDRESS;
-            this.originCoords = { ...DEFAULT_ORIGIN_COORDS };
-          }
-
-          try {
-            localStorage.setItem("greenoil_map_route_groups_v1", JSON.stringify(this.routeGroups));
-            localStorage.setItem("greenoil_map_active_group_id_v1", this.activeGroupId);
-            if (serverUpdated) localStorage.setItem("greenoil_map_routes_updated_at", serverUpdated);
-            localStorage.setItem("greenoil_route_waypoints_v2", JSON.stringify(this.routeWaypoints));
-            if (this.originAddress) localStorage.setItem("greenoil_route_origin_v2", this.originAddress);
-          } catch (e) {}
-
-          const originInput = document.getElementById("mapRouteOriginInput");
-          if (originInput) originInput.value = this.originAddress;
-
-          this.renderWaypoints();
-          this.updateRoute();
-          this.renderMarkers();
-          this.renderPlacesCards();
+        this.routeGroups = serverGroups;
+        if (serverData.activeGroupId && this.routeGroups.some(g => g.id === serverData.activeGroupId)) {
+          this.activeGroupId = serverData.activeGroupId;
+        } else {
+          this.activeGroupId = this.routeGroups[0].id;
         }
-      } else if (localTotalWaypoints > 0 && serverTotalWaypoints === 0) {
-        // Local has existing waypoints but server is empty: upload to cloud immediately
-        this.saveRouteWaypoints({ immediate: true });
+
+        const isLegacyOrigin = (addr) => {
+          if (!addr || typeof addr !== "string") return true;
+          const s = addr.trim();
+          return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
+        };
+
+        if (Array.isArray(this.routeGroups)) {
+          this.routeGroups.forEach(g => {
+            if (isLegacyOrigin(g.origin)) {
+              g.origin = DEFAULT_ORIGIN_ADDRESS;
+            }
+          });
+        }
+
+        const activeGroup = this.getActiveRouteGroup();
+        if (activeGroup && activeGroup.origin && !isLegacyOrigin(activeGroup.origin)) {
+          this.originAddress = activeGroup.origin;
+        } else if (serverData.origin && !isLegacyOrigin(serverData.origin)) {
+          this.originAddress = serverData.origin;
+        } else {
+          this.originAddress = DEFAULT_ORIGIN_ADDRESS;
+          if (activeGroup) activeGroup.origin = DEFAULT_ORIGIN_ADDRESS;
+          this.originCoords = { ...DEFAULT_ORIGIN_COORDS };
+        }
+
+        const originInput = document.getElementById("mapRouteOriginInput");
+        if (originInput) originInput.value = this.originAddress;
+
+        this.renderWaypoints();
+        this.updateRoute();
+        this.renderMarkers();
+        this.renderPlacesCards();
       } else if (serverData.origin && !this.originAddress) {
         const isLegacyOrigin = (addr) => {
           if (!addr || typeof addr !== "string") return true;
@@ -552,30 +493,16 @@ export const MapExplorer = {
   },
 
   saveRouteWaypoints(options = {}) {
-    const nowIso = new Date().toISOString();
-    // 1. Immediate local persistence
-    try {
-      const activeGroup = this.getActiveRouteGroup();
-      if (activeGroup) {
-        const originInput = document.getElementById("mapRouteOriginInput");
-        const effectiveOrigin = (originInput ? originInput.value.trim() : this.originAddress) || DEFAULT_ORIGIN_ADDRESS;
-        activeGroup.origin = effectiveOrigin;
-        this.originAddress = effectiveOrigin;
-      }
-
-      localStorage.setItem("greenoil_map_route_groups_v1", JSON.stringify(this.routeGroups));
-      localStorage.setItem("greenoil_map_active_group_id_v1", this.activeGroupId);
-      localStorage.setItem("greenoil_map_routes_updated_at", nowIso);
-      localStorage.setItem("greenoil_route_waypoints_v2", JSON.stringify(this.routeWaypoints));
-      localStorage.setItem("greenoil_route_updated_at", nowIso);
-      if (this.originAddress) {
-        localStorage.setItem("greenoil_route_origin_v2", this.originAddress);
-      }
-    } catch (e) {
-      console.warn("Failed to save route groups to local storage:", e);
+    // 1. Immediate in-memory state update
+    const activeGroup = this.getActiveRouteGroup();
+    if (activeGroup) {
+      const originInput = document.getElementById("mapRouteOriginInput");
+      const effectiveOrigin = (originInput ? originInput.value.trim() : this.originAddress) || DEFAULT_ORIGIN_ADDRESS;
+      activeGroup.origin = effectiveOrigin;
+      this.originAddress = effectiveOrigin;
     }
 
-    // 2. Debounced or immediate sync to Cloudflare KV
+    // 2. Debounced or immediate sync directly to Cloudflare KV backend
     if (this._saveDebounceTimer) {
       clearTimeout(this._saveDebounceTimer);
       this._saveDebounceTimer = null;

@@ -55,9 +55,15 @@ export default {
         return await handleLogout(request, corsHeaders);
       }
 
-      // All routes below require authentication (except public static configs and place photos)
+      // All routes below require authentication (except public static configs, place photos, and shared routes)
+      const isPublic = url.pathname === "/" ||
+                       url.pathname === "/api/health" ||
+                       url.pathname === "/api/maps/config" ||
+                       url.pathname === "/api/places/photo" ||
+                       url.pathname === "/api/map-routes" ||
+                       url.pathname === "/api/route";
       const isAuthed = checkAuth(request, env);
-      if (!isAuthed && url.pathname !== "/" && url.pathname !== "/api/health" && url.pathname !== "/api/maps/config" && url.pathname !== "/api/places/photo") {
+      if (!isAuthed && !isPublic) {
         return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -1480,9 +1486,16 @@ async function enrichWaypointsWithHours(waypoints, env) {
  * Route Waypoints: Get persisted route waypoints from KV
  */
 async function handleGetRouteWaypoints(request, env, corsHeaders) {
+  const DEFAULT_ROUTE_ORIGIN = "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9";
+  const isLegacyOrigin = (addr) => {
+    if (!addr || typeof addr !== "string") return true;
+    const s = addr.trim();
+    return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
+  };
+
   let routeData = {
     waypoints: [],
-    origin: "Green Oil Inc, Toronto, ON",
+    origin: DEFAULT_ROUTE_ORIGIN,
     tabs: null,
     activeTabId: null,
     updatedAt: null
@@ -1491,7 +1504,19 @@ async function handleGetRouteWaypoints(request, env, corsHeaders) {
   if (env.RESTAURANTS_KV) {
     try {
       const data = await env.RESTAURANTS_KV.get(KV_ROUTE_KEY, { type: "json" });
-      if (data) routeData = data;
+      if (data) {
+        routeData = data;
+        if (isLegacyOrigin(routeData.origin)) {
+          routeData.origin = DEFAULT_ROUTE_ORIGIN;
+        }
+        if (Array.isArray(routeData.tabs)) {
+          for (const tab of routeData.tabs) {
+            if (isLegacyOrigin(tab.origin)) {
+              tab.origin = DEFAULT_ROUTE_ORIGIN;
+            }
+          }
+        }
+      }
     } catch (err) {
       return new Response(JSON.stringify({ success: false, error: err.message }), {
         status: 500,
@@ -1534,8 +1559,15 @@ async function handleSaveRouteWaypoints(request, env, corsHeaders) {
     });
   }
 
+  const DEFAULT_ROUTE_ORIGIN = "Green Oil Inc. 4490 Chesswood Dr Unit 3, North York, ON M3J 2B9";
+  const isLegacyOrigin = (addr) => {
+    if (!addr || typeof addr !== "string") return true;
+    const s = addr.trim();
+    return s.includes("Progress Ave") || s === "Green Oil Inc, Toronto, ON" || s === "Green Oil Inc";
+  };
+
   const waypoints = Array.isArray(body.waypoints) ? body.waypoints : [];
-  const origin = body.origin || "Green Oil Inc, Toronto, ON";
+  const origin = (body.origin && !isLegacyOrigin(body.origin)) ? body.origin : DEFAULT_ROUTE_ORIGIN;
   const tabs = Array.isArray(body.tabs) ? body.tabs : null;
   const activeTabId = body.activeTabId || null;
   const now = new Date().toISOString();
@@ -1545,6 +1577,9 @@ async function handleSaveRouteWaypoints(request, env, corsHeaders) {
     for (const tab of tabs) {
       if (Array.isArray(tab.waypoints)) {
         await enrichWaypointsWithHours(tab.waypoints, env);
+      }
+      if (isLegacyOrigin(tab.origin)) {
+        tab.origin = DEFAULT_ROUTE_ORIGIN;
       }
     }
   }
