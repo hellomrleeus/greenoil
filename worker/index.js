@@ -174,7 +174,12 @@ export default {
         });
       }
 
-      // 10. Health check
+      // 10.1 JEV API Key (Protected by auth)
+      if ((url.pathname === "/api/jev/key" || url.pathname === "/api/jev-key") && (request.method === "GET" || request.method === "POST")) {
+        return await handleGetJevKey(request, env, corsHeaders);
+      }
+
+      // 11. Health check
       if (url.pathname === "/" || url.pathname === "/api/health") {
         return new Response(JSON.stringify({
           status: "healthy",
@@ -290,6 +295,35 @@ async function handleLogout(request, corsHeaders) {
       "Content-Type": "application/json",
       "Set-Cookie": cookieHeader
     }
+  });
+}
+
+/**
+ * Handle JEV Key dispatch (Protected by auth)
+ */
+async function handleGetJevKey(request, env, corsHeaders) {
+  if (!checkAuth(request, env)) {
+    return new Response(JSON.stringify({
+      success: false,
+      error: "Unauthorized",
+      message: "未登录或凭据已过期"
+    }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+
+  const defaultKey = "apikey_2219dfe1cc31878e4468b51134625a75ccfc_08c4884226b30cee70645aa18d2e4f680bfeb69badf98b374131ea8814bc4df8";
+  const apiKey = (env.JEV_API_KEY || env.JEV_KEY || defaultKey).trim();
+
+  return new Response(JSON.stringify({
+    success: true,
+    apiKey,
+    key: apiKey,
+    jevKey: apiKey
+  }), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 }
 

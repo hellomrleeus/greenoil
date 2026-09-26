@@ -26,15 +26,22 @@
    - 账号密码通过 Cloudflare 环境变量/Secrets（`WORKER_USERNAME` / `WORKER_PASSWORD`）安全托管。
    - 下发 `greenoil_session` Cookie（支持 `SameSite=None; Secure; HttpOnly` 跨域与 GitHub Pages 配合）。
 
+6. **JEV API Key 鉴权下发**：
+   - `GET /api/jev/key`（别名 `/api/jev-key`）：仅在用户拥有有效登录态（Bearer Token 或 Session Cookie）时下发 Key。
+   - 优先读取 Cloudflare 后台 Secret `JEV_API_KEY`，未配置时自动回退为默认 Key。
+
 ---
 
 ## 部署指引
 
-### 1. 配置 Google Maps API 密钥（如需使用在线地图检索）
+### 1. 配置密钥（Secrets）
 ```bash
 cd worker
+# Google Maps API Key
 npx wrangler secret put GOOGLE_MAPS_API_KEY
-# 提示时粘贴您的 Google Maps API Key
+
+# JEV API Key（可选，优先从后台 Secret 读取；未设置则回退至默认 Key）
+npx wrangler secret put JEV_API_KEY
 ```
 
 餐馆数据已迁移到 D1 数据库 `greenoil-restaurants`。餐馆地图查询使用所选 city／区划的 `bbox=west,south,east,north` 经纬度条件，一次返回该固定范围内的完整结果；地图拖动只改变视野，不会重新查询。餐馆数据相关 KV 键已删除，商圈汇总和路线配置仍保存在 KV。
@@ -43,3 +50,4 @@ npx wrangler secret put GOOGLE_MAPS_API_KEY
 ```bash
 npx wrangler deploy
 ```
+
