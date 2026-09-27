@@ -60,9 +60,8 @@ export default {
                        url.pathname === "/api/health" ||
                        url.pathname === "/api/maps/config" ||
                        url.pathname === "/api/places/photo" ||
-                       url.pathname === "/api/map-routes" ||
                        url.pathname === "/api/route";
-      const isAuthed = checkAuth(request, env);
+      const isAuthed = await checkAuth(request, env);
       if (!isAuthed && !isPublic) {
         return new Response(JSON.stringify({ error: "Unauthorized", message: "未登录或凭据已过期" }), {
           status: 401,
@@ -160,7 +159,7 @@ export default {
 
       // 10. Google Maps Client Config (Frontend Key restricted to Website domain, protected by auth)
       if (url.pathname === "/api/maps/config" && request.method === "GET") {
-        if (!checkAuth(request, env)) {
+        if (!(await checkAuth(request, env))) {
           return new Response(JSON.stringify({ error: "Unauthorized: Please log in" }), {
             status: 401,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -244,7 +243,7 @@ async function handleLogin(request, env, corsHeaders) {
     timestamp: Date.now(),
     role: "greenoil-operator"
   };
-  const token = btoa(JSON.stringify(payload));
+  const token = await signSessionToken(payload, env);
   const cookieHeader = `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=${SESSION_TTL}`;
 
   return new Response(JSON.stringify({
@@ -266,7 +265,7 @@ async function handleLogin(request, env, corsHeaders) {
  * Handle Auth Check
  */
 async function handleAuthCheck(request, env, corsHeaders) {
-  const isAuthed = checkAuth(request, env);
+  const isAuthed = await checkAuth(request, env);
   if (!isAuthed) {
     return new Response(JSON.stringify({ authenticated: false }), {
       status: 401,
@@ -302,7 +301,7 @@ async function handleLogout(request, corsHeaders) {
  * Handle JEV Key dispatch (Protected by auth)
  */
 async function handleGetJevKey(request, env, corsHeaders) {
-  if (!checkAuth(request, env)) {
+  if (!(await checkAuth(request, env))) {
     return new Response(JSON.stringify({
       success: false,
       error: "Unauthorized",
@@ -327,18 +326,52 @@ async function handleGetJevKey(request, env, corsHeaders) {
   });
 }
 
-function checkAuth(request, env) {
-  const validUser = env.WORKER_USERNAME ? env.WORKER_USERNAME.trim() : "greenoil";
+// Session tokens: base64(JSON payload) + "." + HMAC-SHA256 signature.
+// The key is SESSION_SECRET, or the operator password when that isn't set
+// (changing the password then signs everyone out). Unsigned tokens from
+// older builds no longer pass.
+function sessionSecret(env) {
+  return (env.SESSION_SECRET || env.WORKER_PASSWORD || "").trim();
+}
 
-  function isValidSessionToken(rawToken) {
+async function hmacSignature(data, secret) {
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data)));
+  return btoa(String.fromCharCode(...sig)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function signSessionToken(payload, env) {
+  const secret = sessionSecret(env);
+  if (!secret) throw new Error("SESSION_SECRET / WORKER_PASSWORD is not configured");
+  const body = btoa(JSON.stringify(payload));
+  return `${body}.${await hmacSignature(body, secret)}`;
+}
+
+function timingSafeEqual(a, b) {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function checkAuth(request, env) {
+  const validUser = env.WORKER_USERNAME ? env.WORKER_USERNAME.trim() : "";
+  const secret = sessionSecret(env);
+  if (!validUser || !secret) return false;
+
+  async function isValidSessionToken(rawToken) {
     if (!rawToken) return false;
+    const dot = rawToken.lastIndexOf(".");
+    if (dot <= 0) return false;
+    const body = rawToken.slice(0, dot);
     try {
-      const decoded = JSON.parse(atob(rawToken));
+      if (!timingSafeEqual(rawToken.slice(dot + 1), await hmacSignature(body, secret))) return false;
+      const decoded = JSON.parse(atob(body));
       if (!decoded || decoded.user !== validUser) return false;
       // Expire session after SESSION_TTL (7 days)
-      if (decoded.timestamp && (Date.now() - decoded.timestamp > SESSION_TTL * 1000)) {
-        return false;
-      }
+      if (!decoded.timestamp || Date.now() - decoded.timestamp > SESSION_TTL * 1000) return false;
       return true;
     } catch {
       return false;
@@ -347,7 +380,7 @@ function checkAuth(request, env) {
 
   const authHeader = request.headers.get("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
-    if (isValidSessionToken(authHeader.substring(7))) return true;
+    if (await isValidSessionToken(authHeader.substring(7))) return true;
   }
 
   const cookieHeader = request.headers.get("Cookie");
@@ -358,7 +391,7 @@ function checkAuth(request, env) {
         return [k, v.join("=")];
       })
     );
-    if (isValidSessionToken(cookies[COOKIE_NAME])) return true;
+    if (await isValidSessionToken(cookies[COOKIE_NAME])) return true;
   }
 
   return false;

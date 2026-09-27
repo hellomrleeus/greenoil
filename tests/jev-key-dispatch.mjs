@@ -10,23 +10,46 @@ const envDefault = {
   WORKER_PASSWORD: testPassword,
 };
 
-const validToken = btoa(JSON.stringify({
+async function login(env = envDefault) {
+  const res = await worker.fetch(new Request("https://example.test/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: testUsername, password: testPassword })
+  }), env);
+  return (await res.json()).token;
+}
+
+const validToken = await login();
+
+// Same payloads a client could build without the password: must not pass.
+const forgedToken = btoa(JSON.stringify({
   user: testUsername,
   timestamp: Date.now(),
   role: "greenoil-operator"
 }));
 
-const expiredToken = btoa(JSON.stringify({
+// Signed (so only the timestamp / user check can reject them).
+async function signedToken(payload) {
+  const [, sig] = validToken.split(".");
+  const body = btoa(JSON.stringify(payload));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(testPassword),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)));
+  assert(sig, "login token is signed");
+  return `${body}.${btoa(String.fromCharCode(...mac)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}`;
+}
+
+const expiredToken = await signedToken({
   user: testUsername,
   timestamp: Date.now() - (8 * 24 * 60 * 60 * 1000), // 8 days ago (> 7 days)
   role: "greenoil-operator"
-}));
+});
 
-const wrongUserToken = btoa(JSON.stringify({
+const wrongUserToken = await signedToken({
   user: "some_other_user",
   timestamp: Date.now(),
   role: "greenoil-operator"
-}));
+});
 
 async function runTests() {
   console.log("Running JEV Key dispatch tests...");
@@ -59,6 +82,12 @@ async function runTests() {
       headers: { "Authorization": "Bearer not-a-valid-base64" }
     }), envDefault);
     assert.equal(resMalformed.status, 401, "Expected 401 for malformed token");
+
+    const resForged = await worker.fetch(new Request("https://example.test/api/jev/key", {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${forgedToken}` }
+    }), envDefault);
+    assert.equal(resForged.status, 401, "Expected 401 for an unsigned (forged) token");
 
     console.log("✓ Test 2 passed: Invalid/expired tokens rejected with 401");
   }

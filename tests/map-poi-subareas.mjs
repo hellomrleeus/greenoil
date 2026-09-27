@@ -29,8 +29,8 @@ Api.addRestaurant=async restaurant=>({success:restaurant.placeId==='native-poi'}
 map.renderMarkers=map.renderPlacesCards=map.updateResultsSummary=map.highlightMarker=()=>{};
 globalThis.alert=()=>{};
 await map.addSingleToKv('native-poi');assert(map.findPlace('native-poi').inKV);
-const env={WORKER_USERNAME:'fixture',GOOGLE_MAPS_API_KEY:'test-key'};
-const headers={Authorization:`Bearer ${btoa(JSON.stringify({user:'fixture',timestamp:Date.now()}))}`};
+const env={WORKER_USERNAME:'fixture',WORKER_PASSWORD:'fixture-pass',GOOGLE_MAPS_API_KEY:'test-key'};
+const headers={Authorization:`Bearer ${(await (await worker.fetch(new Request('https://example.test/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'fixture',password:'fixture-pass'})}),env)).json()).token}`};
 let called=false;
 globalThis.fetch=async (url,options)=>{called=true;assert(url.endsWith('/fixture-place'));assert(options.headers['X-Goog-FieldMask'].includes('location'));return Response.json({id:'fixture-place',displayName:{text:'Fixture Restaurant'},location:{latitude:43.8,longitude:-79.4},addressComponents:[{types:['locality'],longText:'Richmond Hill'}]})};
 const request=path=>new Request('https://example.test'+path,{headers});

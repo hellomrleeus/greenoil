@@ -21,8 +21,8 @@ print(json.dumps(output))`;
 function run(req){const r=spawnSync('python3',['-c',python,dbpath],{input:JSON.stringify(req),encoding:'utf8'});if(r.status) throw new Error(r.stderr);return JSON.parse(r.stdout)}
 run({schema:fs.readFileSync('worker/migrations/0001_restaurants.sql','utf8')});
 const db={prepare(sql){return {sql,args:[],bind(...args){this.args=args;return this},async all(){return run({statements:[this]})[0]},async first(){return (await this.all()).results[0]||null},async run(){return this.all()}}},async batch(statements){return run({statements})}};
-const env={WORKER_USERNAME:"fixture",DB:db,RESTAURANTS_KV:{get(){throw Error('D1 path must not read KV')},put(){throw Error('D1 path must not write KV')}}};
-const headers={Authorization:`Bearer ${btoa(JSON.stringify({user:'fixture',timestamp:Date.now()}))}`,'Content-Type':'application/json'};
+const env={WORKER_USERNAME:"fixture",WORKER_PASSWORD:"fixture-pass",DB:db,RESTAURANTS_KV:{get(){throw Error('D1 path must not read KV')},put(){throw Error('D1 path must not write KV')}}};
+const headers={Authorization:`Bearer ${(await (await worker.fetch(new Request('https://example.test/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:'fixture',password:'fixture-pass'})}),env)).json()).token}`,'Content-Type':'application/json'};
 const request=async (route,method='GET',body)=>worker.fetch(new Request('https://example.test'+route,{method,headers,body:body?JSON.stringify(body):undefined}),env);
 try {
  const restaurants=Array.from({length:45},(_,i)=>({placeId:`r${String(i).padStart(2,'0')}`,name:`Restaurant ${i}`,latitude:i<30?43.86:44.0,longitude:-79.3,region:'Markham',rating:4,reviews:10,categories:['Chicken'],address:'A'}));
