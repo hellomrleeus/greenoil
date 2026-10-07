@@ -178,6 +178,14 @@ export default {
         return await handleGetJevKey(request, env, corsHeaders);
       }
 
+      // 10.2 Newly opened restaurants from Toronto DineSafe (Protected by auth)
+      if ((url.pathname === "/api/new-restaurants" || url.pathname === "/api/restaurants/newly-opened") && request.method === "GET") {
+        return await handleGetNewRestaurants(request, env, corsHeaders);
+      }
+      if ((url.pathname === "/api/new-restaurants/sync" || url.pathname === "/api/restaurants/newly-opened/sync") && request.method === "POST") {
+        return await handleSyncNewRestaurants(request, env, corsHeaders);
+      }
+
       // 11. Health check
       if (url.pathname === "/" || url.pathname === "/api/health") {
         return new Response(JSON.stringify({
@@ -1816,3 +1824,35 @@ async function handleSaveMapRoutes(request, env, corsHeaders) {
     headers: { ...corsHeaders, "Content-Type": "application/json" }
   });
 }
+
+/**
+ * Handle GET /api/new-restaurants
+ */
+async function handleGetNewRestaurants(request, env, corsHeaders) {
+  const url = new URL(request.url);
+  return await Database.queryNewRestaurants(env.DB, url.searchParams, corsHeaders, env.RESTAURANTS_KV);
+}
+
+/**
+ * Handle POST /api/new-restaurants/sync
+ */
+async function handleSyncNewRestaurants(request, env, corsHeaders) {
+  try {
+    const body = await request.json();
+    const restaurants = Array.isArray(body) ? body : (body.restaurants || body.data || []);
+    if (!restaurants || !restaurants.length) {
+      return new Response(JSON.stringify({ success: false, error: "缺少餐馆数据 (restaurants)" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    const replace = body.replace === true || body.mode === "replace";
+    return await Database.saveNewRestaurants(env.DB, restaurants, corsHeaders, env.RESTAURANTS_KV, { replace });
+  } catch (err) {
+    return new Response(JSON.stringify({ success: false, error: "解析请求失败: " + err.message }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
+    });
+  }
+}
+

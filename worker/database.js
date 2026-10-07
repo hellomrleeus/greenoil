@@ -115,3 +115,198 @@ export async function markSavedPlaces(db, places) {
     }
   });
 }
+
+export async function queryNewRestaurants(db, params, headers, kv) {
+  const period = params.get('period') || 'week';
+  let days = parseInt(params.get('days'), 10);
+  if (!Number.isFinite(days) || days <= 0) {
+    if (period === 'day') days = 1;
+    else if (period === 'week') days = 7;
+    else if (period === 'month') days = 30;
+    else if (period === 'quarter') days = 90;
+    else if (period === 'all') days = 3650;
+    else days = 7;
+  }
+  const limit = Math.min(parseInt(params.get('limit'), 10) || 1000, 5000);
+
+  if (db) {
+    try {
+      let refDateStr = params.get('reference_date') || params.get('referenceDate');
+      if (!refDateStr) {
+        const maxRow = await db.prepare("SELECT MAX(first_inspection_date) as max_date FROM new_restaurants").first();
+        const todayStr = new Date().toISOString().slice(0, 10);
+        refDateStr = maxRow?.max_date && maxRow.max_date > todayStr ? maxRow.max_date : todayStr;
+      }
+
+      const refDate = new Date(refDateStr + "T00:00:00Z");
+      const cutoffDate = new Date(refDate.getTime() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+      const rows = await db.prepare(
+        "SELECT * FROM new_restaurants WHERE first_inspection_date >= ? AND first_inspection_date <= ? ORDER BY first_inspection_date DESC, id DESC LIMIT ?"
+      ).bind(cutoffDate, refDateStr, limit).all();
+
+      const data = rows.results.map(r => ({
+        id: r.id,
+        name: r.name,
+        address: r.address,
+        estimatedOpeningDate: r.first_inspection_date,
+        firstInspectionDate: r.first_inspection_date,
+        latestInspectionDate: r.latest_inspection_date,
+        latitude: r.latitude,
+        longitude: r.longitude,
+        phone: r.phone || "",
+        inspectionCount: r.inspection_count || 1,
+        status: r.status || "Pass",
+        data: r.data ? JSON.parse(r.data) : {}
+      }));
+
+      return json({
+        success: true,
+        period,
+        days,
+        referenceDate: refDateStr,
+        cutoffDate,
+        total: data.length,
+        source: 'd1',
+        data
+      }, headers);
+    } catch (err) {
+      console.warn("D1 queryNewRestaurants failed, trying KV fallback:", err);
+    }
+  }
+
+  if (kv) {
+    try {
+      const stored = await kv.get('dinesafe_new_restaurants', { type: 'json' });
+      if (Array.isArray(stored)) {
+        let refDateStr = params.get('reference_date') || params.get('referenceDate') || new Date().toISOString().slice(0, 10);
+        const refDate = new Date(refDateStr + "T00:00:00Z");
+        const cutoffDate = new Date(refDate.getTime() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+        const filtered = stored.filter(r => {
+          const d = r.firstInspectionDate || r.estimatedOpeningDate;
+          return d && d >= cutoffDate && d <= refDateStr;
+        }).slice(0, limit);
+
+        return json({
+          success: true,
+          period,
+          days,
+          referenceDate: refDateStr,
+          cutoffDate,
+          total: filtered.length,
+          source: 'kv',
+          data: filtered
+        }, headers);
+      }
+    } catch (e) {
+      console.warn("KV queryNewRestaurants error:", e);
+    }
+  }
+
+  return json({
+    success: true,
+    period,
+    days,
+    referenceDate: new Date().toISOString().slice(0, 10),
+    cutoffDate: new Date().toISOString().slice(0, 10),
+    total: 0,
+    source: 'none',
+    data: []
+  }, headers);
+}
+
+export async function saveNewRestaurants(db, restaurants, headers, kv, options = {}) {
+  if (!Array.isArray(restaurants) || restaurants.length === 0) {
+    return json({ success: false, error: 'No restaurants provided' }, headers, 400);
+  }
+  const now = new Date().toISOString();
+  const replace = options.replace === true;
+
+  if (db) {
+    try {
+      if (replace) {
+        await db.prepare("DELETE FROM new_restaurants").run();
+      }
+      const batchSize = 100;
+      for (let i = 0; i < restaurants.length; i += batchSize) {
+        const chunk = restaurants.slice(i, i + batchSize);
+        const statements = chunk.map(r => {
+          const id = String(r.id || r.estId || `${r.name}_${r.address}`).trim();
+          const name = String(r.name || r.estName || "").trim();
+          const address = String(r.address || "").trim();
+          const firstDate = String(r.firstInspectionDate || r.estimatedOpeningDate || r.inspectionDate || "").trim();
+          const latestDate = String(r.latestInspectionDate || firstDate).trim();
+          const lat = r.latitude != null ? parseFloat(r.latitude) : null;
+          const lng = r.longitude != null ? parseFloat(r.longitude) : null;
+          const phone = String(r.phone || "").trim();
+          const count = parseInt(r.inspectionCount, 10) || 1;
+          const status = String(r.status || r.inspectionStatus || "Pass").trim();
+          const dataJson = JSON.stringify(r);
+
+          return db.prepare(`
+            INSERT INTO new_restaurants (
+              id, name, address, first_inspection_date, latest_inspection_date,
+              latitude, longitude, phone, inspection_count, status, data, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+              name = excluded.name,
+              address = excluded.address,
+              first_inspection_date = excluded.first_inspection_date,
+              latest_inspection_date = excluded.latest_inspection_date,
+              latitude = excluded.latitude,
+              longitude = excluded.longitude,
+              phone = excluded.phone,
+              inspection_count = excluded.inspection_count,
+              status = excluded.status,
+              data = excluded.data,
+              updated_at = excluded.updated_at
+          `).bind(id, name, address, firstDate, latestDate, lat, lng, phone, count, status, dataJson, now);
+        });
+
+        await db.batch(statements);
+      }
+    } catch (err) {
+      console.error("D1 saveNewRestaurants error:", err);
+    }
+  }
+
+  if (kv) {
+    try {
+      let existing = replace ? [] : (await kv.get('dinesafe_new_restaurants', { type: 'json' }) || []);
+      const map = new Map(existing.map(item => [item.id, item]));
+      for (const r of restaurants) {
+        const id = String(r.id || r.estId || `${r.name}_${r.address}`).trim();
+        map.set(id, {
+          id,
+          name: r.name || r.estName || "",
+          address: r.address || "",
+          estimatedOpeningDate: r.firstInspectionDate || r.estimatedOpeningDate || r.inspectionDate,
+          firstInspectionDate: r.firstInspectionDate || r.estimatedOpeningDate || r.inspectionDate,
+          latestInspectionDate: r.latestInspectionDate || r.firstInspectionDate || r.estimatedOpeningDate,
+          latitude: r.latitude != null ? parseFloat(r.latitude) : null,
+          longitude: r.longitude != null ? parseFloat(r.longitude) : null,
+          phone: r.phone || "",
+          inspectionCount: parseInt(r.inspectionCount, 10) || 1,
+          status: r.status || r.inspectionStatus || "Pass",
+          data: r
+        });
+      }
+      const merged = Array.from(map.values())
+        .sort((a, b) => (b.firstInspectionDate || '').localeCompare(a.firstInspectionDate || ''))
+        .slice(0, 3000);
+      await kv.put('dinesafe_new_restaurants', JSON.stringify(merged));
+      await kv.put('dinesafe_last_updated', now);
+    } catch (e) {
+      console.warn("KV saveNewRestaurants error:", e);
+    }
+  }
+
+  return json({
+    success: true,
+    count: restaurants.length,
+    message: `成功同步 ${restaurants.length} 家新开餐馆数据`,
+    updatedAt: now
+  }, headers);
+}
+
